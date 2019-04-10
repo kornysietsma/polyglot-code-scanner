@@ -1,33 +1,36 @@
 #[derive(PartialEq, PartialOrd, Debug)]
-pub enum FileOrDir {
-    FlareDir { children: Vec<FlareNode> },
-    FlareFile {},
+pub enum NodeValue {
+    Dir { children: Vec<FlareNode> },
+    File {},
 }
 
 #[derive(PartialEq, PartialOrd, Debug)]
 pub struct FlareNode {
     name: String,
-    value: FileOrDir,
+    value: NodeValue,
 }
 
 impl FlareNode {
-    fn from_file(name: String) -> FlareNode {
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+    pub fn from_file(name: String) -> FlareNode {
         FlareNode {
             name: name,
-            value: FileOrDir::FlareFile {},
+            value: NodeValue::File {},
         }
     }
-    fn from_dir(name: String) -> FlareNode {
+    pub fn from_dir(name: String) -> FlareNode {
         FlareNode {
             name: name,
-            value: FileOrDir::FlareDir {
+            value: NodeValue::Dir {
                 children: Vec::new(),
             },
         }
     }
-    fn append_child(&mut self, child:FlareNode) {
+    pub fn append_child(&mut self, child:FlareNode) {
         match self.value {
-            FileOrDir::FlareDir { ref mut children } => {
+            NodeValue::Dir { ref mut children } => {
                 children.push(child);
             }
             _ => {}
@@ -45,10 +48,10 @@ mod test {
 
         assert_eq!(root, FlareNode {
                 name: String::from("root"),
-                value: FileOrDir::FlareDir {
+                value: NodeValue::Dir {
                     children: vec![FlareNode {
                         name: String::from("child"),
-                        value: FileOrDir::FlareFile {},
+                        value: NodeValue::File {},
                     }]
                 },
             })
