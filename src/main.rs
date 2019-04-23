@@ -8,11 +8,12 @@ use ignore::{Walk, WalkBuilder};
 use std::error::Error;
 
 
-fn parse_tree(walker: Walk) -> Result<flare::FlareNode, Box<dyn Error>> {
+fn parse_tree(walker: Walk) -> Result<flare::FlareTree, Box<dyn Error>> {
     for result in walker.map(|r| r.expect("File error!")) {
+        let p = result.path();
         println!("{}", result.path().display())
     }
-    Ok(flare::FlareNode::from_file(String::from("fred")))
+    Ok(flare::FlareTree::from_file(String::from("fred")))
 }
 
 fn main() {
