@@ -1,3 +1,6 @@
+#![warn(clippy::all)]
+#![allow(dead_code)]
+
 extern crate ignore;
 extern crate tokei;
 
@@ -7,11 +10,10 @@ use ignore::{Walk, WalkBuilder};
 
 use std::error::Error;
 
-
 fn parse_tree(walker: Walk) -> Result<flare::FlareTree, Box<dyn Error>> {
     for result in walker.map(|r| r.expect("File error!")) {
         let p = result.path();
-        println!("{}", result.path().display())
+        println!("{}", p.display())
     }
     Ok(flare::FlareTree::from_file(String::from("fred")))
 }
@@ -31,6 +33,5 @@ mod test {
         let result = parse_tree(walker).expect("couldn't parse!");
 
         assert_eq!(result.name(), "fred");
-
     }
 }
