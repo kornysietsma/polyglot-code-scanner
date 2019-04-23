@@ -1,7 +1,11 @@
 #![warn(clippy::all)]
 #![allow(dead_code)]
 
-#[derive(PartialEq, PartialOrd, Debug)]
+use serde::ser::SerializeStruct;
+use serde::{Serialize, Serializer};
+use std::collections::HashMap;
+
+#[derive(PartialEq, PartialOrd, Serialize, Debug)]
 pub enum NodeValue {
     Dir { children: Vec<FlareTree> },
     File {},
@@ -68,9 +72,29 @@ impl FlareTree {
     }
 }
 
+type HM = HashMap<String, String>;
+
+impl Serialize for FlareTree {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("FlareTree", 2)?;
+        state.serialize_field("name", &self.name)?;
+        match &self.value {
+            NodeValue::Dir { children } => state.serialize_field("children", children)?,
+            NodeValue::File {} => state.serialize_field("data", &HM::new())?,
+        }
+
+        state.end()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+    use regex::Regex;
+
     #[test]
     fn can_build_tree() {
         let mut root = FlareTree::from_dir(String::from("root"));
@@ -155,5 +179,43 @@ mod test {
             .get_in_mut(&["child1", "grandchild", "new_kid_on_the_block.txt"])
             .expect("New kid not found!");
         assert_eq!(new_kid.name(), "new_kid_on_the_block.txt");
+    }
+
+    fn strip(string: &str) -> String {
+        let re = Regex::new(r"\s+").unwrap();
+        re.replace_all(string, "").to_string()
+    }
+
+    #[test]
+    fn can_serialize_directory_to_json() {
+        let root = FlareTree::from_dir(String::from("root"));
+
+        let serialized = serde_json::to_string(&root).unwrap();
+
+        assert_eq!(
+            serialized,
+            strip(
+                r#"{
+                    "name":"root",
+                    "children": []
+                }"#
+            )
+        )
+    }
+    #[test]
+    fn can_serialize_file_to_json() {
+        let file = FlareTree::from_file(String::from("foo.txt"));
+
+        let serialized = serde_json::to_string(&file).unwrap();
+
+        assert_eq!(
+            serialized,
+            strip(
+                r#"{
+                    "name":"foo.txt",
+                    "data": {}
+                }"#
+            )
+        )
     }
 }
