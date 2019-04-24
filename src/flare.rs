@@ -72,8 +72,6 @@ impl FlareTree {
     }
 }
 
-type HM = HashMap<String, String>;
-
 impl Serialize for FlareTree {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -83,7 +81,9 @@ impl Serialize for FlareTree {
         state.serialize_field("name", &self.name)?;
         match &self.value {
             NodeValue::Dir { children } => state.serialize_field("children", children)?,
-            NodeValue::File {} => state.serialize_field("data", &HM::new())?,
+            NodeValue::File {} => {
+                state.serialize_field("data", &HashMap::<String, String>::new())?
+            }
         }
 
         state.end()
@@ -94,6 +94,8 @@ impl Serialize for FlareTree {
 mod test {
     use super::*;
     use regex::Regex;
+    use serde_json::json;
+    use serde_json::Value;
 
     #[test]
     fn can_build_tree() {
@@ -216,6 +218,52 @@ mod test {
                     "data": {}
                 }"#
             )
+        )
+    }
+
+    #[test]
+    fn can_serialize_simple_tree_to_json() {
+        let mut root = FlareTree::from_dir(String::from("root"));
+        root.append_child(FlareTree::from_file(String::from("child.txt")));
+        root.append_child(FlareTree::from_dir(String::from("child2")));
+
+        let serialized = serde_json::to_string(&root).unwrap();
+
+        assert_eq!(
+            serialized,
+            strip(
+                r#"{
+                    "name":"root",
+                    "children": [
+                        {
+                            "name": "child.txt",
+                            "data": {}
+                        },
+                        {
+                            "name": "child2",
+                            "children": []
+                        }
+                    ]
+                }"#
+            )
+        );
+        // duplicate of above, but to show using Values not Strings:
+        let reparsed: Value = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(
+            reparsed,
+            json!({
+                "name":"root",
+                "children":[
+                    {
+                        "name": "child.txt",
+                        "data": {}
+                    },
+                    {
+                        "name":"child2",
+                        "children":[]
+                    }
+                ]
+            })
         )
     }
 }
