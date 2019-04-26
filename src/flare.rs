@@ -2,45 +2,8 @@
 #![allow(dead_code)]
 
 use serde::ser::SerializeStruct;
-use serde::ser::SerializeTuple;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
-use std::fmt;
-use std::fmt::Debug;
-
-pub trait DataPayload: erased_serde::Serialize {}
-
-impl Serialize for DataPayload {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_tuple(1)?;
-        state.serialize_element(self)?;
-        state.end()
-    }
-}
-
-impl DataPayload {
-    fn serialize_to_string(&self) -> String {
-        serde_json::to_string(&self).unwrap()
-    }
-}
-
-impl Debug for DataPayload {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Payload {} ", &self.serialize_to_string())
-    }
-}
-
-// ONLY FOR TESTING! Horribly slow...
-impl PartialEq for DataPayload + 'static {
-    fn eq(&self, other: &(DataPayload + 'static)) -> bool {
-        let self_str = self.serialize_to_string();
-        let other_str = other.serialize_to_string();
-        self_str == other_str
-    }
-}
 
 #[derive(Debug, PartialEq)]
 pub enum NodeValue {
@@ -48,7 +11,7 @@ pub enum NodeValue {
         children: Vec<FlareTree>,
     },
     File {
-        data: HashMap<String, Box<DataPayload>>,
+        data: HashMap<String, serde_json::Value>,
     },
 }
 
@@ -80,11 +43,17 @@ impl FlareTree {
         }
     }
 
-    // pub fn add_file_data<T: DataPayload>(&mut self, key: String, value: &T) {
-    //     if let NodeValue::File { ref mut data } = self.value {
-    //         data.insert(key, Box::new(value));
-    //     }
-    // }
+    pub fn add_file_data_as_value(&mut self, key: String, value: serde_json::Value) {
+        if let NodeValue::File { ref mut data } = self.value {
+            data.insert(key, value);
+        }
+    }
+
+    pub fn add_file_data<T: Serialize>(&mut self, key: String, value: &T) {
+        if let NodeValue::File { ref mut data } = self.value {
+            data.insert(key, serde_json::to_value(value).unwrap());
+        }
+    }
 
     pub fn append_child(&mut self, child: FlareTree) {
         if let NodeValue::Dir { ref mut children } = self.value {
@@ -183,7 +152,7 @@ mod test {
             "sprockets": 7,
             "flanges": ["Nigel, Sarah"]
         });
-        // child2_file.add_file_data("widgets".to_string(), Box::new(widget_data));
+        child2_file.add_file_data_as_value("widgets".to_string(), widget_data);
         child2.append_child(child2_file);
         root.append_child(child1);
         root.append_child(child2);
@@ -273,6 +242,43 @@ mod test {
                 r#"{
                     "name":"foo.txt",
                     "data": {}
+                }"#
+            )
+        )
+    }
+
+    #[test]
+    fn can_serialize_file_with_data_to_json() {
+        let mut file = FlareTree::from_file(String::from("foo.txt"));
+        file.add_file_data("wibble".to_string(), &"fnord".to_string());
+
+        let serialized = serde_json::to_string(&file).unwrap();
+
+        assert_eq!(
+            serialized,
+            strip(
+                r#"{
+                    "name":"foo.txt",
+                    "data": {"wibble":"fnord"}
+                }"#
+            )
+        )
+    }
+
+    #[test]
+    fn can_serialize_file_with_data_value_to_json() {
+        let mut file = FlareTree::from_file(String::from("foo.txt"));
+        let value = json!({"foo": ["bar", "baz", 123]});
+        file.add_file_data("bat".to_string(), &value);
+
+        let serialized = serde_json::to_string(&file).unwrap();
+
+        assert_eq!(
+            serialized,
+            strip(
+                r#"{
+                    "name":"foo.txt",
+                    "data": {"bat": {"foo": ["bar", "baz", 123]}}
                 }"#
             )
         )
