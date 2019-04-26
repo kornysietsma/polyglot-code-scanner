@@ -25,6 +25,14 @@ impl FlareTree {
     pub fn name(&self) -> &String {
         &self.name
     }
+
+    pub fn data_entry(&self, key: String) -> Option<&serde_json::Value> {
+        if let NodeValue::File { ref data } = self.value {
+            return data.get(&key);
+        }
+        None
+    }
+
     pub fn from_file(name: String) -> FlareTree {
         FlareTree {
             name: name,
@@ -73,7 +81,7 @@ impl FlareTree {
                 return first_match.get_in(remaining_names);
             }
         };
-        None
+        None // TODO: error handling!
     }
 
     pub fn get_in_mut(&mut self, path: &[&str]) -> Option<&mut FlareTree> {
@@ -88,7 +96,7 @@ impl FlareTree {
                 return first_match.get_in_mut(remaining_names);
             }
         };
-        None
+        None // TODO: error handling!
     }
 }
 
@@ -209,6 +217,21 @@ mod test {
         assert_eq!(new_kid.name(), "new_kid_on_the_block.txt");
     }
 
+    #[test]
+    fn can_get_json_payloads_from_tree() {
+        let tree = build_test_tree();
+        let file = tree.get_in(&["child2", "child2_file.txt"]).unwrap();
+
+        assert_eq!(file.name(), "child2_file.txt");
+
+        let expected = json!({
+            "sprockets": 7,
+            "flanges": ["Nigel, Sarah"]
+        });
+
+        assert_eq!(file.data_entry("widgets".to_string()).unwrap(), &expected);
+    }
+
     fn strip(string: &str) -> String {
         let re = Regex::new(r"\s+").unwrap();
         re.replace_all(string, "").to_string()
@@ -269,7 +292,7 @@ mod test {
     fn can_serialize_file_with_data_value_to_json() {
         let mut file = FlareTree::from_file(String::from("foo.txt"));
         let value = json!({"foo": ["bar", "baz", 123]});
-        file.add_file_data("bat".to_string(), &value);
+        file.add_file_data_as_value("bat".to_string(), value);
 
         let serialized = serde_json::to_string(&file).unwrap();
 
@@ -291,27 +314,8 @@ mod test {
         root.append_child(FlareTree::from_dir(String::from("child2")));
 
         let serialized = serde_json::to_string(&root).unwrap();
-
-        assert_eq!(
-            serialized,
-            strip(
-                r#"{
-                    "name":"root",
-                    "children": [
-                        {
-                            "name": "child.txt",
-                            "data": {}
-                        },
-                        {
-                            "name": "child2",
-                            "children": []
-                        }
-                    ]
-                }"#
-            )
-        );
-        // duplicate of above, but to show using Values not Strings:
         let reparsed: Value = serde_json::from_str(&serialized).unwrap();
+
         assert_eq!(
             reparsed,
             json!({
