@@ -48,7 +48,7 @@ pub enum NodeValue {
         children: Vec<FlareTree>,
     },
     File {
-        data: HashMap<String, Box<dyn DataPayload>>,
+        data: HashMap<String, Box<DataPayload>>,
     },
 }
 
@@ -70,6 +70,7 @@ impl FlareTree {
             },
         }
     }
+
     pub fn from_dir(name: String) -> FlareTree {
         FlareTree {
             name: name,
@@ -78,10 +79,17 @@ impl FlareTree {
             },
         }
     }
+
+    // pub fn add_file_data<T: DataPayload>(&mut self, key: String, value: &T) {
+    //     if let NodeValue::File { ref mut data } = self.value {
+    //         data.insert(key, Box::new(value));
+    //     }
+    // }
+
     pub fn append_child(&mut self, child: FlareTree) {
         if let NodeValue::Dir { ref mut children } = self.value {
             children.push(child);
-        }
+        } // TODO: error handling!
     }
 
     pub fn get_in(&self, path: &[&str]) -> Option<&FlareTree> {
@@ -170,7 +178,13 @@ mod test {
         child1.append_child(grand_child);
         child1.append_child(FlareTree::from_file(String::from("child1_file_2.txt")));
         let mut child2 = FlareTree::from_dir(String::from("child2"));
-        child2.append_child(FlareTree::from_file(String::from("child2_file.txt")));
+        let mut child2_file = FlareTree::from_file(String::from("child2_file.txt"));
+        let widget_data = json!({
+            "sprockets": 7,
+            "flanges": ["Nigel, Sarah"]
+        });
+        // child2_file.add_file_data("widgets".to_string(), Box::new(widget_data));
+        child2.append_child(child2_file);
         root.append_child(child1);
         root.append_child(child2);
         root
