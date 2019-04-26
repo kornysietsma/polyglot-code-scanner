@@ -2,16 +2,57 @@
 #![allow(dead_code)]
 
 use serde::ser::SerializeStruct;
+use serde::ser::SerializeTuple;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
+use std::fmt;
+use std::fmt::Debug;
 
-#[derive(PartialEq, PartialOrd, Serialize, Debug)]
-pub enum NodeValue {
-    Dir { children: Vec<FlareTree> },
-    File {},
+pub trait DataPayload: erased_serde::Serialize {}
+
+impl Serialize for DataPayload {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_tuple(1)?;
+        state.serialize_element(self)?;
+        state.end()
+    }
 }
 
-#[derive(PartialEq, PartialOrd, Debug)]
+impl DataPayload {
+    fn serialize_to_string(&self) -> String {
+        serde_json::to_string(&self).unwrap()
+    }
+}
+
+impl Debug for DataPayload {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Payload {} ", &self.serialize_to_string())
+    }
+}
+
+// ONLY FOR TESTING! Horribly slow...
+impl PartialEq for DataPayload + 'static {
+    fn eq(&self, other: &(DataPayload + 'static)) -> bool {
+        let self_str = self.serialize_to_string();
+        let other_str = other.serialize_to_string();
+        self_str == other_str
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum NodeValue {
+    Dir {
+        children: Vec<FlareTree>,
+    },
+    File {
+        data: HashMap<String, Box<dyn DataPayload>>,
+    },
+}
+
+#[derive(Debug, PartialEq)]
 pub struct FlareTree {
     name: String,
     value: NodeValue,
@@ -24,7 +65,9 @@ impl FlareTree {
     pub fn from_file(name: String) -> FlareTree {
         FlareTree {
             name: name,
-            value: NodeValue::File {},
+            value: NodeValue::File {
+                data: HashMap::new(),
+            },
         }
     }
     pub fn from_dir(name: String) -> FlareTree {
@@ -81,9 +124,7 @@ impl Serialize for FlareTree {
         state.serialize_field("name", &self.name)?;
         match &self.value {
             NodeValue::Dir { children } => state.serialize_field("children", children)?,
-            NodeValue::File {} => {
-                state.serialize_field("data", &HashMap::<String, String>::new())?
-            }
+            NodeValue::File { data } => state.serialize_field("data", data)?,
         }
 
         state.end()
@@ -109,7 +150,9 @@ mod test {
                 value: NodeValue::Dir {
                     children: vec![FlareTree {
                         name: String::from("child"),
-                        value: NodeValue::File {},
+                        value: NodeValue::File {
+                            data: HashMap::new()
+                        },
                     }]
                 },
             }
@@ -147,16 +190,16 @@ mod test {
     fn cant_get_missing_elements_from_tree() {
         let tree = build_test_tree();
         let missing = tree.get_in(&["child1", "grandchild", "nonesuch"]);
-        assert_eq!(missing, None);
+        assert_eq!(missing.is_none(), true);
         let missing2 = tree.get_in(&[
             "child1",
             "grandchild",
             "grandchild_file.txt",
             "files have no kids",
         ]);
-        assert_eq!(missing2, None);
+        assert_eq!(missing2.is_none(), true);
         let missing3 = tree.get_in(&[]);
-        assert_eq!(missing3, None);
+        assert_eq!(missing3.is_none(), true);
     }
 
     #[test]
