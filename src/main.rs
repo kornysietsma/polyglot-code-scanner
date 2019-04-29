@@ -9,13 +9,14 @@ mod flare;
 use ignore::{Walk, WalkBuilder};
 
 use std::error::Error;
+use std::ffi::OsString;
 
 fn parse_tree(walker: Walk) -> Result<flare::FlareTree, Box<dyn Error>> {
     for result in walker.map(|r| r.expect("File error!")) {
         let p = result.path();
         println!("{}", p.display())
     }
-    Ok(flare::FlareTree::from_file(String::from("fred")))
+    Ok(flare::FlareTree::from_file(OsString::from("fred")))
 }
 
 fn main() {
