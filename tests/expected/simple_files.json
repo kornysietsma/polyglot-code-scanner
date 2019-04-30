@@ -1,0 +1,22 @@
+{
+    "name": "flare",
+    "children": [
+        {
+            "name": "simple",
+            "children": []
+        },
+        {
+            "name": "child",
+            "children": [
+                {
+                    "name": "a.txt",
+                    "data": {}
+                }
+            ]
+        },
+        {
+            "name": "parent.clj",
+            "data": {}
+        }
+    ]
+}

@@ -4,35 +4,18 @@
 extern crate ignore;
 extern crate tokei;
 
+mod file_walker;
 mod flare;
 
-use ignore::{Walk, WalkBuilder};
+use ignore::WalkBuilder;
 
-use std::error::Error;
-use std::ffi::OsString;
-
-fn parse_tree(walker: Walk) -> Result<flare::FlareTree, Box<dyn Error>> {
-    for result in walker.map(|r| r.expect("File error!")) {
-        let p = result.path();
-        println!("{}", p.display())
-    }
-    Ok(flare::FlareTree::from_file(OsString::from("fred")))
-}
+use std::path::Path;
 
 fn main() {
-    let walker = WalkBuilder::new("./tests/data/simple").build();
+    let root = Path::new("./tests/data/simple/");
+    let walker = WalkBuilder::new(root).build();
 
-    parse_tree(walker).expect("Ow");
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn tree_has_expected_filenames() {
-        let walker = WalkBuilder::new("./tests/data/simple").build();
-        let result = parse_tree(walker).expect("couldn't parse!");
-
-        assert_eq!(result.name(), "fred");
-    }
+    let tree = file_walker::parse_tree(walker, root).unwrap();
+    let json = serde_json::to_string_pretty(&tree).unwrap();
+    println!("{}", json);
 }

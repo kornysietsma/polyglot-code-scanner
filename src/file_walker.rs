@@ -1,0 +1,68 @@
+#![warn(clippy::all)]
+#![allow(dead_code)]
+
+use super::flare;
+use super::flare::FlareTree;
+use ignore::{Walk, WalkBuilder};
+use std::error::Error;
+use std::path::Path;
+
+pub fn parse_tree(walker: Walk, prefix: &Path) -> Result<flare::FlareTree, Box<dyn Error>> {
+    let mut tree = FlareTree::from_dir("flare");
+
+    for result in walker.map(|r| r.expect("File error!")) {
+        let json = serde_json::to_string(&tree).unwrap();
+        println!("json: {}", json);
+        let p = result.path();
+        let relative = p.strip_prefix(prefix)?;
+        println!("rel: {:?}", relative);
+        let new_child = if p.is_file() {
+            FlareTree::from_file(p.file_name().unwrap())
+        } else {
+            FlareTree::from_dir(p.file_name().unwrap())
+        };
+
+        match relative.parent() {
+            Some(new_parent) => {
+                println!("new parent: {:?}", new_parent);
+                let parent = tree
+                    .get_in_mut(&mut new_parent.components())
+                    .expect("no parent found!");
+                println!(
+                    "adding child: {:?} / {:?}",
+                    relative.parent().unwrap(),
+                    p.file_name().unwrap()
+                );
+                parent.append_child(new_child);
+            }
+            None => {
+                println!("adding file to root: {:?}", p.file_name().unwrap());
+                tree.append_child(new_child);
+            }
+        }
+    }
+    Ok(tree)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use serde_json::Value;
+
+    #[test]
+    fn scanning_a_filesystem_builds_a_tree() {
+        // we should wrap some of this in a master function:
+        let root = Path::new("./tests/data/simple/");
+        let walker = WalkBuilder::new(root).build();
+
+        let tree = parse_tree(walker, root).unwrap();
+        let json = serde_json::to_string_pretty(&tree).unwrap();
+        let parsed_result: Value = serde_json::from_str(&json).unwrap();
+
+        let expected =
+            std::fs::read_to_string(Path::new("./tests/expected/simple_files.json")).unwrap();
+        let parsed_expected: Value = serde_json::from_str(&expected).unwrap();
+
+        assert_eq!(parsed_result, parsed_expected);
+    }
+}
