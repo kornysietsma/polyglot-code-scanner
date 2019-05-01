@@ -6,6 +6,7 @@ extern crate tokei;
 
 mod file_walker;
 mod flare;
+mod loc;
 
 use ignore::WalkBuilder;
 
