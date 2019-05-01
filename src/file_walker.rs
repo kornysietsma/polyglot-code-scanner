@@ -7,7 +7,7 @@ use ignore::{Walk, WalkBuilder};
 use std::error::Error;
 use std::path::Path;
 
-pub fn parse_tree(walker: Walk, prefix: &Path) -> Result<flare::FlareTree, Box<dyn Error>> {
+fn walk_tree_walker(walker: Walk, prefix: &Path) -> Result<flare::FlareTree, Box<dyn Error>> {
     let mut tree = FlareTree::from_dir("flare");
 
     for result in walker.map(|r| r.expect("File error!")) {
@@ -20,28 +20,26 @@ pub fn parse_tree(walker: Walk, prefix: &Path) -> Result<flare::FlareTree, Box<d
             FlareTree::from_file(p.file_name().unwrap())
         } else {
             FlareTree::from_dir(p.file_name().unwrap())
-        };
+        }; // TODO handle if not a dir either!
 
         match relative.parent() {
             Some(new_parent) => {
-                println!("new parent: {:?}", new_parent);
                 let parent = tree
                     .get_in_mut(&mut new_parent.components())
                     .expect("no parent found!");
-                println!(
-                    "adding child: {:?} / {:?}",
-                    relative.parent().unwrap(),
-                    p.file_name().unwrap()
-                );
                 parent.append_child(new_child);
             }
             None => {
-                println!("adding file to root: {:?}", p.file_name().unwrap());
                 tree.append_child(new_child);
             }
         }
     }
     Ok(tree)
+}
+
+pub fn walk_directory(root: &Path) -> Result<flare::FlareTree, Box<dyn Error>>
+{
+        walk_tree_walker(WalkBuilder::new(root).build(), root)
 }
 
 #[cfg(test)]
@@ -51,11 +49,8 @@ mod test {
 
     #[test]
     fn scanning_a_filesystem_builds_a_tree() {
-        // we should wrap some of this in a master function:
         let root = Path::new("./tests/data/simple/");
-        let walker = WalkBuilder::new(root).build();
-
-        let tree = parse_tree(walker, root).unwrap();
+        let tree = walk_directory(root).unwrap();
         let json = serde_json::to_string_pretty(&tree).unwrap();
         let parsed_result: Value = serde_json::from_str(&json).unwrap();
 

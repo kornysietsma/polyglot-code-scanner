@@ -53,18 +53,24 @@ impl FlareTree {
     }
 
     pub fn add_file_data_as_value<S: Into<String>>(&mut self, key: S, value: serde_json::Value) {
+        // TODO: error handling if not file
+        //  or rethink structure
         if let NodeValue::File { ref mut data } = self.value {
             data.insert(key.into(), value);
         }
     }
 
     pub fn add_file_data<T: Serialize, S: Into<String>>(&mut self, key: S, value: &T) {
+        // TODO: error handling if not file
+        //  or rethink structure
         if let NodeValue::File { ref mut data } = self.value {
             data.insert(key.into(), serde_json::to_value(value).unwrap());
         }
     }
 
     pub fn append_child(&mut self, child: FlareTree) {
+        // TODO: error handling if not dir
+        //  or rethink structure
         if let NodeValue::Dir { ref mut children } = self.value {
             children.push(child);
         } // TODO: error handling!
