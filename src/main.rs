@@ -13,7 +13,8 @@ use std::path::Path;
 fn main() {
     let root = Path::new("./tests/data/simple/");
 
-    let tree = file_walker::walk_directory(root, Vec::new()).unwrap();
+    let empty_calculators: Vec<Box<dyn file_walker::NamedFileMetricCalculator>> = Vec::new();
+    let tree = file_walker::walk_directory(root, empty_calculators).unwrap();
     let json = serde_json::to_string_pretty(&tree).unwrap();
     println!("{}", json);
 }
