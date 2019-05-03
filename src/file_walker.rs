@@ -30,7 +30,7 @@ fn walk_tree_walker(
             f
         } else {
             FlareTree::from_dir(p.file_name().unwrap())
-        }; // TODO handle if not a dir either!
+        }; // TODO handle if not a dir either! FAILS on "." currently
 
         match relative.parent() {
             Some(new_parent) => {

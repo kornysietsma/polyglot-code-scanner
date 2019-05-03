@@ -11,10 +11,11 @@ mod loc;
 use std::path::Path;
 
 fn main() {
-    let root = Path::new("./tests/data/simple/");
+    let root = Path::new("./src/");
 
-    let empty_calculators: Vec<Box<dyn file_walker::NamedFileMetricCalculator>> = Vec::new();
-    let tree = file_walker::walk_directory(root, empty_calculators).unwrap();
+    let tree =
+        file_walker::walk_directory(root, vec![Box::new(loc::LocMetricCalculator {})]).unwrap();
+
     let json = serde_json::to_string_pretty(&tree).unwrap();
     println!("{}", json);
 }

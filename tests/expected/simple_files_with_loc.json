@@ -1,0 +1,38 @@
+{
+    "name": "flare",
+    "children": [
+        {
+            "name": "simple",
+            "children": []
+        },
+        {
+            "name": "child",
+            "children": [
+                {
+                    "name": "a.txt",
+                    "data": {
+                        "loc": {
+                            "language": "Plain Text",
+                            "blanks": 0,
+                            "code": 2,
+                            "comments": 0,
+                            "lines": 2
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "parent.clj",
+            "data": {
+                "loc": {
+                    "language": "Clojure",
+                    "blanks": 1,
+                    "code": 3,
+                    "comments": 0,
+                    "lines": 4
+                }
+            }
+        }
+    ]
+}
