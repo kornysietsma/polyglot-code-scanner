@@ -3,44 +3,61 @@
 
 use super::flare;
 use super::flare::FlareTree;
+use failure::Error;
 use ignore::{Walk, WalkBuilder};
-use std::error::Error;
 use std::path::Path;
 
 pub trait NamedFileMetricCalculator {
     fn name(&self) -> String;
-    fn calculate_metrics(&self, path: &Path) -> serde_json::Value;
+    fn calculate_metrics(&self, path: &Path) -> Result<serde_json::Value, Error>;
 }
 
 fn walk_tree_walker(
     walker: Walk,
     prefix: &Path,
     file_metric_calculators: Vec<Box<dyn NamedFileMetricCalculator>>,
-) -> Result<flare::FlareTree, Box<dyn Error>> {
+) -> Result<flare::FlareTree, Error> {
     let mut tree = FlareTree::from_dir("flare");
 
-    for result in walker.map(|r| r.expect("File error!")) {
+    for result in walker.map(|r| r.expect("File error!")).skip(1) {
+        // note we skip the root directory!
         let p = result.path();
         let relative = p.strip_prefix(prefix)?;
         let new_child = if p.is_file() {
             let mut f = FlareTree::from_file(p.file_name().unwrap());
             file_metric_calculators.iter().for_each(|fmc| {
-                f.add_file_data_as_value(fmc.name().to_string(), fmc.calculate_metrics(p))
+                let metrics = fmc.calculate_metrics(p);
+                match metrics {
+                    Ok(metrics) => f.add_file_data_as_value(fmc.name().to_string(), metrics),
+                    Err(error) => {
+                        eprintln!(
+                            "Can't find {} metrics for {:?} - cause: {}",
+                            fmc.name(),
+                            p,
+                            error
+                        );
+                    }
+                }
             });
-            f
+            Some(f)
+        } else if p.is_dir() {
+            Some(FlareTree::from_dir(p.file_name().unwrap()))
         } else {
-            FlareTree::from_dir(p.file_name().unwrap())
+            eprintln!("Not a file or dir: {:?} - skipping", p);
+            None
         }; // TODO handle if not a dir either! FAILS on "." currently
 
-        match relative.parent() {
-            Some(new_parent) => {
-                let parent = tree
-                    .get_in_mut(&mut new_parent.components())
-                    .expect("no parent found!");
-                parent.append_child(new_child);
-            }
-            None => {
-                tree.append_child(new_child);
+        if let Some(new_child) = new_child {
+            match relative.parent() {
+                Some(new_parent) => {
+                    let parent = tree
+                        .get_in_mut(&mut new_parent.components())
+                        .expect("no parent found!");
+                    parent.append_child(new_child);
+                }
+                None => {
+                    tree.append_child(new_child);
+                }
             }
         }
     }
@@ -50,7 +67,7 @@ fn walk_tree_walker(
 pub fn walk_directory(
     root: &Path,
     file_metric_calculators: Vec<Box<dyn NamedFileMetricCalculator>>,
-) -> Result<flare::FlareTree, Box<dyn Error>> {
+) -> Result<flare::FlareTree, Error> {
     walk_tree_walker(
         WalkBuilder::new(root).build(),
         root,
@@ -78,14 +95,29 @@ mod test {
         assert_eq!(parsed_result, parsed_expected);
     }
 
+    #[test]
+    fn walking_the_current_directory_works() {
+        let root = Path::new(".");
+
+        let tree = walk_directory(root, Vec::new()).unwrap();
+        let json = serde_json::to_string_pretty(&tree).unwrap();
+        let parsed_result: Value = serde_json::from_str(&json).unwrap();
+
+        let expected =
+            std::fs::read_to_string(Path::new("./tests/expected/simple_files.json")).unwrap();
+        let parsed_expected: Value = serde_json::from_str(&expected).unwrap();
+
+        assert_eq!(parsed_result, parsed_expected);
+    }
+
     struct SimpleFMC {}
 
     impl NamedFileMetricCalculator for SimpleFMC {
         fn name(&self) -> String {
             "foo".to_string()
         }
-        fn calculate_metrics(&self, _path: &Path) -> serde_json::Value {
-            json!("bar")
+        fn calculate_metrics(&self, _path: &Path) -> Result<serde_json::Value, Error> {
+            Ok(json!("bar"))
         }
     }
 
@@ -95,8 +127,8 @@ mod test {
         fn name(&self) -> String {
             "filename".to_string()
         }
-        fn calculate_metrics(&self, path: &Path) -> serde_json::Value {
-            json!(path.to_str())
+        fn calculate_metrics(&self, path: &Path) -> Result<serde_json::Value, Error> {
+            Ok(json!(path.to_str()))
         }
     }
 
@@ -117,4 +149,6 @@ mod test {
 
         assert_eq!(parsed_result, parsed_expected);
     }
+
+    // TODO: test error handling
 }

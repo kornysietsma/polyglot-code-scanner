@@ -2,10 +2,6 @@
     "name": "flare",
     "children": [
         {
-            "name": "simple",
-            "children": []
-        },
-        {
             "name": "child",
             "children": [
                 {
