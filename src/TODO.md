@@ -2,6 +2,8 @@
 
 ## Small things:
 * Error handling throughout
+* fix `main` to properly report errors
+* Re-enable dead code check
 * command-line parsing (probably use clap)
 * Rename so we can add more metrics than `cloc`
 * publish to github

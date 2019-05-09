@@ -1,5 +1,4 @@
 #![warn(clippy::all)]
-#![allow(dead_code)]
 
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
@@ -55,6 +54,10 @@ impl FlareTree {
     pub fn add_file_data_as_value<S: Into<String>>(&mut self, key: S, value: serde_json::Value) {
         // TODO: error handling if not file
         //  or rethink structure
+
+        // it's really a programming error if you add data to a directory, I think
+        // hmm - or we could let you add data to any node, which is a bigger change,
+        // and we'd want to _not_ serialize empty `data` structures.
         if let NodeValue::File { ref mut data } = self.value {
             data.insert(key.into(), value);
         }

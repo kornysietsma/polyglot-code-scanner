@@ -9,15 +9,16 @@ extern crate failure;
 mod file_walker;
 mod flare;
 mod loc;
+use failure::Error;
 
 use std::path::Path;
 
-fn main() {
+fn main() -> Result<(), Error> {
     let root = Path::new(".");
 
-    let tree =
-        file_walker::walk_directory(root, vec![Box::new(loc::LocMetricCalculator {})]).unwrap();
+    let tree = file_walker::walk_directory(root, vec![Box::new(loc::LocMetricCalculator {})])?;
 
-    let json = serde_json::to_string_pretty(&tree).unwrap();
+    let json = serde_json::to_string_pretty(&tree)?;
     println!("{}", json);
+    Ok(())
 }
