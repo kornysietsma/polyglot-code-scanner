@@ -1,5 +1,4 @@
 #![warn(clippy::all)]
-#![allow(dead_code)]
 
 use super::flare;
 use super::flare::FlareTreeNode;
@@ -29,7 +28,7 @@ fn walk_tree_walker(
             file_metric_calculators.iter().for_each(|fmc| {
                 let metrics = fmc.calculate_metrics(p);
                 match metrics {
-                    Ok(metrics) => f.add_data_as_value(fmc.name().to_string(), metrics),
+                    Ok(metrics) => f.add_data(fmc.name().to_string(), metrics),
                     Err(error) => {
                         eprintln!(
                             "Can't find {} metrics for {:?} - cause: {}",

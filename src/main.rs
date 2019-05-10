@@ -1,5 +1,4 @@
 #![warn(clippy::all)]
-#![allow(dead_code)]
 
 extern crate ignore;
 extern crate tokei;

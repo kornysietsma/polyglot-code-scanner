@@ -14,12 +14,9 @@ pub struct FlareTreeNode {
 }
 
 impl FlareTreeNode {
+    #[allow(dead_code)]
     pub fn name(&self) -> &OsString {
         &self.name
-    }
-
-    pub fn data_entry<S: Into<String>>(&self, key: S) -> Option<&serde_json::Value> {
-        self.data.get(&key.into())
     }
 
     pub fn from_file<S: Into<OsString>>(name: S) -> FlareTreeNode {
@@ -40,13 +37,8 @@ impl FlareTreeNode {
         }
     }
 
-    pub fn add_data_as_value<S: Into<String>>(&mut self, key: S, value: serde_json::Value) {
+    pub fn add_data<S: Into<String>>(&mut self, key: S, value: serde_json::Value) {
         self.data.insert(key.into(), value); // TODO: should we return what insert returns? Or self?
-    }
-
-    pub fn add_data<T: Serialize, S: Into<String>>(&mut self, key: S, value: &T) {
-        self.data
-            .insert(key.into(), serde_json::to_value(value).unwrap());
     }
 
     pub fn append_child(&mut self, child: FlareTreeNode) {
@@ -57,6 +49,7 @@ impl FlareTreeNode {
     }
 
     /// gets a tree entry by path, or None if something along the path doesn't exist
+    #[allow(dead_code)]
     pub fn get_in(&self, path: &mut std::path::Components) -> Option<&FlareTreeNode> {
         match path.next() {
             Some(first_name) => {
@@ -146,13 +139,13 @@ mod test {
         child1.append_child(grand_child);
         child1.append_child(FlareTreeNode::from_file("child1_file_2.txt"));
         let mut child2 = FlareTreeNode::from_dir("child2");
-        child2.add_data_as_value("meta", json!("wibble"));
+        child2.add_data("meta", json!("wibble"));
         let mut child2_file = FlareTreeNode::from_file("child2_file.txt");
         let widget_data = json!({
             "sprockets": 7,
             "flanges": ["Nigel, Sarah"]
         });
-        child2_file.add_data_as_value("widgets", widget_data);
+        child2_file.add_data("widgets", widget_data);
         child2.append_child(child2_file);
         root.append_child(child1);
         root.append_child(child2);
@@ -240,7 +233,7 @@ mod test {
             "flanges": ["Nigel, Sarah"]
         });
 
-        assert_eq!(file.data_entry("widgets".to_string()).unwrap(), &expected);
+        assert_eq!(&file.data["widgets"], &expected);
     }
 
     fn strip(string: &str) -> String {
@@ -268,7 +261,7 @@ mod test {
     #[test]
     fn can_serialize_dir_with_data_to_json() {
         let mut dir = FlareTreeNode::from_dir("foo");
-        dir.add_data("wibble", &"fnord".to_string());
+        dir.add_data("wibble", json!("fnord"));
 
         let serialized = serde_json::to_string(&dir).unwrap();
 
@@ -303,7 +296,7 @@ mod test {
     #[test]
     fn can_serialize_file_with_data_to_json() {
         let mut file = FlareTreeNode::from_file("foo.txt");
-        file.add_data("wibble", &"fnord".to_string());
+        file.add_data("wibble", json!("fnord"));
 
         let serialized = serde_json::to_string(&file).unwrap();
 
@@ -322,7 +315,7 @@ mod test {
     fn can_serialize_file_with_data_value_to_json() {
         let mut file = FlareTreeNode::from_file("foo.txt");
         let value = json!({"foo": ["bar", "baz", 123]});
-        file.add_data_as_value("bat", value);
+        file.add_data("bat", value);
 
         let serialized = serde_json::to_string(&file).unwrap();
 

@@ -1,5 +1,4 @@
 #![warn(clippy::all)]
-#![allow(dead_code)]
 use failure::Error;
 use serde::Serialize;
 use std::path::Path;
@@ -68,7 +67,6 @@ mod test {
         assert_eq!(stats.code, 3);
         assert_eq!(stats.language, "Clojure");
     }
-    // need to get the language itself, and all the other stats
 
     #[test]
     fn can_walk_tree_and_extract_loc_data() {
