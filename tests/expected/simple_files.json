@@ -5,14 +5,12 @@
             "name": "child",
             "children": [
                 {
-                    "name": "a.txt",
-                    "data": {}
+                    "name": "a.txt"
                 }
             ]
         },
         {
-            "name": "parent.clj",
-            "data": {}
+            "name": "parent.clj"
         }
     ]
 }

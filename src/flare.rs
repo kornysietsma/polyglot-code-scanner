@@ -6,19 +6,11 @@ use std::collections::HashMap;
 use std::ffi::OsString;
 
 #[derive(Debug, PartialEq)]
-pub enum NodeValue {
-    Dir {
-        children: Vec<FlareTree>,
-    },
-    File {
-        data: HashMap<String, serde_json::Value>,
-    },
-}
-
-#[derive(Debug, PartialEq)]
 pub struct FlareTree {
     name: OsString,
-    value: NodeValue,
+    is_file: bool,
+    children: Vec<FlareTree>,
+    data: HashMap<String, serde_json::Value>,
 }
 
 impl FlareTree {
@@ -27,81 +19,68 @@ impl FlareTree {
     }
 
     pub fn data_entry<S: Into<String>>(&self, key: S) -> Option<&serde_json::Value> {
-        if let NodeValue::File { ref data } = self.value {
-            return data.get(&key.into());
-        }
-        None
+        self.data.get(&key.into())
     }
 
     pub fn from_file<S: Into<OsString>>(name: S) -> FlareTree {
         FlareTree {
             name: name.into(),
-            value: NodeValue::File {
-                data: HashMap::new(),
-            },
+            is_file: true,
+            children: Vec::new(),
+            data: HashMap::new(),
         }
     }
 
     pub fn from_dir<S: Into<OsString>>(name: S) -> FlareTree {
         FlareTree {
             name: name.into(),
-            value: NodeValue::Dir {
-                children: Vec::new(),
-            },
+            is_file: false,
+            children: Vec::new(),
+            data: HashMap::new(),
         }
     }
 
     pub fn add_file_data_as_value<S: Into<String>>(&mut self, key: S, value: serde_json::Value) {
-        // TODO: error handling if not file
-        //  or rethink structure
-
-        // it's really a programming error if you add data to a directory, I think
-        // hmm - or we could let you add data to any node, which is a bigger change,
-        // and we'd want to _not_ serialize empty `data` structures.
-        if let NodeValue::File { ref mut data } = self.value {
-            data.insert(key.into(), value);
-        }
+        self.data.insert(key.into(), value); // TODO: should we return what insert returns? Or self?
     }
 
     pub fn add_file_data<T: Serialize, S: Into<String>>(&mut self, key: S, value: &T) {
-        // TODO: error handling if not file
-        //  or rethink structure
-        if let NodeValue::File { ref mut data } = self.value {
-            data.insert(key.into(), serde_json::to_value(value).unwrap());
-        }
+        self.data
+            .insert(key.into(), serde_json::to_value(value).unwrap());
     }
 
     pub fn append_child(&mut self, child: FlareTree) {
-        // TODO: error handling if not dir
-        //  or rethink structure
-        if let NodeValue::Dir { ref mut children } = self.value {
-            children.push(child);
-        } // TODO: error handling!
+        if self.is_file {
+            panic!("appending child to a directory: {:?}", self)
+        }
+        self.children.push(child); // TODO - return self?
     }
 
+    /// gets a tree entry by path, or None if something along the path doesn't exist
     pub fn get_in(&self, path: &mut std::path::Components) -> Option<&FlareTree> {
         match path.next() {
             Some(first_name) => {
                 let dir_name = first_name.as_os_str();
-                if let NodeValue::Dir { ref children } = self.value {
-                    let first_match = children.iter().find(|c| dir_name == c.name)?;
+                if !self.is_file {
+                    let first_match = self.children.iter().find(|c| dir_name == c.name)?;
                     return first_match.get_in(path);
                 }
-                None
+                None // TODO: I think this only works for dirs!!!
             }
             None => Some(self),
         }
     }
 
+    /// gets a mutable tree entry by path, or None if something along the path doesn't exist
     pub fn get_in_mut(&mut self, path: &mut std::path::Components) -> Option<&mut FlareTree> {
         match path.next() {
             Some(first_name) => {
                 let dir_name = first_name.as_os_str();
-                if let NodeValue::Dir { ref mut children } = self.value {
-                    let first_match = children.iter_mut().find(|c| dir_name == c.name)?;
+                if !self.is_file {
+                    let first_match = self.children.iter_mut().find(|c| dir_name == c.name)?;
                     return first_match.get_in_mut(path);
                 }
-                None
+                None // TODO: I think this only works for dirs!!!
             }
             None => Some(self),
         }
@@ -116,9 +95,11 @@ impl Serialize for FlareTree {
         let mut state = serializer.serialize_struct("FlareTree", 2)?;
         let name_str = self.name.to_str().expect("Can't serialize!"); // TODO: how to convert to error result?
         state.serialize_field("name", &name_str)?;
-        match &self.value {
-            NodeValue::Dir { children } => state.serialize_field("children", children)?,
-            NodeValue::File { data } => state.serialize_field("data", data)?,
+        if !self.data.is_empty() {
+            state.serialize_field("data", &self.data)?
+        }
+        if !self.is_file {
+            state.serialize_field("children", &self.children)?;
         }
 
         state.end()
@@ -142,14 +123,14 @@ mod test {
             root,
             FlareTree {
                 name: OsString::from("root"),
-                value: NodeValue::Dir {
-                    children: vec![FlareTree {
-                        name: OsString::from("child"),
-                        value: NodeValue::File {
-                            data: HashMap::new()
-                        },
-                    }]
-                },
+                is_file: false,
+                children: vec![FlareTree {
+                    name: OsString::from("child"),
+                    is_file: true,
+                    data: HashMap::new(),
+                    children: Vec::new()
+                }],
+                data: HashMap::new()
             }
         )
     }
@@ -165,6 +146,7 @@ mod test {
         child1.append_child(grand_child);
         child1.append_child(FlareTree::from_file("child1_file_2.txt"));
         let mut child2 = FlareTree::from_dir("child2");
+        child2.add_file_data_as_value("meta", json!("wibble"));
         let mut child2_file = FlareTree::from_file("child2_file.txt");
         let widget_data = json!({
             "sprockets": 7,
@@ -262,6 +244,26 @@ mod test {
             )
         )
     }
+
+    #[test]
+    fn can_serialize_dir_with_data_to_json() {
+        let mut dir = FlareTree::from_dir("foo");
+        dir.add_file_data("wibble", &"fnord".to_string());
+
+        let serialized = serde_json::to_string(&dir).unwrap();
+
+        assert_eq!(
+            serialized,
+            strip(
+                r#"{
+                    "name":"foo",
+                    "data": {"wibble":"fnord"},
+                    "children": []
+                }"#
+            )
+        )
+    }
+
     #[test]
     fn can_serialize_file_to_json() {
         let file = FlareTree::from_file("foo.txt");
@@ -272,8 +274,7 @@ mod test {
             serialized,
             strip(
                 r#"{
-                    "name":"foo.txt",
-                    "data": {}
+                    "name":"foo.txt"
                 }"#
             )
         )
@@ -331,8 +332,7 @@ mod test {
                 "name":"root",
                 "children":[
                     {
-                        "name": "child.txt",
-                        "data": {}
+                        "name": "child.txt"
                     },
                     {
                         "name":"child2",

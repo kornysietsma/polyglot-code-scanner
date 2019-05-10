@@ -95,21 +95,6 @@ mod test {
         assert_eq!(parsed_result, parsed_expected);
     }
 
-    #[test]
-    fn walking_the_current_directory_works() {
-        let root = Path::new(".");
-
-        let tree = walk_directory(root, Vec::new()).unwrap();
-        let json = serde_json::to_string_pretty(&tree).unwrap();
-        let parsed_result: Value = serde_json::from_str(&json).unwrap();
-
-        let expected =
-            std::fs::read_to_string(Path::new("./tests/expected/simple_files.json")).unwrap();
-        let parsed_expected: Value = serde_json::from_str(&expected).unwrap();
-
-        assert_eq!(parsed_result, parsed_expected);
-    }
-
     struct SimpleFMC {}
 
     impl NamedFileMetricCalculator for SimpleFMC {
