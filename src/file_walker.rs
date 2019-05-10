@@ -7,6 +7,7 @@ use failure::Error;
 use ignore::{Walk, WalkBuilder};
 use std::path::Path;
 
+/// File Metrics callback - note this only runs on files not directories - if there's a need for directory data, this will need to change.
 pub trait NamedFileMetricCalculator {
     fn name(&self) -> String;
     fn calculate_metrics(&self, path: &Path) -> Result<serde_json::Value, Error>;
@@ -28,7 +29,7 @@ fn walk_tree_walker(
             file_metric_calculators.iter().for_each(|fmc| {
                 let metrics = fmc.calculate_metrics(p);
                 match metrics {
-                    Ok(metrics) => f.add_file_data_as_value(fmc.name().to_string(), metrics),
+                    Ok(metrics) => f.add_data_as_value(fmc.name().to_string(), metrics),
                     Err(error) => {
                         eprintln!(
                             "Can't find {} metrics for {:?} - cause: {}",
@@ -45,7 +46,7 @@ fn walk_tree_walker(
         } else {
             eprintln!("Not a file or dir: {:?} - skipping", p);
             None
-        }; // TODO handle if not a dir either! FAILS on "." currently
+        };
 
         if let Some(new_child) = new_child {
             match relative.parent() {
