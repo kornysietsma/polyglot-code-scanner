@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use super::flare;
-use super::flare::FlareTree;
+use super::flare::FlareTreeNode;
 use failure::Error;
 use ignore::{Walk, WalkBuilder};
 use std::path::Path;
@@ -16,15 +16,15 @@ fn walk_tree_walker(
     walker: Walk,
     prefix: &Path,
     file_metric_calculators: Vec<Box<dyn NamedFileMetricCalculator>>,
-) -> Result<flare::FlareTree, Error> {
-    let mut tree = FlareTree::from_dir("flare");
+) -> Result<flare::FlareTreeNode, Error> {
+    let mut tree = FlareTreeNode::from_dir("flare");
 
     for result in walker.map(|r| r.expect("File error!")).skip(1) {
         // note we skip the root directory!
         let p = result.path();
         let relative = p.strip_prefix(prefix)?;
         let new_child = if p.is_file() {
-            let mut f = FlareTree::from_file(p.file_name().unwrap());
+            let mut f = FlareTreeNode::from_file(p.file_name().unwrap());
             file_metric_calculators.iter().for_each(|fmc| {
                 let metrics = fmc.calculate_metrics(p);
                 match metrics {
@@ -41,7 +41,7 @@ fn walk_tree_walker(
             });
             Some(f)
         } else if p.is_dir() {
-            Some(FlareTree::from_dir(p.file_name().unwrap()))
+            Some(FlareTreeNode::from_dir(p.file_name().unwrap()))
         } else {
             eprintln!("Not a file or dir: {:?} - skipping", p);
             None
@@ -67,7 +67,7 @@ fn walk_tree_walker(
 pub fn walk_directory(
     root: &Path,
     file_metric_calculators: Vec<Box<dyn NamedFileMetricCalculator>>,
-) -> Result<flare::FlareTree, Error> {
+) -> Result<flare::FlareTreeNode, Error> {
     walk_tree_walker(
         WalkBuilder::new(root).build(),
         root,

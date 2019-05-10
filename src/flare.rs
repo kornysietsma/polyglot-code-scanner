@@ -6,14 +6,14 @@ use std::collections::HashMap;
 use std::ffi::OsString;
 
 #[derive(Debug, PartialEq)]
-pub struct FlareTree {
+pub struct FlareTreeNode {
     name: OsString,
     is_file: bool,
-    children: Vec<FlareTree>,
+    children: Vec<FlareTreeNode>,
     data: HashMap<String, serde_json::Value>,
 }
 
-impl FlareTree {
+impl FlareTreeNode {
     pub fn name(&self) -> &OsString {
         &self.name
     }
@@ -22,8 +22,8 @@ impl FlareTree {
         self.data.get(&key.into())
     }
 
-    pub fn from_file<S: Into<OsString>>(name: S) -> FlareTree {
-        FlareTree {
+    pub fn from_file<S: Into<OsString>>(name: S) -> FlareTreeNode {
+        FlareTreeNode {
             name: name.into(),
             is_file: true,
             children: Vec::new(),
@@ -31,8 +31,8 @@ impl FlareTree {
         }
     }
 
-    pub fn from_dir<S: Into<OsString>>(name: S) -> FlareTree {
-        FlareTree {
+    pub fn from_dir<S: Into<OsString>>(name: S) -> FlareTreeNode {
+        FlareTreeNode {
             name: name.into(),
             is_file: false,
             children: Vec::new(),
@@ -49,7 +49,7 @@ impl FlareTree {
             .insert(key.into(), serde_json::to_value(value).unwrap());
     }
 
-    pub fn append_child(&mut self, child: FlareTree) {
+    pub fn append_child(&mut self, child: FlareTreeNode) {
         if self.is_file {
             panic!("appending child to a directory: {:?}", self)
         }
@@ -57,7 +57,7 @@ impl FlareTree {
     }
 
     /// gets a tree entry by path, or None if something along the path doesn't exist
-    pub fn get_in(&self, path: &mut std::path::Components) -> Option<&FlareTree> {
+    pub fn get_in(&self, path: &mut std::path::Components) -> Option<&FlareTreeNode> {
         match path.next() {
             Some(first_name) => {
                 let dir_name = first_name.as_os_str();
@@ -72,7 +72,7 @@ impl FlareTree {
     }
 
     /// gets a mutable tree entry by path, or None if something along the path doesn't exist
-    pub fn get_in_mut(&mut self, path: &mut std::path::Components) -> Option<&mut FlareTree> {
+    pub fn get_in_mut(&mut self, path: &mut std::path::Components) -> Option<&mut FlareTreeNode> {
         match path.next() {
             Some(first_name) => {
                 let dir_name = first_name.as_os_str();
@@ -87,12 +87,12 @@ impl FlareTree {
     }
 }
 
-impl Serialize for FlareTree {
+impl Serialize for FlareTreeNode {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("FlareTree", 2)?;
+        let mut state = serializer.serialize_struct("FlareTreeNode", 2)?;
         let name_str = self.name.to_str().expect("Can't serialize!"); // TODO: how to convert to error result?
         state.serialize_field("name", &name_str)?;
         if !self.data.is_empty() {
@@ -116,15 +116,15 @@ mod test {
 
     #[test]
     fn can_build_tree() {
-        let mut root = FlareTree::from_dir("root");
-        root.append_child(FlareTree::from_file("child"));
+        let mut root = FlareTreeNode::from_dir("root");
+        root.append_child(FlareTreeNode::from_file("child"));
 
         assert_eq!(
             root,
-            FlareTree {
+            FlareTreeNode {
                 name: OsString::from("root"),
                 is_file: false,
-                children: vec![FlareTree {
+                children: vec![FlareTreeNode {
                     name: OsString::from("child"),
                     is_file: true,
                     data: HashMap::new(),
@@ -135,19 +135,19 @@ mod test {
         )
     }
 
-    fn build_test_tree() -> FlareTree {
-        let mut root = FlareTree::from_dir("root");
-        root.append_child(FlareTree::from_file("root_file_1.txt"));
-        root.append_child(FlareTree::from_file("root_file_2.txt"));
-        let mut child1 = FlareTree::from_dir("child1");
-        child1.append_child(FlareTree::from_file("child1_file_1.txt"));
-        let mut grand_child = FlareTree::from_dir("grandchild");
-        grand_child.append_child(FlareTree::from_file("grandchild_file.txt"));
+    fn build_test_tree() -> FlareTreeNode {
+        let mut root = FlareTreeNode::from_dir("root");
+        root.append_child(FlareTreeNode::from_file("root_file_1.txt"));
+        root.append_child(FlareTreeNode::from_file("root_file_2.txt"));
+        let mut child1 = FlareTreeNode::from_dir("child1");
+        child1.append_child(FlareTreeNode::from_file("child1_file_1.txt"));
+        let mut grand_child = FlareTreeNode::from_dir("grandchild");
+        grand_child.append_child(FlareTreeNode::from_file("grandchild_file.txt"));
         child1.append_child(grand_child);
-        child1.append_child(FlareTree::from_file("child1_file_2.txt"));
-        let mut child2 = FlareTree::from_dir("child2");
+        child1.append_child(FlareTreeNode::from_file("child1_file_2.txt"));
+        let mut child2 = FlareTreeNode::from_dir("child2");
         child2.add_file_data_as_value("meta", json!("wibble"));
-        let mut child2_file = FlareTree::from_file("child2_file.txt");
+        let mut child2_file = FlareTreeNode::from_file("child2_file.txt");
         let widget_data = json!({
             "sprockets": 7,
             "flanges": ["Nigel, Sarah"]
@@ -199,7 +199,7 @@ mod test {
             .get_in_mut(&mut Path::new("child1/grandchild").components())
             .expect("Grandchild dir not found!");
         assert_eq!(grandchild_dir.name(), "grandchild");
-        grandchild_dir.append_child(FlareTree::from_file("new_kid_on_the_block.txt"));
+        grandchild_dir.append_child(FlareTreeNode::from_file("new_kid_on_the_block.txt"));
         let new_kid = tree
             .get_in_mut(&mut Path::new("child1/grandchild/new_kid_on_the_block.txt").components())
             .expect("New kid not found!");
@@ -230,7 +230,7 @@ mod test {
 
     #[test]
     fn can_serialize_directory_to_json() {
-        let root = FlareTree::from_dir("root");
+        let root = FlareTreeNode::from_dir("root");
 
         let serialized = serde_json::to_string(&root).unwrap();
 
@@ -247,7 +247,7 @@ mod test {
 
     #[test]
     fn can_serialize_dir_with_data_to_json() {
-        let mut dir = FlareTree::from_dir("foo");
+        let mut dir = FlareTreeNode::from_dir("foo");
         dir.add_file_data("wibble", &"fnord".to_string());
 
         let serialized = serde_json::to_string(&dir).unwrap();
@@ -266,7 +266,7 @@ mod test {
 
     #[test]
     fn can_serialize_file_to_json() {
-        let file = FlareTree::from_file("foo.txt");
+        let file = FlareTreeNode::from_file("foo.txt");
 
         let serialized = serde_json::to_string(&file).unwrap();
 
@@ -282,7 +282,7 @@ mod test {
 
     #[test]
     fn can_serialize_file_with_data_to_json() {
-        let mut file = FlareTree::from_file("foo.txt");
+        let mut file = FlareTreeNode::from_file("foo.txt");
         file.add_file_data("wibble", &"fnord".to_string());
 
         let serialized = serde_json::to_string(&file).unwrap();
@@ -300,7 +300,7 @@ mod test {
 
     #[test]
     fn can_serialize_file_with_data_value_to_json() {
-        let mut file = FlareTree::from_file("foo.txt");
+        let mut file = FlareTreeNode::from_file("foo.txt");
         let value = json!({"foo": ["bar", "baz", 123]});
         file.add_file_data_as_value("bat", value);
 
@@ -319,9 +319,9 @@ mod test {
 
     #[test]
     fn can_serialize_simple_tree_to_json() {
-        let mut root = FlareTree::from_dir("root");
-        root.append_child(FlareTree::from_file("child.txt"));
-        root.append_child(FlareTree::from_dir("child2"));
+        let mut root = FlareTreeNode::from_dir("root");
+        root.append_child(FlareTreeNode::from_file("child.txt"));
+        root.append_child(FlareTreeNode::from_dir("child2"));
 
         let serialized = serde_json::to_string(&root).unwrap();
         let reparsed: Value = serde_json::from_str(&serialized).unwrap();
