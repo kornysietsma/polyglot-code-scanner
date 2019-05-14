@@ -1,8 +1,6 @@
 # TODO
 
 ## Small things:
-* Error handling throughout
-* command-line parsing (probably use clap)
 * fix `main` to properly report errors
 * integration test
 * Rename so we can add more metrics than `cloc`

@@ -30,7 +30,7 @@ fn walk_tree_walker(
                 match metrics {
                     Ok(metrics) => f.add_data(fmc.name().to_string(), metrics),
                     Err(error) => {
-                        eprintln!(
+                        warn!(
                             "Can't find {} metrics for {:?} - cause: {}",
                             fmc.name(),
                             p,
@@ -43,7 +43,7 @@ fn walk_tree_walker(
         } else if p.is_dir() {
             Some(FlareTreeNode::from_dir(p.file_name().unwrap()))
         } else {
-            eprintln!("Not a file or dir: {:?} - skipping", p);
+            warn!("Not a file or dir: {:?} - skipping", p);
             None
         };
 
