@@ -1,5 +1,5 @@
 [package]
-name = "cloc_to_flare"
+name = "cloc2flare"
 version = "0.1.0"
 authors = ["Korny Sietsma <korny@sietsma.com>"]
 edition = "2018"

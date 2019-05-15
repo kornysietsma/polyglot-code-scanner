@@ -1,4 +1,4 @@
-// use cloc_to_flare;
+// use cloc2flare;
 
 // TODO:
 // #[test]

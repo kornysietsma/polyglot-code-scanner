@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 // TODO: this logic should be hidden in the lib
-use cloc_to_flare::{loc, file_walker};
+use cloc2flare::{loc, file_walker};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -44,7 +44,7 @@ fn real_main() -> Result<(), Error> {
         Box::new(io::stdout())
     };
 
-    cloc_to_flare::run(root, file_metric_calculators, out)?;
+    cloc2flare::run(root, file_metric_calculators, out)?;
 
     Ok(())
 }
