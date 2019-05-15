@@ -1,8 +1,8 @@
 # TODO
 
 ## Small things:
-* fix `main` to properly report errors
 * integration test
+* move functionality from main to lib
 * Rename so we can add more metrics than `cloc`
 * publish to github
 * integrate with JS UI
@@ -15,3 +15,5 @@
 * tokei-based calculations that ignore comments - might need a tokei fork! Or can we pilfer bits of tokei?
 
 ## Future stuff
+* method identification?
+* deep git stats

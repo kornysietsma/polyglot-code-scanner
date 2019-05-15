@@ -1,24 +1,18 @@
 #![warn(clippy::all)]
 
-extern crate ignore;
-extern crate tokei;
-#[macro_use]
-extern crate failure;
 extern crate clap;
-#[macro_use]
-extern crate log;
 extern crate clap_log_flag;
 extern crate clap_verbosity_flag;
+extern crate failure_tools;
 
-use std::path::PathBuf;
-use structopt::StructOpt;
 use failure::Error;
 use std::fs::File;
 use std::io::{self, Write};
+use std::path::PathBuf;
+use structopt::StructOpt;
 
-mod file_walker;
-mod flare;
-mod loc;
+// TODO: this logic should be hidden in the lib
+use cloc_to_flare::{loc, file_walker};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -38,12 +32,11 @@ struct Cli {
     root: Option<PathBuf>,
 }
 
-fn main() -> Result<(), Error> {
+fn real_main() -> Result<(), Error> {
     let args = Cli::from_args();
     args.log.log_all(Some(args.verbose.log_level()))?;
     let root = args.root.unwrap_or_else(|| PathBuf::from("."));
-
-    let tree = file_walker::walk_directory(&root, vec![Box::new(loc::LocMetricCalculator {})])?;
+    let file_metric_calculators:Vec<Box<dyn file_walker::NamedFileMetricCalculator>> = vec![Box::new(loc::LocMetricCalculator {})];
 
     let out: Box<Write> = if let Some(output) = args.output {
         Box::new(File::create(output)?)
@@ -51,7 +44,11 @@ fn main() -> Result<(), Error> {
         Box::new(io::stdout())
     };
 
-    serde_json::to_writer_pretty(out, &tree)?;
-    // TODO: why doesn't the previous line work as return value? Maybe can fix this when error handling is improved
+    cloc_to_flare::run(root, file_metric_calculators, out)?;
+
     Ok(())
+}
+
+fn main() {
+    failure_tools::ok_or_exit(real_main());
 }
