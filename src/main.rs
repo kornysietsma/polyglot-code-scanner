@@ -11,9 +11,6 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-// TODO: this logic should be hidden in the lib
-use cloc2flare::{loc, file_walker};
-
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "cloc2flare",
@@ -36,7 +33,6 @@ fn real_main() -> Result<(), Error> {
     let args = Cli::from_args();
     args.log.log_all(Some(args.verbose.log_level()))?;
     let root = args.root.unwrap_or_else(|| PathBuf::from("."));
-    let file_metric_calculators:Vec<Box<dyn file_walker::NamedFileMetricCalculator>> = vec![Box::new(loc::LocMetricCalculator {})];
 
     let out: Box<Write> = if let Some(output) = args.output {
         Box::new(File::create(output)?)
@@ -44,7 +40,7 @@ fn real_main() -> Result<(), Error> {
         Box::new(io::stdout())
     };
 
-    cloc2flare::run(root, file_metric_calculators, out)?;
+    cloc2flare::run(root, vec!["loc".to_string()], out)?;
 
     Ok(())
 }

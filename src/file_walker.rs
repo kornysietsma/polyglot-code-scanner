@@ -7,15 +7,16 @@ use ignore::{Walk, WalkBuilder};
 use std::path::Path;
 
 /// File Metrics callback - note this only runs on files not directories - if there's a need for directory data, this will need to change.
-pub trait NamedFileMetricCalculator {
+pub trait NamedFileMetricCalculator: Sync + std::fmt::Debug {
     fn name(&self) -> String;
+    fn description(&self) -> String;
     fn calculate_metrics(&self, path: &Path) -> Result<serde_json::Value, Error>;
 }
 
 fn walk_tree_walker(
     walker: Walk,
     prefix: &Path,
-    file_metric_calculators: Vec<Box<dyn NamedFileMetricCalculator>>,
+    file_metric_calculators: Vec<&NamedFileMetricCalculator>,
 ) -> Result<flare::FlareTreeNode, Error> {
     let mut tree = FlareTreeNode::from_dir("flare");
 
@@ -66,7 +67,7 @@ fn walk_tree_walker(
 
 pub fn walk_directory(
     root: &Path,
-    file_metric_calculators: Vec<Box<dyn NamedFileMetricCalculator>>,
+    file_metric_calculators: Vec<&NamedFileMetricCalculator>,
 ) -> Result<flare::FlareTreeNode, Error> {
     walk_tree_walker(
         WalkBuilder::new(root).build(),
@@ -95,22 +96,30 @@ mod test {
         assert_eq!(parsed_result, parsed_expected);
     }
 
+    #[derive(Debug)]
     struct SimpleFMC {}
 
     impl NamedFileMetricCalculator for SimpleFMC {
         fn name(&self) -> String {
             "foo".to_string()
         }
+        fn description(&self) -> String {
+            "Foo".to_string()
+        }
         fn calculate_metrics(&self, _path: &Path) -> Result<serde_json::Value, Error> {
             Ok(json!("bar"))
         }
     }
 
+    #[derive(Debug)]
     struct SelfNamingFMC {}
 
     impl NamedFileMetricCalculator for SelfNamingFMC {
         fn name(&self) -> String {
             "filename".to_string()
+        }
+        fn description(&self) -> String {
+            "Filename".to_string()
         }
         fn calculate_metrics(&self, path: &Path) -> Result<serde_json::Value, Error> {
             Ok(json!(path.to_str()))
@@ -120,8 +129,7 @@ mod test {
     #[test]
     fn scanning_merges_data_from_mutators() {
         let root = Path::new("./tests/data/simple/");
-        let calculators: Vec<Box<dyn NamedFileMetricCalculator>> =
-            vec![Box::new(SimpleFMC {}), Box::new(SelfNamingFMC {})];
+        let calculators: Vec<&NamedFileMetricCalculator> = vec![&SimpleFMC {}, &SelfNamingFMC {}];
 
         let tree = walk_directory(root, calculators).unwrap();
         let json = serde_json::to_string_pretty(&tree).unwrap();

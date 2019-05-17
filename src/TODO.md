@@ -2,10 +2,10 @@
 
 ## Small things:
 * integration test
-* move functionality from main to lib
 * Rename so we can add more metrics than `cloc`
 * publish to github
 * integrate with JS UI
+* add metrics desired to the CLI
 
 ## Bigger things
 * Basic git stats (owners, most recent change)

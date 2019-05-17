@@ -41,12 +41,18 @@ fn parse_file(filename: &Path) -> Result<LanguageLocData, Error> {
     }
 }
 
+#[derive(Debug)]
 pub struct LocMetricCalculator {}
 
 impl NamedFileMetricCalculator for LocMetricCalculator {
     fn name(&self) -> String {
         "loc".to_string()
     }
+
+    fn description(&self) -> String {
+        "Lines of Code".to_string()
+    }
+
     fn calculate_metrics(&self, path: &Path) -> Result<serde_json::Value, Error> {
         let stats = parse_file(path)?;
         Ok(serde_json::value::to_value(stats)
@@ -72,8 +78,7 @@ mod test {
         // this could really be an integration test
         let root = Path::new("./tests/data/simple/");
 
-        let tree =
-            file_walker::walk_directory(root, vec![Box::new(LocMetricCalculator {})]).unwrap();
+        let tree = file_walker::walk_directory(root, vec![&LocMetricCalculator {}]).unwrap();
         let json = serde_json::to_string_pretty(&tree).unwrap();
         let parsed_result: Value = serde_json::from_str(&json).unwrap();
 
