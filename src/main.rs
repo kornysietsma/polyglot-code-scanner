@@ -12,10 +12,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(
-    name = "cloc2flare",
-    about = "Collects software stats as flare files for display in D3"
-)]
+#[structopt()]
 struct Cli {
     #[structopt(flatten)]
     verbose: clap_verbosity_flag::Verbosity,
@@ -40,7 +37,7 @@ fn real_main() -> Result<(), Error> {
         Box::new(io::stdout())
     };
 
-    cloc2flare::run(root, vec!["loc".to_string()], &mut out)?;
+    lati_scanner::run(root, vec!["loc".to_string()], &mut out)?;
 
     Ok(())
 }

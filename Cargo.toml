@@ -1,7 +1,8 @@
 [package]
-name = "cloc2flare"
-version = "0.1.0"
+name = "lati_scanner"
+version = "0.0.1"
 authors = ["Korny Sietsma <korny@sietsma.com>"]
+description = "Language-agnostic toxicity indicators - scans code directories and generates flare files for d3 visualisation"
 edition = "2018"
 
 [dependencies]

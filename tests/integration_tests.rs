@@ -9,7 +9,7 @@ fn it_can_calculate_loc_on_files() {
     let mut buffer: Vec<u8> = Vec::new();
     let out = Cursor::new(&mut buffer);
 
-    let result = cloc2flare::run(root, vec!["loc".to_string()], out);
+    let result = lati_scanner::run(root, vec!["loc".to_string()], out);
 
     assert!(!result.is_err());
 
