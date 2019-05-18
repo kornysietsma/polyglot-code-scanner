@@ -62,31 +62,12 @@ impl NamedFileMetricCalculator for LocMetricCalculator {
 
 #[cfg(test)]
 mod test {
-    use super::super::file_walker;
     use super::*;
-    use serde_json::Value;
 
     #[test]
     fn can_get_loc_data_for_a_file() {
         let stats = parse_file(&Path::new("./tests/data/simple/parent.clj")).unwrap();
         assert_eq!(stats.code, 3);
         assert_eq!(stats.language, "Clojure");
-    }
-
-    #[test]
-    fn can_walk_tree_and_extract_loc_data() {
-        // this could really be an integration test
-        let root = Path::new("./tests/data/simple/");
-
-        let tree = file_walker::walk_directory(root, vec![&LocMetricCalculator {}]).unwrap();
-        let json = serde_json::to_string_pretty(&tree).unwrap();
-        let parsed_result: Value = serde_json::from_str(&json).unwrap();
-
-        let expected =
-            std::fs::read_to_string(Path::new("./tests/expected/simple_files_with_loc.json"))
-                .unwrap();
-        let parsed_expected: Value = serde_json::from_str(&expected).unwrap();
-
-        assert_eq!(parsed_result, parsed_expected);
     }
 }

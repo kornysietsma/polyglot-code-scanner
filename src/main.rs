@@ -7,7 +7,7 @@ extern crate failure_tools;
 
 use failure::Error;
 use std::fs::File;
-use std::io::{self, Write};
+use std::io;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -34,13 +34,13 @@ fn real_main() -> Result<(), Error> {
     args.log.log_all(Some(args.verbose.log_level()))?;
     let root = args.root.unwrap_or_else(|| PathBuf::from("."));
 
-    let out: Box<Write> = if let Some(output) = args.output {
+    let mut out: Box<dyn io::Write> = if let Some(output) = args.output {
         Box::new(File::create(output)?)
     } else {
         Box::new(io::stdout())
     };
 
-    cloc2flare::run(root, vec!["loc".to_string()], out)?;
+    cloc2flare::run(root, vec!["loc".to_string()], &mut out)?;
 
     Ok(())
 }

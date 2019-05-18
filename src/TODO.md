@@ -1,7 +1,6 @@
 # TODO
 
 ## Small things:
-* integration test
 * Rename so we can add more metrics than `cloc`
 * publish to github
 * integrate with JS UI
