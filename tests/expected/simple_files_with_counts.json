@@ -7,16 +7,22 @@
                 {
                     "name": "a.txt",
                     "data": {
-                        "file count": 0
+                        "count": 2
                     }
                 }
-            ]
+            ],
+            "data": {
+                "count": 1
+            }
         },
         {
             "name": "parent.clj",
             "data": {
-                "file count": 1
+                "count": 3
             }
         }
-    ]
+    ],
+    "data": {
+        "count": 0
+    }
 }

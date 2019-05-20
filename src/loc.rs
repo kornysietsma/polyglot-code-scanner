@@ -52,10 +52,15 @@ impl ToxicityIndicatorCalculator for LocCalculator {
         "Lines of Code".to_string()
     }
 
-    fn calculate(&mut self, path: &Path) -> Result<serde_json::Value, Error> {
-        let stats = parse_file(path)?;
-        Ok(serde_json::value::to_value(stats)
-            .expect("Serializable object couldn't be serialized to JSON")) // TODO: maybe explicit error? Though this should be fatal
+    fn calculate(&mut self, path: &Path) -> Result<Option<serde_json::Value>, Error> {
+        if path.is_file() {
+            let stats = parse_file(path)?;
+            Ok(Some(serde_json::value::to_value(stats).expect(
+                "Serializable object couldn't be serialized to JSON",
+            ))) // TODO: maybe explicit error? Though this should be fatal
+        } else {
+            Ok(None)
+        }
     }
 }
 

@@ -7,36 +7,45 @@ use failure::Error;
 use ignore::{Walk, WalkBuilder};
 use std::path::Path;
 
+fn apply_calculators_to_node(
+    node: &mut FlareTreeNode,
+    path: &Path,
+    toxicity_indicator_calculators: &mut Vec<Box<ToxicityIndicatorCalculator>>,
+) {
+    toxicity_indicator_calculators.iter_mut().for_each(|tic| {
+        let indicators = tic.calculate(path);
+        match indicators {
+            Ok(Some(indicators)) => node.add_data(tic.name().to_string(), indicators),
+            Ok(None) => (),
+            Err(error) => {
+                warn!(
+                    "Can't find {} indicators for {:?} - cause: {}",
+                    tic.name(),
+                    node,
+                    error
+                );
+            }
+        }
+    });
+}
+
 fn walk_tree_walker(
     walker: Walk,
     prefix: &Path,
     toxicity_indicator_calculators: &mut Vec<Box<ToxicityIndicatorCalculator>>,
 ) -> Result<flare::FlareTreeNode, Error> {
-    let mut tree = FlareTreeNode::from_dir("flare");
+    let mut tree = FlareTreeNode::new("flare", false);
+
+    apply_calculators_to_node(&mut tree, prefix, toxicity_indicator_calculators);
 
     for result in walker.map(|r| r.expect("File error!")).skip(1) {
         // note we skip the root directory!
         let p = result.path();
         let relative = p.strip_prefix(prefix)?;
-        let new_child = if p.is_file() {
-            let mut f = FlareTreeNode::from_file(p.file_name().unwrap());
-            toxicity_indicator_calculators.iter_mut().for_each(|tic| {
-                let indicators = tic.calculate(p);
-                match indicators {
-                    Ok(indicators) => f.add_data(tic.name().to_string(), indicators),
-                    Err(error) => {
-                        warn!(
-                            "Can't find {} indicators for {:?} - cause: {}",
-                            tic.name(),
-                            p,
-                            error
-                        );
-                    }
-                }
-            });
+        let new_child = if p.is_dir() || p.is_file() {
+            let mut f = FlareTreeNode::new(p.file_name().unwrap(), p.is_file());
+            apply_calculators_to_node(&mut f, p, toxicity_indicator_calculators);
             Some(f)
-        } else if p.is_dir() {
-            Some(FlareTreeNode::from_dir(p.file_name().unwrap()))
         } else {
             warn!("Not a file or dir: {:?} - skipping", p);
             None
@@ -100,8 +109,12 @@ mod test {
         fn description(&self) -> String {
             "Foo".to_string()
         }
-        fn calculate(&mut self, _path: &Path) -> Result<serde_json::Value, Error> {
-            Ok(json!("bar"))
+        fn calculate(&mut self, path: &Path) -> Result<Option<serde_json::Value>, Error> {
+            if path.is_file() {
+                Ok(Some(json!("bar")))
+            } else {
+                Ok(None)
+            }
         }
     }
 
@@ -115,8 +128,12 @@ mod test {
         fn description(&self) -> String {
             "Filename".to_string()
         }
-        fn calculate(&mut self, path: &Path) -> Result<serde_json::Value, Error> {
-            Ok(json!(path.to_str()))
+        fn calculate(&mut self, path: &Path) -> Result<Option<serde_json::Value>, Error> {
+            if path.is_file() {
+                Ok(Some(json!(path.to_str())))
+            } else {
+                Ok(None)
+            }
         }
     }
 
@@ -147,15 +164,15 @@ mod test {
 
     impl ToxicityIndicatorCalculator for MutableTIC {
         fn name(&self) -> String {
-            "file count".to_string()
+            "count".to_string()
         }
         fn description(&self) -> String {
             "Mutable TIC".to_string()
         }
-        fn calculate(&mut self, _path: &Path) -> Result<serde_json::Value, Error> {
+        fn calculate(&mut self, _path: &Path) -> Result<Option<serde_json::Value>, Error> {
             let result = json!(self.count);
             self.count += 1;
-            Ok(result)
+            Ok(Some(result))
         }
     }
 
