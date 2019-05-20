@@ -2,16 +2,10 @@
 
 use super::flare;
 use super::flare::FlareTreeNode;
+use super::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use failure::Error;
 use ignore::{Walk, WalkBuilder};
 use std::path::Path;
-
-/// Wrapper for the logic that calculates toxicity indicators
-pub trait ToxicityIndicatorCalculator: Sync + std::fmt::Debug {
-    fn name(&self) -> String;
-    fn description(&self) -> String;
-    fn calculate(&mut self, path: &Path) -> Result<serde_json::Value, Error>;
-}
 
 fn walk_tree_walker(
     walker: Walk,

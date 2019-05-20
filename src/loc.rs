@@ -1,10 +1,9 @@
 #![warn(clippy::all)]
+use super::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use failure::Error;
 use serde::Serialize;
 use std::path::Path;
 use std::path::PathBuf;
-
-use super::file_walker::ToxicityIndicatorCalculator;
 
 use tokei::{Config, LanguageType};
 

@@ -15,9 +15,10 @@ use std::path::PathBuf;
 mod file_walker;
 mod flare;
 mod loc;
+mod toxicity_indicator_calculator;
 
-use file_walker::ToxicityIndicatorCalculator;
 use loc::LocCalculator;
+use toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 
 // TODO: would love to somehow calculate this from the types (via macro?) but for now this is manual:
 #[allow(dead_code)]
