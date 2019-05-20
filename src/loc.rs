@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::path::Path;
 use std::path::PathBuf;
 
-use super::file_walker::NamedFileMetricCalculator;
+use super::file_walker::ToxicityIndicatorCalculator;
 
 use tokei::{Config, LanguageType};
 
@@ -42,9 +42,9 @@ fn parse_file(filename: &Path) -> Result<LanguageLocData, Error> {
 }
 
 #[derive(Debug)]
-pub struct LocMetricCalculator {}
+pub struct LocCalculator {}
 
-impl NamedFileMetricCalculator for LocMetricCalculator {
+impl ToxicityIndicatorCalculator for LocCalculator {
     fn name(&self) -> String {
         "loc".to_string()
     }
@@ -53,7 +53,7 @@ impl NamedFileMetricCalculator for LocMetricCalculator {
         "Lines of Code".to_string()
     }
 
-    fn calculate_metrics(&mut self, path: &Path) -> Result<serde_json::Value, Error> {
+    fn calculate(&mut self, path: &Path) -> Result<serde_json::Value, Error> {
         let stats = parse_file(path)?;
         Ok(serde_json::value::to_value(stats)
             .expect("Serializable object couldn't be serialized to JSON")) // TODO: maybe explicit error? Though this should be fatal

@@ -1,9 +1,8 @@
 # TODO
 
 ## Soon:
-* Rename things from "Metric" to "Indicator" - better name needed for FileMetricCalculator
-* FileMetricCalculator might want to also look at directories - may not generate metrics, but it might need to update state.
-* add metrics selection to the CLI
+* ToxicityIndicatorCalculator might want to also look at directories - may not generate numbers, but it might need to update state.
+* add indicator selection to the CLI
 
 ## Bigger things
 * publish to github

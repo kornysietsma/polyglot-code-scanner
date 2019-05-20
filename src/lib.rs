@@ -16,32 +16,38 @@ mod file_walker;
 mod flare;
 mod loc;
 
-use file_walker::NamedFileMetricCalculator;
-use loc::LocMetricCalculator;
+use file_walker::ToxicityIndicatorCalculator;
+use loc::LocCalculator;
 
 // TODO: would love to somehow calculate this from the types (via macro?) but for now this is manual:
 #[allow(dead_code)]
-const FILE_METRIC_CALCULATOR_NAMES: &[&str] = &["loc"];
+const TOXICITY_INDICATOR_CALCULATOR_NAMES: &[&str] = &["loc"];
 
-pub fn named_file_metric_calculator(name: &str) -> Option<Box<dyn NamedFileMetricCalculator>> {
+pub fn named_toxicity_indicator_calculator(
+    name: &str,
+) -> Option<Box<dyn ToxicityIndicatorCalculator>> {
     match name {
-        "loc" => Some(Box::new(LocMetricCalculator {})),
+        "loc" => Some(Box::new(LocCalculator {})),
         _ => None,
     }
 }
 
-pub fn run<W>(root: PathBuf, file_metric_calculator_names: Vec<String>, out: W) -> Result<(), Error>
+pub fn run<W>(
+    root: PathBuf,
+    toxicity_indicator_calculator_names: Vec<String>,
+    out: W,
+) -> Result<(), Error>
 where
     W: io::Write,
 {
-    let maybe_fmcs: Option<Vec<_>> = file_metric_calculator_names
+    let maybe_tics: Option<Vec<_>> = toxicity_indicator_calculator_names
         .iter()
-        .map(|name| named_file_metric_calculator(name))
+        .map(|name| named_toxicity_indicator_calculator(name))
         .collect();
 
-    let mut fmcs = maybe_fmcs.expect("Some file metric calculator names don't exist!");
+    let mut tics = maybe_tics.expect("Some toxicity indicator calculator names don't exist!");
 
-    let tree = file_walker::walk_directory(&root, &mut fmcs)?;
+    let tree = file_walker::walk_directory(&root, &mut tics)?;
 
     serde_json::to_writer_pretty(out, &tree)?;
     Ok(())

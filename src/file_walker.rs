@@ -6,17 +6,17 @@ use failure::Error;
 use ignore::{Walk, WalkBuilder};
 use std::path::Path;
 
-/// File Metrics callback - note this only runs on files not directories - if there's a need for directory data, this will need to change.
-pub trait NamedFileMetricCalculator: Sync + std::fmt::Debug {
+/// Wrapper for the logic that calculates toxicity indicators
+pub trait ToxicityIndicatorCalculator: Sync + std::fmt::Debug {
     fn name(&self) -> String;
     fn description(&self) -> String;
-    fn calculate_metrics(&mut self, path: &Path) -> Result<serde_json::Value, Error>;
+    fn calculate(&mut self, path: &Path) -> Result<serde_json::Value, Error>;
 }
 
 fn walk_tree_walker(
     walker: Walk,
     prefix: &Path,
-    file_metric_calculators: &mut Vec<Box<NamedFileMetricCalculator>>,
+    toxicity_indicator_calculators: &mut Vec<Box<ToxicityIndicatorCalculator>>,
 ) -> Result<flare::FlareTreeNode, Error> {
     let mut tree = FlareTreeNode::from_dir("flare");
 
@@ -26,14 +26,14 @@ fn walk_tree_walker(
         let relative = p.strip_prefix(prefix)?;
         let new_child = if p.is_file() {
             let mut f = FlareTreeNode::from_file(p.file_name().unwrap());
-            file_metric_calculators.iter_mut().for_each(|fmc| {
-                let metrics = fmc.calculate_metrics(p);
-                match metrics {
-                    Ok(metrics) => f.add_data(fmc.name().to_string(), metrics),
+            toxicity_indicator_calculators.iter_mut().for_each(|tic| {
+                let indicators = tic.calculate(p);
+                match indicators {
+                    Ok(indicators) => f.add_data(tic.name().to_string(), indicators),
                     Err(error) => {
                         warn!(
-                            "Can't find {} metrics for {:?} - cause: {}",
-                            fmc.name(),
+                            "Can't find {} indicators for {:?} - cause: {}",
+                            tic.name(),
                             p,
                             error
                         );
@@ -67,12 +67,12 @@ fn walk_tree_walker(
 
 pub fn walk_directory(
     root: &Path,
-    file_metric_calculators: &mut Vec<Box<NamedFileMetricCalculator>>,
+    toxicity_indicator_calculators: &mut Vec<Box<ToxicityIndicatorCalculator>>,
 ) -> Result<flare::FlareTreeNode, Error> {
     walk_tree_walker(
         WalkBuilder::new(root).build(),
         root,
-        file_metric_calculators,
+        toxicity_indicator_calculators,
     )
 }
 
@@ -97,31 +97,31 @@ mod test {
     }
 
     #[derive(Debug)]
-    struct SimpleFMC {}
+    struct SimpleTIC {}
 
-    impl NamedFileMetricCalculator for SimpleFMC {
+    impl ToxicityIndicatorCalculator for SimpleTIC {
         fn name(&self) -> String {
             "foo".to_string()
         }
         fn description(&self) -> String {
             "Foo".to_string()
         }
-        fn calculate_metrics(&mut self, _path: &Path) -> Result<serde_json::Value, Error> {
+        fn calculate(&mut self, _path: &Path) -> Result<serde_json::Value, Error> {
             Ok(json!("bar"))
         }
     }
 
     #[derive(Debug)]
-    struct SelfNamingFMC {}
+    struct SelfNamingTIC {}
 
-    impl NamedFileMetricCalculator for SelfNamingFMC {
+    impl ToxicityIndicatorCalculator for SelfNamingTIC {
         fn name(&self) -> String {
             "filename".to_string()
         }
         fn description(&self) -> String {
             "Filename".to_string()
         }
-        fn calculate_metrics(&mut self, path: &Path) -> Result<serde_json::Value, Error> {
+        fn calculate(&mut self, path: &Path) -> Result<serde_json::Value, Error> {
             Ok(json!(path.to_str()))
         }
     }
@@ -129,10 +129,10 @@ mod test {
     #[test]
     fn scanning_merges_data_from_mutators() {
         let root = Path::new("./tests/data/simple/");
-        let simple_fmc = SimpleFMC {};
-        let self_naming_fmc = SelfNamingFMC {};
-        let calculators: &mut Vec<Box<NamedFileMetricCalculator>> =
-            &mut vec![Box::new(simple_fmc), Box::new(self_naming_fmc)];
+        let simple_tic = SimpleTIC {};
+        let self_naming_tic = SelfNamingTIC {};
+        let calculators: &mut Vec<Box<ToxicityIndicatorCalculator>> =
+            &mut vec![Box::new(simple_tic), Box::new(self_naming_tic)];
 
         let tree = walk_directory(root, calculators).unwrap();
         let json = serde_json::to_string_pretty(&tree).unwrap();
@@ -147,18 +147,18 @@ mod test {
     }
 
     #[derive(Debug)]
-    struct MutableFMC {
+    struct MutableTIC {
         count: i64,
     }
 
-    impl NamedFileMetricCalculator for MutableFMC {
+    impl ToxicityIndicatorCalculator for MutableTIC {
         fn name(&self) -> String {
             "file count".to_string()
         }
         fn description(&self) -> String {
-            "Mutable FMC".to_string()
+            "Mutable TIC".to_string()
         }
-        fn calculate_metrics(&mut self, _path: &Path) -> Result<serde_json::Value, Error> {
+        fn calculate(&mut self, _path: &Path) -> Result<serde_json::Value, Error> {
             let result = json!(self.count);
             self.count += 1;
             Ok(result)
@@ -168,8 +168,8 @@ mod test {
     #[test]
     fn can_mutate_state_of_calculator() {
         let root = Path::new("./tests/data/simple/");
-        let fmc = MutableFMC { count: 0 };
-        let calculators: &mut Vec<Box<NamedFileMetricCalculator>> = &mut vec![Box::new(fmc)];
+        let tic = MutableTIC { count: 0 };
+        let calculators: &mut Vec<Box<ToxicityIndicatorCalculator>> = &mut vec![Box::new(tic)];
 
         let tree = walk_directory(root, calculators).unwrap();
         let json = serde_json::to_string_pretty(&tree).unwrap();
