@@ -10,13 +10,13 @@ use std::path::Path;
 pub trait NamedFileMetricCalculator: Sync + std::fmt::Debug {
     fn name(&self) -> String;
     fn description(&self) -> String;
-    fn calculate_metrics(&self, path: &Path) -> Result<serde_json::Value, Error>;
+    fn calculate_metrics(&mut self, path: &Path) -> Result<serde_json::Value, Error>;
 }
 
 fn walk_tree_walker(
     walker: Walk,
     prefix: &Path,
-    file_metric_calculators: Vec<&NamedFileMetricCalculator>,
+    file_metric_calculators: &mut Vec<Box<NamedFileMetricCalculator>>,
 ) -> Result<flare::FlareTreeNode, Error> {
     let mut tree = FlareTreeNode::from_dir("flare");
 
@@ -26,7 +26,7 @@ fn walk_tree_walker(
         let relative = p.strip_prefix(prefix)?;
         let new_child = if p.is_file() {
             let mut f = FlareTreeNode::from_file(p.file_name().unwrap());
-            file_metric_calculators.iter().for_each(|fmc| {
+            file_metric_calculators.iter_mut().for_each(|fmc| {
                 let metrics = fmc.calculate_metrics(p);
                 match metrics {
                     Ok(metrics) => f.add_data(fmc.name().to_string(), metrics),
@@ -67,7 +67,7 @@ fn walk_tree_walker(
 
 pub fn walk_directory(
     root: &Path,
-    file_metric_calculators: Vec<&NamedFileMetricCalculator>,
+    file_metric_calculators: &mut Vec<Box<NamedFileMetricCalculator>>,
 ) -> Result<flare::FlareTreeNode, Error> {
     walk_tree_walker(
         WalkBuilder::new(root).build(),
@@ -85,7 +85,7 @@ mod test {
     #[test]
     fn scanning_a_filesystem_builds_a_tree() {
         let root = Path::new("./tests/data/simple/");
-        let tree = walk_directory(root, Vec::new()).unwrap();
+        let tree = walk_directory(root, &mut Vec::new()).unwrap();
         let json = serde_json::to_string_pretty(&tree).unwrap();
         let parsed_result: Value = serde_json::from_str(&json).unwrap();
 
@@ -106,7 +106,7 @@ mod test {
         fn description(&self) -> String {
             "Foo".to_string()
         }
-        fn calculate_metrics(&self, _path: &Path) -> Result<serde_json::Value, Error> {
+        fn calculate_metrics(&mut self, _path: &Path) -> Result<serde_json::Value, Error> {
             Ok(json!("bar"))
         }
     }
@@ -121,7 +121,7 @@ mod test {
         fn description(&self) -> String {
             "Filename".to_string()
         }
-        fn calculate_metrics(&self, path: &Path) -> Result<serde_json::Value, Error> {
+        fn calculate_metrics(&mut self, path: &Path) -> Result<serde_json::Value, Error> {
             Ok(json!(path.to_str()))
         }
     }
@@ -129,7 +129,10 @@ mod test {
     #[test]
     fn scanning_merges_data_from_mutators() {
         let root = Path::new("./tests/data/simple/");
-        let calculators: Vec<&NamedFileMetricCalculator> = vec![&SimpleFMC {}, &SelfNamingFMC {}];
+        let simple_fmc = SimpleFMC {};
+        let self_naming_fmc = SelfNamingFMC {};
+        let calculators: &mut Vec<Box<NamedFileMetricCalculator>> =
+            &mut vec![Box::new(simple_fmc), Box::new(self_naming_fmc)];
 
         let tree = walk_directory(root, calculators).unwrap();
         let json = serde_json::to_string_pretty(&tree).unwrap();
@@ -143,5 +146,40 @@ mod test {
         assert_eq!(parsed_result, parsed_expected);
     }
 
-    // TODO: test error handling
+    #[derive(Debug)]
+    struct MutableFMC {
+        count: i64,
+    }
+
+    impl NamedFileMetricCalculator for MutableFMC {
+        fn name(&self) -> String {
+            "file count".to_string()
+        }
+        fn description(&self) -> String {
+            "Mutable FMC".to_string()
+        }
+        fn calculate_metrics(&mut self, _path: &Path) -> Result<serde_json::Value, Error> {
+            let result = json!(self.count);
+            self.count += 1;
+            Ok(result)
+        }
+    }
+
+    #[test]
+    fn can_mutate_state_of_calculator() {
+        let root = Path::new("./tests/data/simple/");
+        let fmc = MutableFMC { count: 0 };
+        let calculators: &mut Vec<Box<NamedFileMetricCalculator>> = &mut vec![Box::new(fmc)];
+
+        let tree = walk_directory(root, calculators).unwrap();
+        let json = serde_json::to_string_pretty(&tree).unwrap();
+        let parsed_result: Value = serde_json::from_str(&json).unwrap();
+
+        let expected =
+            std::fs::read_to_string(Path::new("./tests/expected/simple_files_with_counts.json"))
+                .unwrap();
+        let parsed_expected: Value = serde_json::from_str(&expected).unwrap();
+
+        assert_eq!(parsed_result, parsed_expected);
+    }
 }

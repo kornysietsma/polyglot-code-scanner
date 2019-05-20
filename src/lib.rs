@@ -7,8 +7,6 @@ extern crate failure;
 #[macro_use]
 extern crate log;
 extern crate failure_tools;
-#[macro_use]
-extern crate lazy_static;
 
 use failure::Error;
 use std::io;
@@ -19,23 +17,17 @@ mod flare;
 mod loc;
 
 use file_walker::NamedFileMetricCalculator;
+use loc::LocMetricCalculator;
 
-lazy_static! {
-    static ref FILE_METRIC_CALCULATORS: Vec<&'static NamedFileMetricCalculator> =
-        { vec![&loc::LocMetricCalculator {}] };
-}
+// TODO: would love to somehow calculate this from the types (via macro?) but for now this is manual:
+#[allow(dead_code)]
+const FILE_METRIC_CALCULATOR_NAMES: &[&str] = &["loc"];
 
-pub fn file_metric_calculator_names() -> Vec<(String, String)> {
-    FILE_METRIC_CALCULATORS
-        .iter()
-        .map(|fmc| (fmc.name(), fmc.description()))
-        .collect()
-}
-fn named_file_metric_calculator(name: &str) -> Option<&'static NamedFileMetricCalculator> {
-    let fmc = FILE_METRIC_CALCULATORS
-        .iter()
-        .find(|fmc| fmc.name() == name)?;
-    Some(*fmc)
+pub fn named_file_metric_calculator(name: &str) -> Option<Box<dyn NamedFileMetricCalculator>> {
+    match name {
+        "loc" => Some(Box::new(LocMetricCalculator {})),
+        _ => None,
+    }
 }
 
 pub fn run<W>(root: PathBuf, file_metric_calculator_names: Vec<String>, out: W) -> Result<(), Error>
@@ -47,9 +39,9 @@ where
         .map(|name| named_file_metric_calculator(name))
         .collect();
 
-    let fmcs = maybe_fmcs.expect("Some file metric calculator names don't exist!");
+    let mut fmcs = maybe_fmcs.expect("Some file metric calculator names don't exist!");
 
-    let tree = file_walker::walk_directory(&root, fmcs)?;
+    let tree = file_walker::walk_directory(&root, &mut fmcs)?;
 
     serde_json::to_writer_pretty(out, &tree)?;
     Ok(())

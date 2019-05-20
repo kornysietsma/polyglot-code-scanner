@@ -53,7 +53,7 @@ impl NamedFileMetricCalculator for LocMetricCalculator {
         "Lines of Code".to_string()
     }
 
-    fn calculate_metrics(&self, path: &Path) -> Result<serde_json::Value, Error> {
+    fn calculate_metrics(&mut self, path: &Path) -> Result<serde_json::Value, Error> {
         let stats = parse_file(path)?;
         Ok(serde_json::value::to_value(stats)
             .expect("Serializable object couldn't be serialized to JSON")) // TODO: maybe explicit error? Though this should be fatal

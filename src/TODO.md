@@ -1,12 +1,14 @@
 # TODO
 
-## Small things:
-* publish to github
+## Soon:
+* Rename things from "Metric" to "Indicator" - better name needed for FileMetricCalculator
+* FileMetricCalculator might want to also look at directories - may not generate metrics, but it might need to update state.
 * add metrics selection to the CLI
 
 ## Bigger things
+* publish to github
 * Basic git stats (owners, most recent change)
-* * does this mean needing the git log thing? That's complex
+* * include co-authored-by from commit log!
 * * could for now look at doing what `code-maat` does.
 * indent stats (with or without comments depending on the next bit)
 * tokei-based calculations that ignore comments - might need a tokei fork! Or can we pilfer bits of tokei?
@@ -21,4 +23,4 @@
 
 ## Future stuff
 * method identification?
-* deep git stats
+* deep git stats - time from author to commit, moving towards CD stats
