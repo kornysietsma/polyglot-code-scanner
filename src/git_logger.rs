@@ -8,7 +8,7 @@ use git2::Oid;
 use git2::{Commit, Delta, ObjectType, Patch, Repository, Status, Tree};
 use regex::Regex;
 use serde::Serialize;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -29,7 +29,7 @@ pub struct GitLog {
 
 /// simplified user info - based on git2::Signature but using blanks not None for now.
 /// TODO: consider using None - let the UI decide how to handle?
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 pub struct User {
     name: Option<String>,
     email: Option<String>,
@@ -45,7 +45,7 @@ impl User {
 }
 
 /// simplified commit log entry
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct GitLogEntry {
     id: String,
     summary: String,
@@ -59,7 +59,7 @@ pub struct GitLogEntry {
 }
 
 /// the various kinds of git change we care about - a serializable subset of git2::Delta
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub enum CommitChange {
     Add,
     Rename,
@@ -69,7 +69,7 @@ pub enum CommitChange {
 }
 
 /// Stats for file changes
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct FileChange {
     file: PathBuf,
     old_file: Option<PathBuf>,
@@ -78,21 +78,51 @@ pub struct FileChange {
     lines_deleted: usize,
 }
 
-// WIP:
-// /// For each file we just keep a simplified history - what the changes were, by whom, and when.
-// #[derive(Debug, Serialize)]
-// pub struct FileHistoryEntry {
-//     id: String,
-//     summary: String,
-//     committer: User,
-//     commit_time: i64,
-//     author: User,
-//     author_time: i64,
-//     co_authors: Vec<User>,
-//     change: CommitChange,
-//     lines_added: usize,
-//     lines_deleted: usize,
-// }
+/// For each file we just keep a simplified history - what the changes were, by whom, and when.
+#[derive(Debug, Serialize)]
+pub struct FileHistoryEntry {
+    id: String,
+    committer: User,
+    commit_time: i64,
+    author: User,
+    author_time: i64,
+    co_authors: Vec<User>,
+    change: CommitChange,
+    lines_added: usize,
+    lines_deleted: usize,
+}
+
+impl FileHistoryEntry {
+    fn from(entry: &GitLogEntry, file_change: &FileChange) -> FileHistoryEntry {
+        let entry = entry.clone();
+        let file_change = file_change.clone();
+        FileHistoryEntry {
+            id: entry.id,
+            committer: entry.committer,
+            commit_time: entry.commit_time,
+            author: entry.author,
+            author_time: entry.author_time,
+            co_authors: entry.co_authors,
+            change: file_change.change,
+            lines_added: file_change.lines_added,
+            lines_deleted: file_change.lines_deleted,
+        }
+    }
+}
+
+pub fn log_by_filename(log: GitLog) -> Result<HashMap<PathBuf, Vec<FileHistoryEntry>>, Error> {
+    let mut results = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
+    for entry in log.entries {
+        for file_change in entry.clone().file_changes {
+            let hash_entry = results
+                .entry(file_change.file.clone()) // TODO: how to avoid clone?
+                .or_insert(Vec::new());
+            let new_entry = FileHistoryEntry::from(&entry, &file_change);
+            hash_entry.push(new_entry);
+        }
+    }
+    Ok(results)
+}
 
 pub fn log(start_dir: &Path, config: Option<GitLogConfig>) -> Result<GitLog, Error> {
     let config = config.unwrap_or(DEFAULT_GIT_LOG_CONFIG);
@@ -439,6 +469,24 @@ mod test {
         )?;
 
         assert_eq_json_file(&git_log, "./tests/expected/git/git_sample_with_merges.json");
+
+        Ok(())
+    }
+
+    #[test]
+    fn can_get_log_by_filename() -> Result<(), Error> {
+        let gitdir = tempdir()?;
+        unzip_to_dir(gitdir.path(), "tests/data/git/git_sample.zip")?;
+        let git_root = PathBuf::from(gitdir.path()).join("git_sample");
+
+        let git_log = log(&git_root, None)?;
+
+        let by_filename = log_by_filename(git_log)?;
+
+        assert_eq_json_file(
+            &by_filename,
+            "./tests/expected/git/git_sample_by_filename.json",
+        );
 
         Ok(())
     }
