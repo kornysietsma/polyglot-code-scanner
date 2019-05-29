@@ -7,6 +7,8 @@ extern crate failure;
 #[macro_use]
 extern crate log;
 extern crate failure_tools;
+#[macro_use]
+extern crate lazy_static;
 
 use failure::Error;
 use std::io;

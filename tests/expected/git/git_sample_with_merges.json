@@ -6,6 +6,17 @@
       "parents": [
         "0dbd54d4c524ecc776f381e660cce9b2dd92162c"
       ],
+      "committer": {
+        "name": "Korny Sietsma",
+        "email": "korny@sietsma.com"
+      },
+      "commit_time": 1558533240,
+      "author": {
+        "name": "Korny Sietsma",
+        "email": "korny@sietsma.com"
+      },
+      "author_time": 1558533240,
+      "co_authors": [],
       "file_changes": [
         {
           "file": "simple/child/a_renamed.txt",
@@ -22,6 +33,17 @@
       "parents": [
         "1ef4f2a8301699964d7bb397d3f2e86d8d9776b3"
       ],
+      "committer": {
+        "name": "Korny Sietsma",
+        "email": "korny@sietsma.com"
+      },
+      "commit_time": 1558524371,
+      "author": {
+        "name": "Korny Sietsma",
+        "email": "korny@sietsma.com"
+      },
+      "author_time": 1558524371,
+      "co_authors": [],
       "file_changes": [
         {
           "file": "simple/parent.clj",
@@ -39,6 +61,17 @@
         "cdf8709362c267198d04d47e55e66071fdd5f52b",
         "a0ae9997cfdf49fd0cbf54dacc72c778af337519"
       ],
+      "committer": {
+        "name": "Korny Sietsma",
+        "email": "korny@sietsma.com"
+      },
+      "commit_time": 1558521695,
+      "author": {
+        "name": "Korny Sietsma",
+        "email": "korny@sietsma.com"
+      },
+      "author_time": 1558521695,
+      "co_authors": [],
       "file_changes": [
         {
           "file": "simple/child/a.txt",
@@ -69,6 +102,17 @@
       "parents": [
         "ca239efb9b26db57ac9e2ec3e2df1c42578a46f8"
       ],
+      "committer": {
+        "name": "Korny Sietsma",
+        "email": "korny@sietsma.com"
+      },
+      "commit_time": 1558521648,
+      "author": {
+        "name": "Korny Sietsma",
+        "email": "korny@sietsma.com"
+      },
+      "author_time": 1558521648,
+      "co_authors": [],
       "file_changes": [
         {
           "file": "simple/child/a.txt",
@@ -84,6 +128,22 @@
       "summary": "made some changes with a bigger comment",
       "parents": [
         "ca239efb9b26db57ac9e2ec3e2df1c42578a46f8"
+      ],
+      "committer": {
+        "name": "Korny Sietsma",
+        "email": "korny@sietsma.com"
+      },
+      "commit_time": 1558521550,
+      "author": {
+        "name": "Korny Sietsma",
+        "email": "korny@sietsma.com"
+      },
+      "author_time": 1558521550,
+      "co_authors": [
+        {
+          "name": "hermoine",
+          "email": "hgranger@durmstrang.de"
+        }
       ],
       "file_changes": [
         {
@@ -106,6 +166,17 @@
       "id": "ca239efb9b26db57ac9e2ec3e2df1c42578a46f8",
       "summary": "first commit",
       "parents": [],
+      "committer": {
+        "name": "Korny Sietsma",
+        "email": "korny@sietsma.com"
+      },
+      "commit_time": 1558521386,
+      "author": {
+        "name": "Korny Sietsma",
+        "email": "korny@sietsma.com"
+      },
+      "author_time": 1558521386,
+      "co_authors": [],
       "file_changes": [
         {
           "file": "simple/child/a.txt",

@@ -6,6 +6,7 @@ use git2::DiffDelta;
 use git2::Odb;
 use git2::Oid;
 use git2::{Commit, Delta, ObjectType, Patch, Repository, Status, Tree};
+use regex::Regex;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::path::Path;
@@ -26,16 +27,31 @@ pub struct GitLog {
     entries: Vec<GitLogEntry>,
 }
 
+#[derive(Debug, Serialize, PartialEq)]
+pub struct User {
+    name: String,
+    email: String,
+}
+
+impl User {
+    fn new(name: &str, email: &str) -> User {
+        User {
+            name: name.to_owned(),
+            email: email.to_owned(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct GitLogEntry {
     id: String,
     summary: String,
     parents: Vec<String>,
-    // commit_time_secs: i64,
-    // author_time_secs: i64,
-    // author: String,
-    // committer: String,
-    // co_authors: Vec<String>,
+    committer: User,
+    commit_time: i64,
+    author: User,
+    author_time: i64,
+    co_authors: Vec<User>,
     file_changes: Vec<FileChange>,
 }
 
@@ -102,12 +118,34 @@ fn summarise_commit(
         ObjectType::Commit => {
             let commit = repo.find_commit(oid)?;
             info!("processing {}", commit_summary(&commit));
+            let author = commit.author();
+            let committer = commit.committer();
+            let author_time = author.when().seconds();
+            let commit_time = committer.when().seconds();
+            let other_time = commit.time().seconds();
+            if commit_time != other_time {
+                error!(
+                    "Commit {:?} time {:?} != commit time {:?}",
+                    commit, other_time, commit_time
+                );
+            }
+            let co_authors = if let Some(message) = commit.message() {
+                find_coauthors(message)
+            } else {
+                Vec::new()
+            };
+
             let commit_tree = commit.tree()?;
             let file_changes = commit_file_changes(&repo, &commit, &commit_tree, config);
             Ok(Some(GitLogEntry {
                 id: oid.to_string(),
                 summary: commit.summary().unwrap_or("[no message]").to_string(),
                 parents: commit.parent_ids().map({ |p| p.to_string() }).collect(),
+                committer: signature_to_user(&committer),
+                commit_time,
+                author: signature_to_user(&author),
+                author_time,
+                co_authors,
                 file_changes,
             }))
         }
@@ -116,6 +154,38 @@ fn summarise_commit(
             Ok(None)
         }
     }
+}
+
+fn signature_to_user(signature: &git2::Signature) -> User {
+    User {
+        name: signature.name().unwrap_or("[invalid name]").to_owned(),
+        email: signature.email().unwrap_or("[invalid email]").to_owned(),
+    }
+}
+
+fn find_coauthors(message: &str) -> Vec<User> {
+    lazy_static! {
+        static ref CO_AUTH_LINE: Regex = Regex::new(r"(?m)^\s*Co-authored-by:(.*)$").unwrap();
+        static ref CO_AUTH_ANGLE_BRACKETS: Regex = Regex::new(r"^(.*)<([^>]+)>$").unwrap();
+    }
+
+    CO_AUTH_LINE
+        .captures_iter(message)
+        .map(|capture_group| {
+            let co_author_text = &capture_group[1];
+            if let Some(co_author_bits) = CO_AUTH_ANGLE_BRACKETS.captures(co_author_text) {
+                User::new(
+                    co_author_bits.get(1).unwrap().as_str().trim(),
+                    co_author_bits.get(2).unwrap().as_str().trim(),
+                )
+            } else if co_author_text.contains('@') {
+                // no angle brackets, but an @
+                User::new("", co_author_text.trim())
+            } else {
+                User::new(co_author_text.trim(), "")
+            }
+        })
+        .collect()
 }
 
 fn commit_file_changes(
@@ -288,7 +358,37 @@ fn parse_file(filename: &Path) -> Result<GitData, Error> {
 mod test {
     use super::*;
     use crate::test_helpers::*;
+    use pretty_assertions::assert_eq;
     use tempfile::tempdir;
+
+    #[test]
+    fn authorless_message_has_no_coauthors() {
+        assert_eq!(find_coauthors("do be do be do"), Vec::<User>::new());
+    }
+
+    #[test]
+    fn can_get_coauthors_from_message() {
+        let message = r#"This is a commit message
+        not valid: Co-authored-by: fred jones
+        Co-authored-by: valid user <valid@thing.com>
+        Co-authored-by: <be.lenient@any-domain.com>
+        Co-authored-by: bad@user <this isn't really trying to be clever>
+        ignore random lines
+        Co-authored-by: if there's no at it's a name
+        Co-authored-by: if there's an @ it's email@thing.com
+        ignore trailing lines
+        "#;
+
+        let expected = vec![
+            User::new("valid user", "valid@thing.com"),
+            User::new("", "be.lenient@any-domain.com"),
+            User::new("bad@user", "this isn't really trying to be clever"),
+            User::new("if there's no at it's a name", ""),
+            User::new("", "if there's an @ it's email@thing.com"),
+        ];
+
+        assert_eq!(find_coauthors(message), expected);
+    }
 
     #[test]
     fn can_extract_basic_git_log() -> Result<(), Error> {
