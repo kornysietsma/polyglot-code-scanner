@@ -106,7 +106,22 @@
       "id": "ca239efb9b26db57ac9e2ec3e2df1c42578a46f8",
       "summary": "first commit",
       "parents": [],
-      "file_changes": []
+      "file_changes": [
+        {
+          "file": "simple/child/a.txt",
+          "old_file": null,
+          "change": "Add",
+          "lines_added": 2,
+          "lines_deleted": 0
+        },
+        {
+          "file": "simple/parent.clj",
+          "old_file": null,
+          "change": "Add",
+          "lines_added": 4,
+          "lines_deleted": 0
+        }
+      ]
     }
   ]
 }

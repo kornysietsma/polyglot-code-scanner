@@ -93,17 +93,31 @@ fn summarise_commit(
 }
 
 fn commit_file_changes(repo: &Repository, commit: &Commit, commit_tree: &Tree) -> Vec<FileChange> {
-    commit
-        .parents()
-        .flat_map(|parent| {
-            info!("Parent {:?}:", parent);
-            let parent_tree = parent.tree().expect("can't get parent tree");
-            let changes = scan_diffs(&repo, &commit_tree, &parent_tree, &commit, &parent)
+    if commit.parent_count() == 0 {
+        info!("Commit has no parent");
+        let changes =
+            scan_diffs(&repo, &commit_tree, None, &commit, None).expect("Can't scan for diffs");
+        info!("Changes: {:?}", changes);
+        changes
+    } else {
+        commit
+            .parents()
+            .flat_map(|parent| {
+                info!("Parent {:?}:", parent);
+                let parent_tree = parent.tree().expect("can't get parent tree");
+                let changes = scan_diffs(
+                    &repo,
+                    &commit_tree,
+                    Some(&parent_tree),
+                    &commit,
+                    Some(&parent),
+                )
                 .expect("Can't scan for diffs");
-            info!("Changes: {:?}", changes);
-            changes
-        })
-        .collect()
+                info!("Changes: {:?}", changes);
+                changes
+            })
+            .collect()
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -126,11 +140,11 @@ pub struct FileChange {
 fn scan_diffs(
     repo: &Repository,
     commit_tree: &Tree,
-    parent_tree: &Tree,
+    parent_tree: Option<&Tree>,
     commit: &Commit,
-    parent: &Commit,
+    parent: Option<&Commit>,
 ) -> Result<Vec<FileChange>, Error> {
-    let mut diff = repo.diff_tree_to_tree(Some(&parent_tree), Some(&commit_tree), None)?;
+    let mut diff = repo.diff_tree_to_tree(parent_tree, Some(&commit_tree), None)?;
     diff.find_similar(None)?;
     let file_changes = diff
         .deltas()
@@ -296,12 +310,11 @@ mod test {
 
         let git_log = log(&git_root)?;
 
-        let json = serde_json::to_string_pretty(&git_log).unwrap();
-        let parsed_result: Value = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string_pretty(&git_log)?;
+        let parsed_result: Value = serde_json::from_str(&json)?;
 
-        let expected =
-            std::fs::read_to_string(Path::new("./tests/expected/git/git_sample.json")).unwrap();
-        let parsed_expected: Value = serde_json::from_str(&expected).unwrap();
+        let expected = std::fs::read_to_string(Path::new("./tests/expected/git/git_sample.json"))?;
+        let parsed_expected: Value = serde_json::from_str(&expected)?;
 
         assert_eq!(parsed_result, parsed_expected);
 

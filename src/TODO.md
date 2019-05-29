@@ -1,7 +1,6 @@
 # TODO
 
 ## git things:
-- bug in this commit - the very first commit on a repo shows no files!
 - we are processing both parents for a merge - is that right? Am I doubling up??
 - lots to do
 
