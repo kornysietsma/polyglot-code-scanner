@@ -93,6 +93,7 @@ impl Serialize for FlareTreeNode {
 #[cfg(test)]
 mod test {
     use super::*;
+    use pretty_assertions::assert_eq;
     use regex::Regex;
     use serde_json::json;
     use serde_json::Value;

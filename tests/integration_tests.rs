@@ -1,3 +1,4 @@
+use pretty_assertions::assert_eq;
 use serde_json::Value;
 use std::io::Cursor;
 use std::path::PathBuf;

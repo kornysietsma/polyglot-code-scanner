@@ -82,6 +82,7 @@ pub fn walk_directory(
 #[cfg(test)]
 mod test {
     use super::*;
+    use pretty_assertions::assert_eq;
     use serde_json::json;
     use serde_json::Value;
 

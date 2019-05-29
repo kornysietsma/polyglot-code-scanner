@@ -271,6 +271,7 @@ mod test {
 
     extern crate tempfile;
     extern crate zip;
+    use pretty_assertions::assert_eq;
     use std::fs::File;
     use std::path::Path;
     use tempfile::tempdir;
