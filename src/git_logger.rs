@@ -31,15 +31,15 @@ pub struct GitLog {
 /// TODO: consider using None - let the UI decide how to handle?
 #[derive(Debug, Serialize, PartialEq)]
 pub struct User {
-    name: String,
-    email: String,
+    name: Option<String>,
+    email: Option<String>,
 }
 
 impl User {
-    fn new(name: &str, email: &str) -> User {
+    fn new(name: Option<&str>, email: Option<&str>) -> User {
         User {
-            name: name.to_owned(),
-            email: email.to_owned(),
+            name: name.map(|x| x.to_owned()),
+            email: email.map(|x| x.to_owned()),
         }
     }
 }
@@ -172,8 +172,17 @@ fn summarise_commit(
 
 fn signature_to_user(signature: &git2::Signature) -> User {
     User {
-        name: signature.name().unwrap_or("[invalid name]").to_owned(),
-        email: signature.email().unwrap_or("[invalid email]").to_owned(),
+        name: signature.name().map(|x| x.to_owned()),
+        email: signature.email().map(|x| x.to_owned()),
+    }
+}
+
+fn trim_string(s: &str) -> Option<&str> {
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(&trimmed)
     }
 }
 
@@ -189,14 +198,14 @@ fn find_coauthors(message: &str) -> Vec<User> {
             let co_author_text = &capture_group[1];
             if let Some(co_author_bits) = CO_AUTH_ANGLE_BRACKETS.captures(co_author_text) {
                 User::new(
-                    co_author_bits.get(1).unwrap().as_str().trim(),
-                    co_author_bits.get(2).unwrap().as_str().trim(),
+                    trim_string(&co_author_bits.get(1).unwrap().as_str()),
+                    trim_string(co_author_bits.get(2).unwrap().as_str()),
                 )
             } else if co_author_text.contains('@') {
                 // no angle brackets, but an @
-                User::new("", co_author_text.trim())
+                User::new(None, trim_string(co_author_text))
             } else {
-                User::new(co_author_text.trim(), "")
+                User::new(trim_string(co_author_text), None)
             }
         })
         .collect()
@@ -390,11 +399,14 @@ mod test {
         "#;
 
         let expected = vec![
-            User::new("valid user", "valid@thing.com"),
-            User::new("", "be.lenient@any-domain.com"),
-            User::new("bad@user", "this isn't really trying to be clever"),
-            User::new("if there's no at it's a name", ""),
-            User::new("", "if there's an @ it's email@thing.com"),
+            User::new(Some("valid user"), Some("valid@thing.com")),
+            User::new(None, Some("be.lenient@any-domain.com")),
+            User::new(
+                Some("bad@user"),
+                Some("this isn't really trying to be clever"),
+            ),
+            User::new(Some("if there's no at it's a name"), None),
+            User::new(None, Some("if there's an @ it's email@thing.com")),
         ];
 
         assert_eq!(find_coauthors(message), expected);

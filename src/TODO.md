@@ -1,7 +1,6 @@
 # TODO
 
 ## git things:
-- use None for unknown username/email
 - need to actually use git log inside metrics
 - basic usage could just summarise the log into basic "changers" and "last updated" data, as used by my old code
 - filter by dates! Otherwise this is going to be enormous for big repos
