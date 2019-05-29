@@ -39,7 +39,29 @@
         "cdf8709362c267198d04d47e55e66071fdd5f52b",
         "a0ae9997cfdf49fd0cbf54dacc72c778af337519"
       ],
-      "file_changes": []
+      "file_changes": [
+        {
+          "file": "simple/child/a.txt",
+          "old_file": null,
+          "change": "Modify",
+          "lines_added": 3,
+          "lines_deleted": 1
+        },
+        {
+          "file": "simple/parent.clj",
+          "old_file": null,
+          "change": "Modify",
+          "lines_added": 3,
+          "lines_deleted": 1
+        },
+        {
+          "file": "simple/child/a.txt",
+          "old_file": null,
+          "change": "Modify",
+          "lines_added": 1,
+          "lines_deleted": 0
+        }
+      ]
     },
     {
       "id": "cdf8709362c267198d04d47e55e66071fdd5f52b",

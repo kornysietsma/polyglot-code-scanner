@@ -1,8 +1,16 @@
 # TODO
 
 ## git things:
-- we are processing both parents for a merge - is that right? Am I doubling up??
-- lots to do
+- all the commented out git stats!
+- need to actually use git log inside metrics
+- basic usage could just summarise the log into basic "changers" and "last updated" data, as used by my old demo
+- filter by dates! Otherwise this is going to be enormous for big repos
+- advanced usage might want the full history so the UI could calculate things like churn.
+- need to handle special cases:
+  - the repo might not be in git
+  - there might be multiple git roots (i.e. I used to scan all the repos for an org into one JSON file)
+  - submodules?!
+  - local checkout is not on remote origin/master (do we care?)
 
 ## Soon:
 * ToxicityIndicatorCalculator might want to also look at directories - may not generate numbers, but it might need to update state.

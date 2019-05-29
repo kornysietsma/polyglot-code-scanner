@@ -1,5 +1,16 @@
 # Language-Agnostic Toxicity Indicators
 
+## Work-in-progress warning!
+
+This is a work in progress - it's still being fiddled with, major changes might come at any time.  Or I might abandon it as my free time evaporates.  You have been warned!
+
+*Current status*
+
+The basic "loc" stuff works - I'm currently adding git stats, which has lots of curly edges, so needs quite a few interim commits.
+For now, you can run `cargo run --git` to play with git logs, as well as the more stable commands below.
+
+## Intro
+
 This application scans source code directories, looking for measures that can be
 useful for identifying toxic code.
 

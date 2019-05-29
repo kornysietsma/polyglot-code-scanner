@@ -43,7 +43,7 @@ fn real_main() -> Result<(), Error> {
 
     if args.git {
         // TODO: remove this once the git functionality is stable
-        let log = git_logger::log(&root)?;
+        let log = git_logger::log(&root, None)?;
         serde_json::to_writer_pretty(out, &log)?;
     } else {
         lati_scanner::run(root, vec!["loc".to_string()], &mut out)?;

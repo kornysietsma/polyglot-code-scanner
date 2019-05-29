@@ -11,6 +11,16 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::path::PathBuf;
 
+#[derive(Debug)]
+pub struct GitLogConfig {
+    /// include merge commits in file stats - usually excluded by `git log` - see https://stackoverflow.com/questions/37801342/using-git-log-to-display-files-changed-during-merge
+    include_merges: bool,
+}
+
+pub const DEFAULT_GIT_LOG_CONFIG: GitLogConfig = GitLogConfig {
+    include_merges: false,
+};
+
 #[derive(Debug, Serialize)]
 pub struct GitLog {
     entries: Vec<GitLogEntry>,
@@ -37,7 +47,9 @@ fn commit_summary(commit: &Commit) -> String {
     )
 }
 
-pub fn log(start_dir: &Path) -> Result<GitLog, Error> {
+pub fn log(start_dir: &Path, config: Option<GitLogConfig>) -> Result<GitLog, Error> {
+    let config = config.unwrap_or(DEFAULT_GIT_LOG_CONFIG);
+
     let repo = Repository::discover(start_dir)?;
 
     let workdir = repo
@@ -53,7 +65,7 @@ pub fn log(start_dir: &Path) -> Result<GitLog, Error> {
     // TODO: filter by dates! This will get mad on a big history
 
     let entries: Result<Vec<_>, _> = revwalk
-        .map(|oid| summarise_commit(&repo, &odb, oid))
+        .map(|oid| summarise_commit(&repo, &odb, oid, &config))
         .collect();
 
     let entries = entries?.into_iter().flat_map(|e| e).collect();
@@ -65,6 +77,7 @@ fn summarise_commit(
     repo: &Repository,
     odb: &Odb,
     oid: Result<Oid, git2::Error>,
+    config: &GitLogConfig,
 ) -> Result<Option<GitLogEntry>, Error> {
     let oid = oid?;
     let kind = odb.read(oid)?.kind();
@@ -73,11 +86,7 @@ fn summarise_commit(
             let commit = repo.find_commit(oid)?;
             info!("processing {}", commit_summary(&commit));
             let commit_tree = commit.tree()?;
-            if commit.parent_count() > 1 {
-                info!("Commit has multiple parents!");
-                // TODO: are we handling multiple parents right?
-            }
-            let file_changes = commit_file_changes(&repo, &commit, &commit_tree);
+            let file_changes = commit_file_changes(&repo, &commit, &commit_tree, config);
             Ok(Some(GitLogEntry {
                 id: oid.to_string(),
                 summary: commit.summary().unwrap_or("[no message]").to_string(),
@@ -92,13 +101,24 @@ fn summarise_commit(
     }
 }
 
-fn commit_file_changes(repo: &Repository, commit: &Commit, commit_tree: &Tree) -> Vec<FileChange> {
+fn commit_file_changes(
+    repo: &Repository,
+    commit: &Commit,
+    commit_tree: &Tree,
+    config: &GitLogConfig,
+) -> Vec<FileChange> {
     if commit.parent_count() == 0 {
         info!("Commit has no parent");
         let changes =
             scan_diffs(&repo, &commit_tree, None, &commit, None).expect("Can't scan for diffs");
         info!("Changes: {:?}", changes);
         changes
+    } else if commit.parent_count() > 1 && !config.include_merges {
+        debug!(
+            "Not showing file changes for merge commit {:?}",
+            commit.id()
+        );
+        Vec::new()
     } else {
         commit
             .parents()
@@ -309,12 +329,38 @@ mod test {
         unzip_to_dir(gitdir.path(), "tests/data/git/git_sample.zip")?;
         let git_root = PathBuf::from(gitdir.path()).join("git_sample");
 
-        let git_log = log(&git_root)?;
+        let git_log = log(&git_root, None)?;
 
         let json = serde_json::to_string_pretty(&git_log)?;
         let parsed_result: Value = serde_json::from_str(&json)?;
 
         let expected = std::fs::read_to_string(Path::new("./tests/expected/git/git_sample.json"))?;
+        let parsed_expected: Value = serde_json::from_str(&expected)?;
+
+        assert_eq!(parsed_result, parsed_expected);
+
+        Ok(())
+    }
+
+    #[test]
+    fn git_log_can_include_merge_changes() -> Result<(), Error> {
+        let gitdir = tempdir()?;
+        unzip_to_dir(gitdir.path(), "tests/data/git/git_sample.zip")?;
+        let git_root = PathBuf::from(gitdir.path()).join("git_sample");
+
+        let git_log = log(
+            &git_root,
+            Some(GitLogConfig {
+                include_merges: true,
+            }),
+        )?;
+
+        let json = serde_json::to_string_pretty(&git_log)?;
+        let parsed_result: Value = serde_json::from_str(&json)?;
+
+        let expected = std::fs::read_to_string(Path::new(
+            "./tests/expected/git/git_sample_with_merges.json",
+        ))?;
         let parsed_expected: Value = serde_json::from_str(&expected)?;
 
         assert_eq!(parsed_result, parsed_expected);
