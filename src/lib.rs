@@ -17,6 +17,8 @@ mod flare;
 mod loc;
 mod toxicity_indicator_calculator;
 
+pub mod git_logger;
+
 use loc::LocCalculator;
 use toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 
