@@ -1,12 +1,13 @@
 # TODO
 
 ## git things:
-- all the commented out git stats!
+- use None for unknown username/email
 - need to actually use git log inside metrics
-- basic usage could just summarise the log into basic "changers" and "last updated" data, as used by my old demo
+- basic usage could just summarise the log into basic "changers" and "last updated" data, as used by my old code
 - filter by dates! Otherwise this is going to be enormous for big repos
 - advanced usage might want the full history so the UI could calculate things like churn.
 - need to handle special cases:
+  - the code scanned might not be at the root
   - the repo might not be in git
   - there might be multiple git roots (i.e. I used to scan all the repos for an org into one JSON file)
   - submodules?!

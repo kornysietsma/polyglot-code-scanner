@@ -27,6 +27,8 @@ pub struct GitLog {
     entries: Vec<GitLogEntry>,
 }
 
+/// simplified user info - based on git2::Signature but using blanks not None for now.
+/// TODO: consider using None - let the UI decide how to handle?
 #[derive(Debug, Serialize, PartialEq)]
 pub struct User {
     name: String,
@@ -42,6 +44,7 @@ impl User {
     }
 }
 
+/// simplified commit log entry
 #[derive(Debug, Serialize)]
 pub struct GitLogEntry {
     id: String,
@@ -55,6 +58,7 @@ pub struct GitLogEntry {
     file_changes: Vec<FileChange>,
 }
 
+/// the various kinds of git change we care about - a serializable subset of git2::Delta
 #[derive(Debug, Serialize)]
 pub enum CommitChange {
     Add,
@@ -63,6 +67,8 @@ pub enum CommitChange {
     Modify,
     Copied,
 }
+
+/// Stats for file changes
 #[derive(Debug, Serialize)]
 pub struct FileChange {
     file: PathBuf,
@@ -72,13 +78,21 @@ pub struct FileChange {
     lines_deleted: usize,
 }
 
-fn commit_summary(commit: &Commit) -> String {
-    format!(
-        "Commit: {} : {}",
-        commit.id(),
-        commit.summary().unwrap_or("no message")
-    )
-}
+// WIP:
+// /// For each file we just keep a simplified history - what the changes were, by whom, and when.
+// #[derive(Debug, Serialize)]
+// pub struct FileHistoryEntry {
+//     id: String,
+//     summary: String,
+//     committer: User,
+//     commit_time: i64,
+//     author: User,
+//     author_time: i64,
+//     co_authors: Vec<User>,
+//     change: CommitChange,
+//     lines_added: usize,
+//     lines_deleted: usize,
+// }
 
 pub fn log(start_dir: &Path, config: Option<GitLogConfig>) -> Result<GitLog, Error> {
     let config = config.unwrap_or(DEFAULT_GIT_LOG_CONFIG);
@@ -117,7 +131,7 @@ fn summarise_commit(
     match kind {
         ObjectType::Commit => {
             let commit = repo.find_commit(oid)?;
-            info!("processing {}", commit_summary(&commit));
+            debug!("processing {:?}", commit);
             let author = commit.author();
             let committer = commit.committer();
             let author_time = author.when().seconds();
@@ -150,7 +164,7 @@ fn summarise_commit(
             }))
         }
         _ => {
-            debug!("ignoring object type: {}", kind);
+            info!("ignoring object type: {}", kind);
             Ok(None)
         }
     }
@@ -195,11 +209,9 @@ fn commit_file_changes(
     config: &GitLogConfig,
 ) -> Vec<FileChange> {
     if commit.parent_count() == 0 {
-        info!("Commit has no parent");
-        let changes =
-            scan_diffs(&repo, &commit_tree, None, &commit, None).expect("Can't scan for diffs");
-        info!("Changes: {:?}", changes);
-        changes
+        info!("Commit {} has no parent", commit.id());
+
+        scan_diffs(&repo, &commit_tree, None, &commit, None).expect("Can't scan for diffs")
     } else if commit.parent_count() > 1 && !config.include_merges {
         debug!(
             "Not showing file changes for merge commit {:?}",
@@ -210,18 +222,16 @@ fn commit_file_changes(
         commit
             .parents()
             .flat_map(|parent| {
-                info!("Parent {:?}:", parent);
+                debug!("Getting changes for parent {:?}:", parent);
                 let parent_tree = parent.tree().expect("can't get parent tree");
-                let changes = scan_diffs(
+                scan_diffs(
                     &repo,
                     &commit_tree,
                     Some(&parent_tree),
                     &commit,
                     Some(&parent),
                 )
-                .expect("Can't scan for diffs");
-                info!("Changes: {:?}", changes);
-                changes
+                .expect("Can't scan for diffs")
             })
             .collect()
     }
