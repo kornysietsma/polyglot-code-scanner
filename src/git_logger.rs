@@ -39,6 +39,23 @@ pub struct GitLogEntry {
     file_changes: Vec<FileChange>,
 }
 
+#[derive(Debug, Serialize)]
+pub enum CommitChange {
+    Add,
+    Rename,
+    Delete,
+    Modify,
+    Copied,
+}
+#[derive(Debug, Serialize)]
+pub struct FileChange {
+    file: PathBuf,
+    old_file: Option<PathBuf>,
+    change: CommitChange,
+    lines_added: usize,
+    lines_deleted: usize,
+}
+
 fn commit_summary(commit: &Commit) -> String {
     format!(
         "Commit: {} : {}",
@@ -140,23 +157,6 @@ fn commit_file_changes(
     }
 }
 
-#[derive(Debug, Serialize)]
-pub enum CommitEntryEvent {
-    Add,
-    Rename,
-    Delete,
-    Modify,
-    Copied,
-}
-#[derive(Debug, Serialize)]
-pub struct FileChange {
-    file: PathBuf,
-    old_file: Option<PathBuf>,
-    change: CommitEntryEvent,
-    lines_added: usize,
-    lines_deleted: usize,
-}
-
 fn scan_diffs(
     repo: &Repository,
     commit_tree: &Tree,
@@ -197,7 +197,7 @@ fn summarise_delta(
             Some(FileChange {
                 file: name.to_path_buf(),
                 old_file: None,
-                change: CommitEntryEvent::Add,
+                change: CommitChange::Add,
                 lines_added,
                 lines_deleted,
             })
@@ -208,7 +208,7 @@ fn summarise_delta(
             Some(FileChange {
                 file: new_name.to_path_buf(),
                 old_file: Some(old_name.to_path_buf()),
-                change: CommitEntryEvent::Rename,
+                change: CommitChange::Rename,
                 lines_added,
                 lines_deleted,
             })
@@ -218,7 +218,7 @@ fn summarise_delta(
             Some(FileChange {
                 file: name.to_path_buf(),
                 old_file: None,
-                change: CommitEntryEvent::Delete,
+                change: CommitChange::Delete,
                 lines_added,
                 lines_deleted,
             })
@@ -228,7 +228,7 @@ fn summarise_delta(
             Some(FileChange {
                 file: name.to_path_buf(),
                 old_file: None,
-                change: CommitEntryEvent::Modify,
+                change: CommitChange::Modify,
                 lines_added,
                 lines_deleted,
             })
@@ -239,7 +239,7 @@ fn summarise_delta(
             Some(FileChange {
                 file: new_name.to_path_buf(),
                 old_file: Some(old_name.to_path_buf()),
-                change: CommitEntryEvent::Copied,
+                change: CommitChange::Copied,
                 lines_added,
                 lines_deleted,
             })
