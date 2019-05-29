@@ -93,10 +93,9 @@ impl Serialize for FlareTreeNode {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::test_helpers::*;
     use pretty_assertions::assert_eq;
-    use regex::Regex;
     use serde_json::json;
-    use serde_json::Value;
     use std::path::Path;
 
     #[test]
@@ -228,25 +227,16 @@ mod test {
         assert_eq!(&file.data["widgets"], &expected);
     }
 
-    fn strip(string: &str) -> String {
-        let re = Regex::new(r"\s+").unwrap();
-        re.replace_all(string, "").to_string()
-    }
-
     #[test]
     fn can_serialize_directory_to_json() {
         let root = FlareTreeNode::new("root", false);
 
-        let serialized = serde_json::to_string(&root).unwrap();
-
-        assert_eq!(
-            serialized,
-            strip(
-                r#"{
+        assert_eq_json_str(
+            &root,
+            r#"{
                     "name":"root",
                     "children": []
-                }"#
-            )
+                }"#,
         )
     }
 
@@ -255,17 +245,13 @@ mod test {
         let mut dir = FlareTreeNode::new("foo", false);
         dir.add_data("wibble", json!("fnord"));
 
-        let serialized = serde_json::to_string(&dir).unwrap();
-
-        assert_eq!(
-            serialized,
-            strip(
-                r#"{
-                    "name":"foo",
-                    "data": {"wibble":"fnord"},
-                    "children": []
-                }"#
-            )
+        assert_eq_json_str(
+            &dir,
+            r#"{
+                "name":"foo",
+                "data": {"wibble":"fnord"},
+                "children": []
+                }"#,
         )
     }
 
@@ -273,15 +259,11 @@ mod test {
     fn can_serialize_file_to_json() {
         let file = FlareTreeNode::new("foo.txt", true);
 
-        let serialized = serde_json::to_string(&file).unwrap();
-
-        assert_eq!(
-            serialized,
-            strip(
-                r#"{
+        assert_eq_json_str(
+            &file,
+            r#"{
                     "name":"foo.txt"
-                }"#
-            )
+                }"#,
         )
     }
 
@@ -290,16 +272,12 @@ mod test {
         let mut file = FlareTreeNode::new("foo.txt", true);
         file.add_data("wibble", json!("fnord"));
 
-        let serialized = serde_json::to_string(&file).unwrap();
-
-        assert_eq!(
-            serialized,
-            strip(
-                r#"{
+        assert_eq_json_str(
+            &file,
+            r#"{
                     "name":"foo.txt",
                     "data": {"wibble":"fnord"}
-                }"#
-            )
+                }"#,
         )
     }
 
@@ -309,16 +287,12 @@ mod test {
         let value = json!({"foo": ["bar", "baz", 123]});
         file.add_data("bat", value);
 
-        let serialized = serde_json::to_string(&file).unwrap();
-
-        assert_eq!(
-            serialized,
-            strip(
-                r#"{
+        assert_eq_json_str(
+            &file,
+            r#"{
                     "name":"foo.txt",
                     "data": {"bat": {"foo": ["bar", "baz", 123]}}
-                }"#
-            )
+                }"#,
         )
     }
 
@@ -328,12 +302,9 @@ mod test {
         root.append_child(FlareTreeNode::new("child.txt", true));
         root.append_child(FlareTreeNode::new("child2", false));
 
-        let serialized = serde_json::to_string(&root).unwrap();
-        let reparsed: Value = serde_json::from_str(&serialized).unwrap();
-
-        assert_eq!(
-            reparsed,
-            json!({
+        assert_eq_json_value(
+            &root,
+            &json!({
                 "name":"root",
                 "children":[
                     {
@@ -344,7 +315,7 @@ mod test {
                         "children":[]
                     }
                 ]
-            })
+            }),
         )
     }
 }

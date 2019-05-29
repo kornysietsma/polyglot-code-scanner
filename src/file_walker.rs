@@ -82,22 +82,15 @@ pub fn walk_directory(
 #[cfg(test)]
 mod test {
     use super::*;
-    use pretty_assertions::assert_eq;
+    use crate::test_helpers::*;
     use serde_json::json;
-    use serde_json::Value;
 
     #[test]
     fn scanning_a_filesystem_builds_a_tree() {
         let root = Path::new("./tests/data/simple/");
         let tree = walk_directory(root, &mut Vec::new()).unwrap();
-        let json = serde_json::to_string_pretty(&tree).unwrap();
-        let parsed_result: Value = serde_json::from_str(&json).unwrap();
 
-        let expected =
-            std::fs::read_to_string(Path::new("./tests/expected/simple_files.json")).unwrap();
-        let parsed_expected: Value = serde_json::from_str(&expected).unwrap();
-
-        assert_eq!(parsed_result, parsed_expected);
+        assert_eq_json_file(&tree, "./tests/expected/simple_files.json")
     }
 
     #[derive(Debug)]
@@ -147,15 +140,8 @@ mod test {
             &mut vec![Box::new(simple_tic), Box::new(self_naming_tic)];
 
         let tree = walk_directory(root, calculators).unwrap();
-        let json = serde_json::to_string_pretty(&tree).unwrap();
-        let parsed_result: Value = serde_json::from_str(&json).unwrap();
 
-        let expected =
-            std::fs::read_to_string(Path::new("./tests/expected/simple_files_with_data.json"))
-                .unwrap();
-        let parsed_expected: Value = serde_json::from_str(&expected).unwrap();
-
-        assert_eq!(parsed_result, parsed_expected);
+        assert_eq_json_file(&tree, "./tests/expected/simple_files_with_data.json");
     }
 
     #[derive(Debug)]
@@ -184,14 +170,7 @@ mod test {
         let calculators: &mut Vec<Box<ToxicityIndicatorCalculator>> = &mut vec![Box::new(tic)];
 
         let tree = walk_directory(root, calculators).unwrap();
-        let json = serde_json::to_string_pretty(&tree).unwrap();
-        let parsed_result: Value = serde_json::from_str(&json).unwrap();
 
-        let expected =
-            std::fs::read_to_string(Path::new("./tests/expected/simple_files_with_counts.json"))
-                .unwrap();
-        let parsed_expected: Value = serde_json::from_str(&expected).unwrap();
-
-        assert_eq!(parsed_result, parsed_expected);
+        assert_eq_json_file(&tree, "./tests/expected/simple_files_with_counts.json");
     }
 }

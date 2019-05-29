@@ -21,5 +21,6 @@ fn it_can_calculate_loc_on_files() {
             .unwrap();
     let parsed_expected: Value = serde_json::from_str(&expected).unwrap();
 
+    // TODO: how can we use test_helpers??
     assert_eq!(parsed_result, parsed_expected);
 }

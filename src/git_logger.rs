@@ -287,41 +287,8 @@ fn parse_file(filename: &Path) -> Result<GitData, Error> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use serde_json::Value;
-
-    extern crate tempfile;
-    extern crate zip;
-    use pretty_assertions::assert_eq;
-    use std::fs::File;
-    use std::path::Path;
+    use crate::test_helpers::*;
     use tempfile::tempdir;
-    use zip::ZipArchive;
-
-    /// adapted from https://github.com/mvdnes/zip-rs/blob/master/examples/extract.rs
-    pub fn unzip_to_dir(dest: &Path, zipname: &str) -> Result<(), Error> {
-        let fname = std::path::Path::new(zipname);
-        let file = File::open(&fname)?;
-
-        let mut archive = ZipArchive::new(file)?;
-
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i)?;
-            let outpath = PathBuf::from(dest).join(file.sanitized_name());
-
-            if (&*file.name()).ends_with('/') {
-                std::fs::create_dir_all(&outpath)?;
-            } else {
-                if let Some(p) = outpath.parent() {
-                    if !p.exists() {
-                        std::fs::create_dir_all(&p)?;
-                    }
-                }
-                let mut outfile = std::fs::File::create(&outpath)?;
-                std::io::copy(&mut file, &mut outfile)?;
-            }
-        }
-        Ok(())
-    }
 
     #[test]
     fn can_extract_basic_git_log() -> Result<(), Error> {
@@ -331,13 +298,7 @@ mod test {
 
         let git_log = log(&git_root, None)?;
 
-        let json = serde_json::to_string_pretty(&git_log)?;
-        let parsed_result: Value = serde_json::from_str(&json)?;
-
-        let expected = std::fs::read_to_string(Path::new("./tests/expected/git/git_sample.json"))?;
-        let parsed_expected: Value = serde_json::from_str(&expected)?;
-
-        assert_eq!(parsed_result, parsed_expected);
+        assert_eq_json_file(&git_log, "./tests/expected/git/git_sample.json");
 
         Ok(())
     }
@@ -355,15 +316,7 @@ mod test {
             }),
         )?;
 
-        let json = serde_json::to_string_pretty(&git_log)?;
-        let parsed_result: Value = serde_json::from_str(&json)?;
-
-        let expected = std::fs::read_to_string(Path::new(
-            "./tests/expected/git/git_sample_with_merges.json",
-        ))?;
-        let parsed_expected: Value = serde_json::from_str(&expected)?;
-
-        assert_eq!(parsed_result, parsed_expected);
+        assert_eq_json_file(&git_log, "./tests/expected/git/git_sample_with_merges.json");
 
         Ok(())
     }

@@ -17,6 +17,13 @@ mod flare;
 mod loc;
 mod toxicity_indicator_calculator;
 
+#[cfg(test)]
+pub mod test_helpers;
+#[cfg(test)]
+extern crate tempfile;
+#[cfg(test)]
+extern crate zip;
+
 pub mod git_logger;
 
 use loc::LocCalculator;
