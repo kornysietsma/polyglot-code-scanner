@@ -19,6 +19,7 @@ pub const DEFAULT_GIT_LOG_CONFIG: GitLogConfig = GitLogConfig {
 
 #[derive(Debug, Serialize)]
 pub struct GitLog {
+    /// repo work dir - always canonical
     workdir: PathBuf,
     entries: Vec<GitLogEntry>,
 }
@@ -108,25 +109,41 @@ impl FileHistoryEntry {
 
 #[derive(Debug, Serialize)]
 pub struct GitFileHistory {
+    /// repo work dir - always canonical
     workdir: PathBuf,
     history_by_file: HashMap<PathBuf, Vec<FileHistoryEntry>>,
 }
 
-pub fn git_file_history(log: GitLog) -> Result<GitFileHistory, Error> {
-    let mut history_by_file = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
-    for entry in log.entries {
-        for file_change in entry.clone().file_changes {
-            let hash_entry = history_by_file
-                .entry(file_change.file.clone()) // TODO: how to avoid clone?
-                .or_insert(Vec::new());
-            let new_entry = FileHistoryEntry::from(&entry, &file_change);
-            hash_entry.push(new_entry);
+impl GitFileHistory {
+    pub fn new(log: GitLog) -> Result<GitFileHistory, Error> {
+        let mut history_by_file = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
+        for entry in log.entries {
+            for file_change in entry.clone().file_changes {
+                let hash_entry = history_by_file
+                    .entry(file_change.file.clone()) // TODO: how to avoid clone?
+                    .or_insert(Vec::new());
+                let new_entry = FileHistoryEntry::from(&entry, &file_change);
+                hash_entry.push(new_entry);
+            }
         }
+        Ok(GitFileHistory {
+            workdir: log.workdir,
+            history_by_file,
+        })
     }
-    Ok(GitFileHistory {
-        workdir: log.workdir,
-        history_by_file,
-    })
+
+    /// true if this repo is valid for this file - file must exist (as we canonicalize it)
+    pub fn is_repo_for(&self, file: &Path) -> Result<bool, Error> {
+        let canonical_file = file.canonicalize()?;
+        Ok(canonical_file.starts_with(&self.workdir))
+    }
+
+    /// get git history for this file - file must exist (as we canonicalize it)
+    pub fn history_for(&self, file: &Path) -> Result<Option<&Vec<FileHistoryEntry>>, Error> {
+        let canonical_file = file.canonicalize()?;
+        let relative_file = canonical_file.strip_prefix(&self.workdir)?;
+        Ok(self.history_by_file.get(relative_file))
+    }
 }
 
 pub fn log(start_dir: &Path, config: Option<GitLogConfig>) -> Result<GitLog, Error> {
@@ -136,7 +153,8 @@ pub fn log(start_dir: &Path, config: Option<GitLogConfig>) -> Result<GitLog, Err
 
     let workdir = repo
         .workdir()
-        .ok_or_else(|| format_err!("bare repository - no workdir"))?;
+        .ok_or_else(|| format_err!("bare repository - no workdir"))?
+        .canonicalize()?;
 
     debug!("work dir: {:?}", workdir);
 
@@ -462,7 +480,7 @@ mod test {
 
         let git_log = log(&git_root, None)?;
 
-        let history = git_file_history(git_log)?;
+        let history = GitFileHistory::new(git_log)?;
 
         assert_eq!(history.workdir.canonicalize()?, git_root.canonicalize()?);
 
@@ -470,6 +488,68 @@ mod test {
             &history.history_by_file,
             "./tests/expected/git/git_sample_by_filename.json",
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn can_tell_if_file_is_in_git_repo() -> Result<(), Error> {
+        let gitdir = tempdir()?;
+        let git_root = unzip_git_sample(gitdir.path())?;
+
+        let git_log = log(&git_root, None)?;
+
+        let history = GitFileHistory::new(git_log)?;
+
+        assert_eq!(
+            history.is_repo_for(&git_root.join("simple/parent.clj"))?,
+            true
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn can_get_history_for_file() -> Result<(), Error> {
+        let gitdir = tempdir()?;
+        let git_root = unzip_git_sample(gitdir.path())?;
+
+        let git_log = log(&git_root, None)?;
+
+        let history = GitFileHistory::new(git_log)?;
+
+        let file_history = history.history_for(&git_root.join("simple/parent.clj"))?;
+
+        assert_eq!(file_history.is_some(), true);
+
+        let ids: Vec<_> = file_history.unwrap().iter().map(|h| &h.id).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "0dbd54d4c524ecc776f381e660cce9b2dd92162c",
+                "a0ae9997cfdf49fd0cbf54dacc72c778af337519",
+                "ca239efb9b26db57ac9e2ec3e2df1c42578a46f8"
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn no_history_for_files_not_known() -> Result<(), Error> {
+        let gitdir = tempdir()?;
+        let git_root = unzip_git_sample(gitdir.path())?;
+
+        let git_log = log(&git_root, None)?;
+
+        let history = GitFileHistory::new(git_log)?;
+
+        let new_file = git_root.join("simple/nonesuch.clj");
+        std::fs::File::create(&new_file)?;
+
+        let file_history = history.history_for(&new_file)?;
+
+        assert_eq!(file_history.is_none(), true);
 
         Ok(())
     }
