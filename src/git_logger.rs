@@ -1,14 +1,9 @@
 #![warn(clippy::all)]
-#![allow(dead_code)]
-#![allow(unused_imports)]
 use failure::Error;
-use git2::DiffDelta;
-use git2::Odb;
-use git2::Oid;
-use git2::{Commit, Delta, ObjectType, Patch, Repository, Status, Tree};
+use git2::{Commit, Delta, DiffDelta, ObjectType, Odb, Oid, Patch, Repository, Tree};
 use regex::Regex;
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -24,6 +19,7 @@ pub const DEFAULT_GIT_LOG_CONFIG: GitLogConfig = GitLogConfig {
 
 #[derive(Debug, Serialize)]
 pub struct GitLog {
+    workdir: PathBuf,
     entries: Vec<GitLogEntry>,
 }
 
@@ -110,18 +106,27 @@ impl FileHistoryEntry {
     }
 }
 
-pub fn log_by_filename(log: GitLog) -> Result<HashMap<PathBuf, Vec<FileHistoryEntry>>, Error> {
-    let mut results = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
+#[derive(Debug, Serialize)]
+pub struct GitFileHistory {
+    workdir: PathBuf,
+    history_by_file: HashMap<PathBuf, Vec<FileHistoryEntry>>,
+}
+
+pub fn git_file_history(log: GitLog) -> Result<GitFileHistory, Error> {
+    let mut history_by_file = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
     for entry in log.entries {
         for file_change in entry.clone().file_changes {
-            let hash_entry = results
+            let hash_entry = history_by_file
                 .entry(file_change.file.clone()) // TODO: how to avoid clone?
                 .or_insert(Vec::new());
             let new_entry = FileHistoryEntry::from(&entry, &file_change);
             hash_entry.push(new_entry);
         }
     }
-    Ok(results)
+    Ok(GitFileHistory {
+        workdir: log.workdir,
+        history_by_file,
+    })
 }
 
 pub fn log(start_dir: &Path, config: Option<GitLogConfig>) -> Result<GitLog, Error> {
@@ -131,7 +136,7 @@ pub fn log(start_dir: &Path, config: Option<GitLogConfig>) -> Result<GitLog, Err
 
     let workdir = repo
         .workdir()
-        .ok_or_else(|| format_err!("bare repository - no workdir"));
+        .ok_or_else(|| format_err!("bare repository - no workdir"))?;
 
     debug!("work dir: {:?}", workdir);
 
@@ -147,7 +152,10 @@ pub fn log(start_dir: &Path, config: Option<GitLogConfig>) -> Result<GitLog, Err
 
     let entries = entries?.into_iter().flat_map(|e| e).collect();
 
-    Ok(GitLog { entries })
+    Ok(GitLog {
+        workdir: workdir.to_owned(),
+        entries,
+    })
 }
 
 fn summarise_commit(
@@ -370,45 +378,17 @@ fn summarise_delta(
     }
 }
 
-#[derive(Debug, PartialEq, Serialize)]
-struct GitData {
-    authors: Vec<String>,
-    last_change: i64,
-}
-
-fn parse_file(filename: &Path) -> Result<GitData, Error> {
-    let repo = Repository::discover(filename)?;
-    let odb = repo.odb()?;
-    let mut revwalk = repo.revwalk()?;
-    revwalk.push_head()?;
-    let mut authors = HashSet::new();
-    for oid in revwalk {
-        let oid = oid?;
-        let kind = odb.read(oid)?.kind();
-        if kind == ObjectType::Commit {
-            let commit = repo.find_commit(oid)?;
-            let author = commit.author();
-            let message = commit.message().unwrap_or("no message");
-            println!("scanning: {:?}", message);
-            let name: String = author.name().unwrap_or("UNKNOWN AUTHOR").to_string();
-            authors.insert(name);
-        } else {
-            println!("Unexpected Kind {:?}", kind);
-        }
-    }
-
-    Ok(GitData {
-        authors: authors.into_iter().collect(),
-        last_change: 0,
-    })
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::test_helpers::*;
     use pretty_assertions::assert_eq;
     use tempfile::tempdir;
+
+    fn unzip_git_sample(workdir: &Path) -> Result<PathBuf, Error> {
+        unzip_to_dir(workdir, "tests/data/git/git_sample.zip")?;
+        Ok(PathBuf::from(workdir).join("git_sample"))
+    }
 
     #[test]
     fn authorless_message_has_no_coauthors() {
@@ -445,12 +425,12 @@ mod test {
     #[test]
     fn can_extract_basic_git_log() -> Result<(), Error> {
         let gitdir = tempdir()?;
-        unzip_to_dir(gitdir.path(), "tests/data/git/git_sample.zip")?;
-        let git_root = PathBuf::from(gitdir.path()).join("git_sample");
-
+        let git_root = unzip_git_sample(gitdir.path())?;
         let git_log = log(&git_root, None)?;
 
-        assert_eq_json_file(&git_log, "./tests/expected/git/git_sample.json");
+        assert_eq!(git_log.workdir.canonicalize()?, git_root.canonicalize()?);
+
+        assert_eq_json_file(&git_log.entries, "./tests/expected/git/git_sample.json");
 
         Ok(())
     }
@@ -458,8 +438,7 @@ mod test {
     #[test]
     fn git_log_can_include_merge_changes() -> Result<(), Error> {
         let gitdir = tempdir()?;
-        unzip_to_dir(gitdir.path(), "tests/data/git/git_sample.zip")?;
-        let git_root = PathBuf::from(gitdir.path()).join("git_sample");
+        let git_root = unzip_git_sample(gitdir.path())?;
 
         let git_log = log(
             &git_root,
@@ -468,7 +447,10 @@ mod test {
             }),
         )?;
 
-        assert_eq_json_file(&git_log, "./tests/expected/git/git_sample_with_merges.json");
+        assert_eq_json_file(
+            &git_log.entries,
+            "./tests/expected/git/git_sample_with_merges.json",
+        );
 
         Ok(())
     }
@@ -476,20 +458,22 @@ mod test {
     #[test]
     fn can_get_log_by_filename() -> Result<(), Error> {
         let gitdir = tempdir()?;
-        unzip_to_dir(gitdir.path(), "tests/data/git/git_sample.zip")?;
-        let git_root = PathBuf::from(gitdir.path()).join("git_sample");
+        let git_root = unzip_git_sample(gitdir.path())?;
 
         let git_log = log(&git_root, None)?;
 
-        let by_filename = log_by_filename(git_log)?;
+        let history = git_file_history(git_log)?;
+
+        assert_eq!(history.workdir.canonicalize()?, git_root.canonicalize()?);
 
         assert_eq_json_file(
-            &by_filename,
+            &history.history_by_file,
             "./tests/expected/git/git_sample_by_filename.json",
         );
 
         Ok(())
     }
+
 }
 
 // run a single test with:
