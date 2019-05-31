@@ -16,6 +16,7 @@ use std::path::PathBuf;
 
 mod file_walker;
 mod flare;
+mod git;
 mod loc;
 mod toxicity_indicator_calculator;
 

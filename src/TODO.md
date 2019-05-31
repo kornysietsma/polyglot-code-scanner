@@ -2,7 +2,8 @@
 
 ## git things:
 - need to actually use git log inside metrics
-- basic usage could just summarise the log into basic "changers" and "last updated" data, as used by my old code
+  - have basic structure, need tests, cli interface - this is a WIP commit
+  - basic usage could just summarise the log into basic "changers" and "last updated" data, as used by my old code
 - filter by dates! Otherwise this is going to be enormous for big repos
 - advanced usage might want the full history so the UI could calculate things like churn.
 - need to handle special cases:

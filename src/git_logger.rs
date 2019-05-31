@@ -7,15 +7,24 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct GitLogConfig {
     /// include merge commits in file stats - usually excluded by `git log` - see https://stackoverflow.com/questions/37801342/using-git-log-to-display-files-changed-during-merge
     include_merges: bool,
 }
 
-pub const DEFAULT_GIT_LOG_CONFIG: GitLogConfig = GitLogConfig {
-    include_merges: false,
-};
+impl GitLogConfig {
+    pub fn default() -> GitLogConfig {
+        GitLogConfig {
+            include_merges: false,
+        }
+    }
+    pub fn include_merges(self, include_merges: bool) -> GitLogConfig {
+        let mut config = self;
+        config.include_merges = include_merges;
+        config
+    }
+}
 
 #[derive(Debug, Serialize)]
 pub struct GitLog {
@@ -114,6 +123,12 @@ pub struct GitFileHistory {
     history_by_file: HashMap<PathBuf, Vec<FileHistoryEntry>>,
 }
 
+impl GitLog {
+    pub fn workdir(&self) -> &Path {
+        &self.workdir
+    }
+}
+
 impl GitFileHistory {
     pub fn new(log: GitLog) -> Result<GitFileHistory, Error> {
         let mut history_by_file = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
@@ -146,9 +161,8 @@ impl GitFileHistory {
     }
 }
 
-pub fn log(start_dir: &Path, config: Option<GitLogConfig>) -> Result<GitLog, Error> {
-    let config = config.unwrap_or(DEFAULT_GIT_LOG_CONFIG);
-
+// TODO: move this into GitLog impl
+pub fn log(start_dir: &Path, config: GitLogConfig) -> Result<GitLog, Error> {
     let repo = Repository::discover(start_dir)?;
 
     let workdir = repo
@@ -165,7 +179,7 @@ pub fn log(start_dir: &Path, config: Option<GitLogConfig>) -> Result<GitLog, Err
     // TODO: filter by dates! This will get mad on a big history
 
     let entries: Result<Vec<_>, _> = revwalk
-        .map(|oid| summarise_commit(&repo, &odb, oid, &config))
+        .map(|oid| summarise_commit(&repo, &odb, oid, config))
         .collect();
 
     let entries = entries?.into_iter().flat_map(|e| e).collect();
@@ -180,7 +194,7 @@ fn summarise_commit(
     repo: &Repository,
     odb: &Odb,
     oid: Result<Oid, git2::Error>,
-    config: &GitLogConfig,
+    config: GitLogConfig,
 ) -> Result<Option<GitLogEntry>, Error> {
     let oid = oid?;
     let kind = odb.read(oid)?.kind();
@@ -271,7 +285,7 @@ fn commit_file_changes(
     repo: &Repository,
     commit: &Commit,
     commit_tree: &Tree,
-    config: &GitLogConfig,
+    config: GitLogConfig,
 ) -> Vec<FileChange> {
     if commit.parent_count() == 0 {
         info!("Commit {} has no parent", commit.id());
@@ -444,7 +458,7 @@ mod test {
     fn can_extract_basic_git_log() -> Result<(), Error> {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
-        let git_log = log(&git_root, None)?;
+        let git_log = log(&git_root, GitLogConfig::default())?;
 
         assert_eq!(git_log.workdir.canonicalize()?, git_root.canonicalize()?);
 
@@ -458,12 +472,7 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
 
-        let git_log = log(
-            &git_root,
-            Some(GitLogConfig {
-                include_merges: true,
-            }),
-        )?;
+        let git_log = log(&git_root, GitLogConfig::default().include_merges(true))?;
 
         assert_eq_json_file(
             &git_log.entries,
@@ -478,7 +487,7 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
 
-        let git_log = log(&git_root, None)?;
+        let git_log = log(&git_root, GitLogConfig::default())?;
 
         let history = GitFileHistory::new(git_log)?;
 
@@ -497,7 +506,7 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
 
-        let git_log = log(&git_root, None)?;
+        let git_log = log(&git_root, GitLogConfig::default())?;
 
         let history = GitFileHistory::new(git_log)?;
 
@@ -514,7 +523,7 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
 
-        let git_log = log(&git_root, None)?;
+        let git_log = log(&git_root, GitLogConfig::default())?;
 
         let history = GitFileHistory::new(git_log)?;
 
@@ -540,7 +549,7 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
 
-        let git_log = log(&git_root, None)?;
+        let git_log = log(&git_root, GitLogConfig::default())?;
 
         let history = GitFileHistory::new(git_log)?;
 
