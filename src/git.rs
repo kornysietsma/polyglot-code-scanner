@@ -7,6 +7,8 @@ use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use failure::Error;
 use git2::Status;
 use serde::Serialize;
+use std::collections::HashSet;
+use std::iter::once;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -14,10 +16,9 @@ use git2::Repository;
 
 /// a struct representing git data for a file
 #[derive(Debug, PartialEq, Serialize)]
-struct GitData {}
-
-fn parse_file(_filename: &Path) -> Result<GitData, Error> {
-    Ok(GitData {})
+struct GitData {
+    last_update: i64,
+    user_count: usize,
 }
 
 #[derive(Debug)]
@@ -44,8 +45,34 @@ impl GitCalculator {
         Ok(())
     }
 
-    fn stats_from_history(&self, history: &[FileHistoryEntry]) -> GitData {
-        GitData {}
+    fn unique_changers(history: &FileHistoryEntry) -> HashSet<&str> {
+        // TODO: test me!
+        history
+            .co_authors
+            .iter()
+            .chain(once(&history.author))
+            .chain(once(&history.committer))
+            .map(|u| u.identifier())
+            .collect()
+    }
+
+    fn stats_from_history(&self, history: &[FileHistoryEntry]) -> Option<GitData> {
+        // TODO!
+        // for now, just get latest change - maybe non-trivial change? (i.e. ignore rename/copy) - or this could be configurable
+        // and get set of all authors - maybe dedupe by email.
+        if history.is_empty() {
+            return None;
+        }
+        let last_update = history.iter().map(|h| h.commit_time).max()?;
+        let changers: HashSet<&str> = history
+            .iter()
+            .flat_map(|h| GitCalculator::unique_changers(h))
+            .collect();
+
+        Some(GitData {
+            last_update,
+            user_count: changers.len(),
+        })
     }
 }
 
@@ -87,5 +114,43 @@ impl ToxicityIndicatorCalculator for GitCalculator {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::git_logger::{CommitChange, User};
+    use pretty_assertions::assert_eq;
 
+    #[test]
+    fn gets_basic_stats_from_git_events() -> Result<(), Error> {
+        let events: Vec<FileHistoryEntry> = vec![
+            FileHistoryEntry::build(
+                "1111",
+                "jo@smith.com",
+                1,
+                "sam@smith.com",
+                CommitChange::Add,
+                3,
+            ),
+            FileHistoryEntry::build(
+                "2222",
+                "x@smith.com",
+                3,
+                "sam@smith.com",
+                CommitChange::Add,
+                7,
+            ),
+        ];
+        let calculator = GitCalculator {
+            git_histories: Vec::new(),
+            git_log_config: GitLogConfig::default(),
+        };
+
+        let stats = calculator.stats_from_history(&events);
+
+        assert_eq!(
+            stats,
+            Some(GitData {
+                last_update: 3,
+                user_count: 3
+            })
+        );
+        Ok(())
+    }
 }

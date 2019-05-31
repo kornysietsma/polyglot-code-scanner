@@ -42,10 +42,21 @@ pub struct User {
 }
 
 impl User {
-    fn new(name: Option<&str>, email: Option<&str>) -> User {
+    pub fn new(name: Option<&str>, email: Option<&str>) -> User {
         User {
             name: name.map(|x| x.to_owned()),
             email: email.map(|x| x.to_owned()),
+        }
+    }
+
+    /// used for deduping users - returns email if it exists, otherwise name, otherwise an error value
+    pub fn identifier(&self) -> &str {
+        if let Some(email) = &self.email {
+            email
+        } else if let Some(name) = &self.name {
+            name
+        } else {
+            "[blank user]"
         }
     }
 }
@@ -87,15 +98,15 @@ pub struct FileChange {
 /// For each file we just keep a simplified history - what the changes were, by whom, and when.
 #[derive(Debug, Serialize)]
 pub struct FileHistoryEntry {
-    id: String,
-    committer: User,
-    commit_time: i64,
-    author: User,
-    author_time: i64,
-    co_authors: Vec<User>,
-    change: CommitChange,
-    lines_added: usize,
-    lines_deleted: usize,
+    pub id: String,
+    pub committer: User,
+    pub commit_time: i64,
+    pub author: User,
+    pub author_time: i64,
+    pub co_authors: Vec<User>,
+    pub change: CommitChange,
+    pub lines_added: usize,
+    pub lines_deleted: usize,
 }
 
 impl FileHistoryEntry {
@@ -416,6 +427,29 @@ mod test {
     use crate::test_helpers::*;
     use pretty_assertions::assert_eq;
     use tempfile::tempdir;
+
+    impl FileHistoryEntry {
+        pub fn build(
+            id: &str,
+            committer_email: &str,
+            commit_time: i64,
+            author_email: &str,
+            change: CommitChange,
+            lines_added: usize,
+        ) -> FileHistoryEntry {
+            FileHistoryEntry {
+                id: id.to_owned(),
+                committer: User::new(Some("CommitterName"), Some(committer_email)),
+                commit_time,
+                author: User::new(Some("AuthorName"), Some(author_email)),
+                author_time: commit_time,
+                co_authors: Vec::new(),
+                change,
+                lines_added,
+                lines_deleted: 0,
+            }
+        }
+    }
 
     fn unzip_git_sample(workdir: &Path) -> Result<PathBuf, Error> {
         unzip_to_dir(workdir, "tests/data/git/git_sample.zip")?;
