@@ -134,12 +134,6 @@ pub struct GitFileHistory {
     history_by_file: HashMap<PathBuf, Vec<FileHistoryEntry>>,
 }
 
-impl GitLog {
-    pub fn workdir(&self) -> &Path {
-        &self.workdir
-    }
-}
-
 impl GitFileHistory {
     pub fn new(log: GitLog) -> Result<GitFileHistory, Error> {
         let mut history_by_file = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
@@ -172,33 +166,39 @@ impl GitFileHistory {
     }
 }
 
-// TODO: move this into GitLog impl
-pub fn log(start_dir: &Path, config: GitLogConfig) -> Result<GitLog, Error> {
-    let repo = Repository::discover(start_dir)?;
+impl GitLog {
+    pub fn workdir(&self) -> &Path {
+        &self.workdir
+    }
 
-    let workdir = repo
-        .workdir()
-        .ok_or_else(|| format_err!("bare repository - no workdir"))?
-        .canonicalize()?;
+    // TODO: move this into GitLog impl
+    pub fn new(start_dir: &Path, config: GitLogConfig) -> Result<GitLog, Error> {
+        let repo = Repository::discover(start_dir)?;
 
-    debug!("work dir: {:?}", workdir);
+        let workdir = repo
+            .workdir()
+            .ok_or_else(|| format_err!("bare repository - no workdir"))?
+            .canonicalize()?;
 
-    let odb = repo.odb()?;
-    let mut revwalk = repo.revwalk()?;
-    revwalk.push_head()?;
+        debug!("work dir: {:?}", workdir);
 
-    // TODO: filter by dates! This will get mad on a big history
+        let odb = repo.odb()?;
+        let mut revwalk = repo.revwalk()?;
+        revwalk.push_head()?;
 
-    let entries: Result<Vec<_>, _> = revwalk
-        .map(|oid| summarise_commit(&repo, &odb, oid, config))
-        .collect();
+        // TODO: filter by dates! This will get mad on a big history
 
-    let entries = entries?.into_iter().flat_map(|e| e).collect();
+        let entries: Result<Vec<_>, _> = revwalk
+            .map(|oid| summarise_commit(&repo, &odb, oid, config))
+            .collect();
 
-    Ok(GitLog {
-        workdir: workdir.to_owned(),
-        entries,
-    })
+        let entries = entries?.into_iter().flat_map(|e| e).collect();
+
+        Ok(GitLog {
+            workdir: workdir.to_owned(),
+            entries,
+        })
+    }
 }
 
 fn summarise_commit(
@@ -492,7 +492,7 @@ mod test {
     fn can_extract_basic_git_log() -> Result<(), Error> {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
-        let git_log = log(&git_root, GitLogConfig::default())?;
+        let git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
         assert_eq!(git_log.workdir.canonicalize()?, git_root.canonicalize()?);
 
@@ -506,7 +506,7 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
 
-        let git_log = log(&git_root, GitLogConfig::default().include_merges(true))?;
+        let git_log = GitLog::new(&git_root, GitLogConfig::default().include_merges(true))?;
 
         assert_eq_json_file(
             &git_log.entries,
@@ -521,7 +521,7 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
 
-        let git_log = log(&git_root, GitLogConfig::default())?;
+        let git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
         let history = GitFileHistory::new(git_log)?;
 
@@ -540,7 +540,7 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
 
-        let git_log = log(&git_root, GitLogConfig::default())?;
+        let git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
         let history = GitFileHistory::new(git_log)?;
 
@@ -557,7 +557,7 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
 
-        let git_log = log(&git_root, GitLogConfig::default())?;
+        let git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
         let history = GitFileHistory::new(git_log)?;
 
@@ -583,7 +583,7 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
 
-        let git_log = log(&git_root, GitLogConfig::default())?;
+        let git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
         let history = GitFileHistory::new(git_log)?;
 

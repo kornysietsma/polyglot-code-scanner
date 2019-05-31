@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use crate::git_logger::{log, FileHistoryEntry, GitFileHistory, GitLogConfig};
+use crate::git_logger::{FileHistoryEntry, GitFileHistory, GitLog, GitLogConfig};
 use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use failure::Error;
 use git2::Status;
@@ -38,7 +38,7 @@ impl GitCalculator {
 
     fn add_history_for(&mut self, filename: &Path) -> Result<(), Error> {
         info!("Adding new git log for {:?}", &filename);
-        let git_log = log(filename, self.git_log_config)?;
+        let git_log = GitLog::new(filename, self.git_log_config)?;
         info!("Found working dir: {:?}", git_log.workdir());
         let history = GitFileHistory::new(git_log)?;
         self.git_histories.push(history);

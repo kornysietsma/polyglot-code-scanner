@@ -6,7 +6,7 @@ extern crate clap_verbosity_flag;
 extern crate failure_tools;
 
 use failure::Error;
-use lati_scanner::git_logger;
+use lati_scanner::git_logger::GitLog;
 use std::fs::File;
 use std::io;
 use std::path::PathBuf;
@@ -43,7 +43,7 @@ fn real_main() -> Result<(), Error> {
 
     if args.git {
         // TODO: remove this once the git functionality is stable
-        let log = git_logger::log(&root, lati_scanner::git_logger::GitLogConfig::default())?;
+        let log = GitLog::new(&root, lati_scanner::git_logger::GitLogConfig::default())?;
         serde_json::to_writer_pretty(out, &log)?;
     } else {
         lati_scanner::run(root, vec!["loc".to_string()], &mut out)?;

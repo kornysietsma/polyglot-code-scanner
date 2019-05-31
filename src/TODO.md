@@ -12,6 +12,7 @@
   - there might be multiple git roots (i.e. I used to scan all the repos for an org into one JSON file)
   - submodules?!
   - local checkout is not on remote origin/master (do we care?)
+- note that really, the age stat should be based on the gap between commit time and the repo last commit?
 
 ## Soon:
 * ToxicityIndicatorCalculator might want to also look at directories - may not generate numbers, but it might need to update state.
