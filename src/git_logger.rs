@@ -96,7 +96,8 @@ pub struct FileChange {
 }
 
 /// For each file we just keep a simplified history - what the changes were, by whom, and when.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Builder)]
+#[builder(setter(into), pattern = "owned")]
 pub struct FileHistoryEntry {
     pub id: String,
     pub committer: User,
@@ -127,6 +128,25 @@ impl FileHistoryEntry {
     }
 }
 
+#[cfg(test)]
+impl FileHistoryEntryBuilder {
+    pub fn test_default() -> Self {
+        FileHistoryEntryBuilder::default()
+            .co_authors(Vec::new())
+            .change(CommitChange::Add)
+            .lines_added(0usize)
+            .lines_deleted(0usize)
+    }
+    pub fn emails(self, email: &str) -> Self {
+        self.committer(User::new(None, Some(email)))
+            .author(User::new(None, Some(email)))
+    }
+
+    pub fn times(self, time: i64) -> Self {
+        self.commit_time(time).author_time(time)
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct GitFileHistory {
     /// repo work dir - always canonical
@@ -145,8 +165,8 @@ impl GitFileHistory {
             }
             for file_change in entry.clone().file_changes {
                 let hash_entry = history_by_file
-                    .entry(file_change.file.clone()) // TODO: how to avoid clone?
-                    .or_insert(Vec::new());
+                    .entry(file_change.file.clone()) // TODO: how to avoid clone? and the one 2 lines earlier?
+                    .or_insert_with(Vec::new);
                 let new_entry = FileHistoryEntry::from(&entry, &file_change);
                 hash_entry.push(new_entry);
             }
@@ -437,29 +457,6 @@ mod test {
     use crate::test_helpers::*;
     use pretty_assertions::assert_eq;
     use tempfile::tempdir;
-
-    impl FileHistoryEntry {
-        pub fn build(
-            id: &str,
-            committer_email: &str,
-            commit_time: i64,
-            author_email: &str,
-            change: CommitChange,
-            lines_added: usize,
-        ) -> FileHistoryEntry {
-            FileHistoryEntry {
-                id: id.to_owned(),
-                committer: User::new(Some("CommitterName"), Some(committer_email)),
-                commit_time,
-                author: User::new(Some("AuthorName"), Some(author_email)),
-                author_time: commit_time,
-                co_authors: Vec::new(),
-                change,
-                lines_added,
-                lines_deleted: 0,
-            }
-        }
-    }
 
     fn unzip_git_sample(workdir: &Path) -> Result<PathBuf, Error> {
         unzip_to_dir(workdir, "tests/data/git/git_sample.zip")?;

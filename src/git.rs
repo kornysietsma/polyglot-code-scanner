@@ -2,7 +2,9 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use crate::git_logger::{FileHistoryEntry, GitFileHistory, GitLog, GitLogConfig};
+use crate::git_logger::{
+    FileHistoryEntry, FileHistoryEntryBuilder, GitFileHistory, GitLog, GitLogConfig,
+};
 use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use failure::Error;
 use git2::Status;
@@ -134,22 +136,19 @@ mod test {
         let first_day = one_day_in_secs;
 
         let events: Vec<FileHistoryEntry> = vec![
-            FileHistoryEntry::build(
-                "1111",
-                "jo@smith.com",
-                first_day,
-                "sam@smith.com",
-                CommitChange::Add,
-                3,
-            ),
-            FileHistoryEntry::build(
-                "2222",
-                "x@smith.com",
-                first_day + 3 * one_day_in_secs,
-                "sam@smith.com",
-                CommitChange::Add,
-                7,
-            ),
+            FileHistoryEntryBuilder::test_default()
+                .emails("jo@smith.com")
+                .times(first_day)
+                .id("1111")
+                .build()
+                .map_err(failure::err_msg)?,
+            FileHistoryEntryBuilder::test_default()
+                .emails("x@smith.com")
+                .times(first_day + 3 * one_day_in_secs)
+                .author(User::new(None, Some("y@smith.com")))
+                .id("2222")
+                .build()
+                .map_err(failure::err_msg)?,
         ];
         let calculator = GitCalculator {
             git_histories: Vec::new(),

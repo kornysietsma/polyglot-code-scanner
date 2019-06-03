@@ -1,6 +1,7 @@
 # TODO
 
 ## git things:
+- why is lines_added and lines_deleted usize??
 - need to actually use git log inside metrics
   - basic usage just gets age of last change, number of unique changers
   - look at using derive_builder for test builder?
