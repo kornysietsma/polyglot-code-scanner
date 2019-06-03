@@ -18,6 +18,7 @@ use git2::Repository;
 #[derive(Debug, PartialEq, Serialize)]
 struct GitData {
     last_update: i64,
+    age_in_days: i64,
     user_count: usize,
 }
 
@@ -56,7 +57,11 @@ impl GitCalculator {
             .collect()
     }
 
-    fn stats_from_history(&self, history: &[FileHistoryEntry]) -> Option<GitData> {
+    fn stats_from_history(
+        &self,
+        last_commit: i64,
+        history: &[FileHistoryEntry],
+    ) -> Option<GitData> {
         // TODO!
         // for now, just get latest change - maybe non-trivial change? (i.e. ignore rename/copy) - or this could be configurable
         // and get set of all authors - maybe dedupe by email.
@@ -64,6 +69,9 @@ impl GitCalculator {
             return None;
         }
         let last_update = history.iter().map(|h| h.commit_time).max()?;
+
+        let age_in_days = (last_commit - last_update) / (60 * 60 * 24);
+
         let changers: HashSet<&str> = history
             .iter()
             .flat_map(|h| GitCalculator::unique_changers(h))
@@ -71,6 +79,7 @@ impl GitCalculator {
 
         Some(GitData {
             last_update,
+            age_in_days,
             user_count: changers.len(),
         })
     }
@@ -94,10 +103,11 @@ impl ToxicityIndicatorCalculator for GitCalculator {
                     self.git_history(path).unwrap()
                 }
             };
+            let last_commit = history.last_commit();
             let file_history = history.history_for(path)?;
 
             if let Some(file_history) = file_history {
-                let stats = self.stats_from_history(file_history);
+                let stats = self.stats_from_history(last_commit, file_history);
                 Ok(Some(serde_json::value::to_value(stats).expect(
                     "Serializable object couldn't be serialized to JSON",
                 ))) // TODO: maybe explicit error? Though this should be fatal
@@ -119,11 +129,15 @@ mod test {
 
     #[test]
     fn gets_basic_stats_from_git_events() -> Result<(), Error> {
+        let one_day_in_secs: i64 = 60 * 60 * 24;
+
+        let first_day = one_day_in_secs;
+
         let events: Vec<FileHistoryEntry> = vec![
             FileHistoryEntry::build(
                 "1111",
                 "jo@smith.com",
-                1,
+                first_day,
                 "sam@smith.com",
                 CommitChange::Add,
                 3,
@@ -131,7 +145,7 @@ mod test {
             FileHistoryEntry::build(
                 "2222",
                 "x@smith.com",
-                3,
+                first_day + 3 * one_day_in_secs,
                 "sam@smith.com",
                 CommitChange::Add,
                 7,
@@ -142,12 +156,15 @@ mod test {
             git_log_config: GitLogConfig::default(),
         };
 
-        let stats = calculator.stats_from_history(&events);
+        let today = first_day + 5 * one_day_in_secs;
+
+        let stats = calculator.stats_from_history(today, &events);
 
         assert_eq!(
             stats,
             Some(GitData {
-                last_update: 3,
+                last_update: first_day + 3 * one_day_in_secs,
+                age_in_days: 2,
                 user_count: 3
             })
         );

@@ -132,12 +132,17 @@ pub struct GitFileHistory {
     /// repo work dir - always canonical
     workdir: PathBuf,
     history_by_file: HashMap<PathBuf, Vec<FileHistoryEntry>>,
+    last_commit: i64,
 }
 
 impl GitFileHistory {
     pub fn new(log: GitLog) -> Result<GitFileHistory, Error> {
+        let mut last_commit: i64 = 0;
         let mut history_by_file = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
         for entry in log.entries {
+            if entry.commit_time > last_commit {
+                last_commit = entry.commit_time;
+            }
             for file_change in entry.clone().file_changes {
                 let hash_entry = history_by_file
                     .entry(file_change.file.clone()) // TODO: how to avoid clone?
@@ -149,6 +154,7 @@ impl GitFileHistory {
         Ok(GitFileHistory {
             workdir: log.workdir,
             history_by_file,
+            last_commit,
         })
     }
 
@@ -163,6 +169,10 @@ impl GitFileHistory {
         let canonical_file = file.canonicalize()?;
         let relative_file = canonical_file.strip_prefix(&self.workdir)?;
         Ok(self.history_by_file.get(relative_file))
+    }
+
+    pub fn last_commit(&self) -> i64 {
+        self.last_commit
     }
 }
 
@@ -574,6 +584,8 @@ mod test {
                 "ca239efb9b26db57ac9e2ec3e2df1c42578a46f8"
             ]
         );
+
+        assert_eq!(history.last_commit(), 1_558_533_240);
 
         Ok(())
     }

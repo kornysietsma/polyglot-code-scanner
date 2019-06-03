@@ -2,8 +2,10 @@
 
 ## git things:
 - need to actually use git log inside metrics
-  - have basic structure, need tests, cli interface - this is a WIP commit
-  - basic usage could just summarise the log into basic "changers" and "last updated" data, as used by my old code
+  - basic usage just gets age of last change, number of unique changers
+  - look at using derive_builder for test builder?
+  - have basic structure, need tests, cli interface
+  - does a rename or copy count as a change?
 - filter by dates! Otherwise this is going to be enormous for big repos
 - advanced usage might want the full history so the UI could calculate things like churn.
 - need to handle special cases:
