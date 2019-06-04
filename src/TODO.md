@@ -11,26 +11,29 @@
   - submodules?!
   - local checkout is not on remote origin/master (do we care?)
 
-## Soon:
-* Can we get rid of test_shared's duplication in cargo.toml ?
-* "loc" should fall back to text file processing for unknown files (e.g. cargo.lock!)
-* "loc" could also store size for binary files?
+## other things:
+- Can we get rid of test_shared's duplication in cargo.toml ?
+- "loc" should fall back to text file processing for unknown files (e.g. cargo.lock!)
+- "loc" could also store size for binary files?
+- "-P" cli option is confusing - it's pretty printing _for logs_ !
+- can we make the log default "warn"??
+- decrease log verbosity for unknown file types
 
 ## Bigger things
-* publish to github
-* indent stats (with or without comments depending on the next bit)
-* tokei-based calculations that ignore comments - might need a tokei fork! Or can we pilfer bits of tokei?
+- publish to github
+- indent stats (with or without comments depending on the next bit)
+- tokei-based calculations that ignore comments - might need a tokei fork! Or can we pilfer bits of tokei?
 
 ## UI stuff
-* integrate new formats into existing UI
-* minimal UI - no project selector
-* consider two UI modes:
+- integrate new formats into existing UI
+- minimal UI - no project selector
+- consider two UI modes:
   1. dynamic mode - just host a local web server
   2. static mode - publish a static server of current dir for uploading
   (this is so I can both publish demos, but also use it easily for local work)
-* look at new UI? Lots of options
+- look at new UI? Lots of options
 
 ## Future stuff
-* method identification? Can we work out class/method size metrics from indentation?
-* deep git stats - time from author to commit, moving towards CD stats
-* churn?
+- method identification? Can we work out class/method size metrics from indentation?
+- deep git stats - time from author to commit, moving towards CD stats
+- churn?
