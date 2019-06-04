@@ -1,26 +1,49 @@
-use pretty_assertions::assert_eq;
+use failure::Error;
 use serde_json::Value;
 use std::io::Cursor;
 use std::path::PathBuf;
+use tempfile::tempdir;
+use test_shared::*;
 
 #[test]
-fn it_can_calculate_loc_on_files() {
+fn it_calculates_lines_of_code() -> Result<(), Error> {
     let root = PathBuf::from("./tests/data/simple/");
 
     let mut buffer: Vec<u8> = Vec::new();
     let out = Cursor::new(&mut buffer);
 
-    let result = lati_scanner::run(root, vec!["loc".to_string()], out);
+    let result = lati_scanner::run(root, vec!["loc"], out);
 
     assert!(!result.is_err());
 
-    let parsed_result: Value = serde_json::from_reader(buffer.as_slice()).unwrap();
+    let parsed_result: Value = serde_json::from_reader(buffer.as_slice())?;
 
-    let expected =
-        std::fs::read_to_string(PathBuf::from("./tests/expected/simple_files_with_loc.json"))
-            .unwrap();
-    let parsed_expected: Value = serde_json::from_str(&expected).unwrap();
+    assert_eq_json_file(
+        &parsed_result,
+        "./tests/expected/integration_tests/loc_flare_test.json",
+    );
 
-    // TODO: how can we use test_helpers??
-    assert_eq!(parsed_result, parsed_expected);
+    Ok(())
+}
+
+#[test]
+fn it_calculates_git_stats() -> Result<(), Error> {
+    let gitdir = tempdir()?;
+    let git_root = unzip_git_sample(gitdir.path())?;
+
+    let mut buffer: Vec<u8> = Vec::new();
+    let out = Cursor::new(&mut buffer);
+
+    let result = lati_scanner::run(git_root, vec!["git"], out);
+
+    assert!(!result.is_err());
+
+    let parsed_result: Value = serde_json::from_reader(buffer.as_slice())?;
+
+    assert_eq_json_file(
+        &parsed_result,
+        "./tests/expected/integration_tests/git_flare_test.json",
+    );
+
+    Ok(())
 }

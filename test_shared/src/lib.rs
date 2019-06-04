@@ -34,6 +34,11 @@ pub fn unzip_to_dir(dest: &Path, zipname: &str) -> Result<(), Error> {
     Ok(())
 }
 
+pub fn unzip_git_sample(workdir: &Path) -> Result<PathBuf, Error> {
+    unzip_to_dir(workdir, "tests/data/git/git_sample.zip")?;
+    Ok(PathBuf::from(workdir).join("git_sample"))
+}
+
 pub fn assert_eq_json_file<T: ?Sized>(actual: &T, expected_file: &str)
 where
     T: Serialize,

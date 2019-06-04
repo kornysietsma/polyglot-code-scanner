@@ -93,10 +93,10 @@ impl Serialize for FlareTreeNode {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test_helpers::*;
     use pretty_assertions::assert_eq;
     use serde_json::json;
     use std::path::Path;
+    use test_shared::*;
 
     #[test]
     fn can_build_tree() {

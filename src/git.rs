@@ -31,6 +31,13 @@ pub struct GitCalculator {
 }
 
 impl GitCalculator {
+    pub fn new(config: Option<GitLogConfig>) -> Self {
+        GitCalculator {
+            git_histories: Vec::new(),
+            git_log_config: config.unwrap_or_else(GitLogConfig::default),
+        }
+    }
+
     fn git_history(&self, filename: &Path) -> Option<&GitFileHistory> {
         self.git_histories
             .iter()

@@ -82,8 +82,8 @@ pub fn walk_directory(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test_helpers::*;
     use serde_json::json;
+    use test_shared::*;
 
     #[test]
     fn scanning_a_filesystem_builds_a_tree() {

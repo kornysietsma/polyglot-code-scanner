@@ -24,6 +24,7 @@ git2 = "0.8.0"
 derive_builder = "0.7.1"
 
 [dev-dependencies]
+test_shared = { path = "test_shared" }
 tempfile = "3.0.8"
 zip = "0.5.2"
 pretty_assertions = "0.6.1"

@@ -46,7 +46,7 @@ fn real_main() -> Result<(), Error> {
         let log = GitLog::new(&root, lati_scanner::git_logger::GitLogConfig::default())?;
         serde_json::to_writer_pretty(out, &log)?;
     } else {
-        lati_scanner::run(root, vec!["loc".to_string()], &mut out)?;
+        lati_scanner::run(root, vec!["loc", "git"], &mut out)?;
     }
 
     Ok(())

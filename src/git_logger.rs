@@ -450,14 +450,9 @@ fn summarise_delta(delta: DiffDelta, lines_added: u64, lines_deleted: u64) -> Op
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test_helpers::*;
+    use test_shared::*;
     use pretty_assertions::assert_eq;
     use tempfile::tempdir;
-
-    fn unzip_git_sample(workdir: &Path) -> Result<PathBuf, Error> {
-        unzip_to_dir(workdir, "tests/data/git/git_sample.zip")?;
-        Ok(PathBuf::from(workdir).join("git_sample"))
-    }
 
     #[test]
     fn authorless_message_has_no_coauthors() {

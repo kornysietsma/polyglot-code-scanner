@@ -23,14 +23,15 @@ mod loc;
 mod toxicity_indicator_calculator;
 
 #[cfg(test)]
-pub mod test_helpers;
-#[cfg(test)]
 extern crate tempfile;
+#[cfg(test)]
+extern crate test_shared;
 #[cfg(test)]
 extern crate zip;
 
 pub mod git_logger;
 
+use git::GitCalculator;
 use loc::LocCalculator;
 use toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 
@@ -43,13 +44,14 @@ pub fn named_toxicity_indicator_calculator(
 ) -> Option<Box<dyn ToxicityIndicatorCalculator>> {
     match name {
         "loc" => Some(Box::new(LocCalculator {})),
+        "git" => Some(Box::new(GitCalculator::new(None))),
         _ => None,
     }
 }
 
 pub fn run<W>(
     root: PathBuf,
-    toxicity_indicator_calculator_names: Vec<String>,
+    toxicity_indicator_calculator_names: Vec<&str>,
     out: W,
 ) -> Result<(), Error>
 where
