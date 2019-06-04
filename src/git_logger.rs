@@ -91,8 +91,8 @@ pub struct FileChange {
     file: PathBuf,
     old_file: Option<PathBuf>,
     change: CommitChange,
-    lines_added: usize,
-    lines_deleted: usize,
+    lines_added: u64,
+    lines_deleted: u64,
 }
 
 /// For each file we just keep a simplified history - what the changes were, by whom, and when.
@@ -106,8 +106,8 @@ pub struct FileHistoryEntry {
     pub author_time: i64,
     pub co_authors: Vec<User>,
     pub change: CommitChange,
-    pub lines_added: usize,
-    pub lines_deleted: usize,
+    pub lines_added: u64,
+    pub lines_deleted: u64,
 }
 
 impl FileHistoryEntry {
@@ -134,8 +134,8 @@ impl FileHistoryEntryBuilder {
         FileHistoryEntryBuilder::default()
             .co_authors(Vec::new())
             .change(CommitChange::Add)
-            .lines_added(0usize)
-            .lines_deleted(0usize)
+            .lines_added(0u64)
+            .lines_deleted(0u64)
     }
     pub fn emails(self, email: &str) -> Self {
         self.committer(User::new(None, Some(email)))
@@ -381,16 +381,12 @@ fn scan_diffs(
                 warn!("No patch possible diffing {:?} -> {:?}", commit, parent);
                 (0, 0, 0)
             };
-            summarise_delta(delta, lines_added, lines_deleted)
+            summarise_delta(delta, lines_added as u64, lines_deleted as u64)
         });
     Ok(file_changes.collect())
 }
 
-fn summarise_delta(
-    delta: DiffDelta,
-    lines_added: usize,
-    lines_deleted: usize,
-) -> Option<FileChange> {
+fn summarise_delta(delta: DiffDelta, lines_added: u64, lines_deleted: u64) -> Option<FileChange> {
     match delta.status() {
         Delta::Added => {
             let name = delta.new_file().path().unwrap();
