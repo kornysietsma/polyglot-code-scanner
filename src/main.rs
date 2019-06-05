@@ -58,7 +58,7 @@ fn real_main() -> Result<(), Error> {
         if args.explorer_location.is_none() {
             bail!("Server mode requires the 'explorer' path to contain a local copy of the lati-explorer files");
         }
-        let explorer_location = PathBuf::from(args.explorer_location.unwrap());
+        let explorer_location = args.explorer_location.unwrap();
         let index_file = explorer_location.join("index.html");
         if !index_file.is_file() {
             return Err(format_err!("Server mode requires the 'explorer' path to contain a local copy of the lati-explorer files - can't find {}", index_file.to_str().unwrap()));
