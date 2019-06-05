@@ -1,0 +1,15 @@
+[package]
+name = "lati_explorer_server"
+version = "0.0.1"
+authors = ["Korny Sietsma <korny@sietsma.com>"]
+description = "simple web server for lati_explorer"
+edition = "2018"
+
+[dependencies]
+failure = "0.1.5"
+failure-tools = "4.0.2"
+pretty_assertions = "0.6.1"
+log = "0.4"
+iron = "0.6.0"
+staticfile = "0.5.0"
+mount = "0.4.0"
