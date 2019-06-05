@@ -70,6 +70,12 @@ ARGS:
 
 Note you can't currently choose which indicators to output.  There is also a sneaky `--git` option to do a git log, to help me with debugging (this will go soon!)
 
+## Why rust?
+
+1. I wanted to play with rust - I havent used a compiled language since the '90s, and I haven't used a strongly typed language I liked for a long time
+2. [Tokei](https://github.com/XAMPPRocky/tokei) is awesome - and removes a key dependenency on `cloc` of my old code
+3. It's nice to ditch the JVM dependency for building a generally useful tool
+
 ## License
 
 Copyright © 2019 Kornelis Sietsma
