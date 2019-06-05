@@ -13,7 +13,19 @@ I prefer to call these "indicators" rather than "metrics" as many of them are no
 to really warrant the name "metrics" - they are ways of identifying bad code, but not a metric
 you'd want to use in any scientific way.
 
-The output is a "[flare](https://github.com/d3/d3-hierarchy#hierarchy)" JSON file - a not-very-precisely documented format used by [d3](https://d3.org) hierarchical visualisations, especially my own [toxic code explorer](https://github.com/kornysietsma/toxic-code-explorer-demo/) (which is due for a refresh soon!)
+There are two ways to run this - as a simple CLI tool, producing a data file as it's output; or as a local web server
+in conjunction with the [lati-explorer](https://github.com/kornysietsma/lati-explorer) D3 visualisation.
+
+## Installation and running
+I haven't distributed binary files yet - you'll need rust and cargo to compile and build `lati-scanner`:
+
+`cargo install --path .`
+
+Or just run it with `cargo run lati-scanner -- (other command line arguments)`
+
+### Simple file output
+
+This is the default mode - the `lati-scanner` command produces a "[flare](https://github.com/d3/d3-hierarchy#hierarchy)" JSON file - a not-very-precisely documented format used by [d3](https://d3.org) hierarchical visualisations, especially my own [toxic code explorer](https://github.com/kornysietsma/toxic-code-explorer-demo/) (which is due for a refresh soon!)
 
 A basic output sample looks something like:
 ```
@@ -51,24 +63,58 @@ Currently the following indicators are implemented:
 
 There are more still coming as I port functionality from my older clojure tools!
 
+### Web Server mode
+
+This is operated by the `--server` option (see below for command-line options, or run `lati-scanner --help`)
+
+You also need to have downloaded the [lati-explorer](https://github.com/kornysietsma/lati-explorer) source code to your local machine - `lati-scanner` doesn't embed all the HTML, CSS and JavaScript for the server, you need to download it yourself. (for now, there might be an embedded version one day, though it'll make the binary bigger!)
+
+The basic process is:
+* Download lati-explorer from https://github.com/kornysietsma/lati-explorer
+* Run `lati-scanner` specifying the location of these files - specifically the `docs` directory which has the actual web resources:
+`lati-scanner --server -e ~/my_stuff/lati-explorer/docs`
+* Once the files are scanned, open a web browser to http://localhost:3000 (or you can specify a different port on the commandline)
+
 ## Usage
 
 ```
-lati_scanner [FLAGS] [OPTIONS] [root]
+    lati_scanner [FLAGS] [OPTIONS] [root]
 
 FLAGS:
-    -h, --help         Prints help information
-    -V, --version      Prints version information
-    -v, --verbosity    Pass many times for more log output
+    -h, --help
+            Prints help information (--help for more info)
+
+    -s, --server
+            Run a web server to display the lati-explorer visualisation Requires "-e" to indicate where to find the
+            lati-explorer code Download the code from https://github.com/kornysietsma/lati-explorer if you want to see
+            pretty visualisations
+    -V, --version
+            Prints version information
+
+    -v, --verbosity
+            Pass many times for more log output
+
+            By default, it'll only report errors. Passing `-v` one time also prints warnings, `-vv` enables info
+            logging, `-vvv` debug, and `-vvvv` trace.
 
 OPTIONS:
-    -o, --output <output>    Output JSON file, stdout if not present
+    -e, --explorer <explorer_location>
+            The location of the lati-explorer code, needed for server mode Download the code from
+            https://github.com/kornysietsma/lati-explorer and then pass the file location of the "docs" subdirectory
+            containing the "index.html" file
+    -o, --output <output>
+            Output file, stdout if not present, or not used if sending to web server
+
+    -p, --port <port>
+            The web server port [default: 3000]
+
 
 ARGS:
-    <root>    Root directory, current dir if not present
+    <root>
+            Root directory, current dir if not present
 ```
 
-Note you can't currently choose which indicators to output.  There is also a sneaky `--git` option to do a git log, to help me with debugging (this will go soon!)
+Note you can't currently choose which indicators to output - it runs both `loc` and `git` for now.
 
 ## Why rust?
 

@@ -1,5 +1,11 @@
 # TODO
 
+## server:
+- specify port to use
+- specify directory for lati code
+- validate directory!
+- update CLI docs and readme
+
 ## git things:
 - does a rename or copy count as a change?
 - filter by dates! Otherwise this is going to be enormous for big repos
@@ -13,8 +19,9 @@
 
 ## other things:
 - Can we get rid of test_shared's duplication in cargo.toml ?
-- "loc" should fall back to text file processing for unknown files (e.g. cargo.lock!)
-- "loc" could also store size for binary files?
+- "loc" should fall back to text file processing for unknown files (e.g. cargo.lock!) and store extension (or something for e.g. "Gemfile") as language
+- "loc" could also store size for binary files? some repos are full of e.g. pngs
+ - the UI might need an option "show binary files" - maybe an alternative view to loc.  Tricky as we would need a complete re-draw
 - "-P" cli option is confusing - it's pretty printing _for logs_ !
 - can we make the log default "warn"??
 - decrease log verbosity for unknown file types

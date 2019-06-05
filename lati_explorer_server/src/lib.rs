@@ -36,7 +36,7 @@ impl Handler for JsonPayload {
     }
 }
 
-pub fn serve(explorer_files: &Path, json_data: &str) -> Result<(), Error> {
+pub fn serve(explorer_files: &Path, server_port: u32, json_data: &str) -> Result<(), Error> {
     let mut mount = Mount::new();
 
     // Serve the shared JS/CSS at /
@@ -48,9 +48,11 @@ pub fn serve(explorer_files: &Path, json_data: &str) -> Result<(), Error> {
         },
     );
 
-    eprintln!("Lati server running on http://localhost:3000/");
+    let host_and_port = format!("localhost:{}", server_port);
 
-    Iron::new(mount).http("localhost:3000")?;
+    eprintln!("Lati server running on http://{}/", host_and_port);
+
+    Iron::new(mount).http(host_and_port)?;
 
     Ok(())
 }
