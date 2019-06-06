@@ -79,14 +79,15 @@ You also need to have downloaded the [lati-explorer](https://github.com/kornysie
 
 The basic process is:
 * Download lati-explorer from https://github.com/kornysietsma/lati-explorer
-* Run `lati-scanner` specifying the location of these files - specifically the `docs` directory which has the actual web resources:
-`lati-scanner --server -e ~/my_stuff/lati-explorer/docs`
+* Run `lati-scanner` specifying the location of this project directory:
+`lati-scanner --server -e ~/my_stuff/lati-explorer`
+* this will fail if it can't see the `docs` directory where resources actually live.
 * Once the files are scanned, open a web browser to http://localhost:3000 (or you can specify a different port on the commandline)
 
 ## Usage
 
 ```
-    lati_scanner [FLAGS] [OPTIONS] [root]
+lati_scanner [FLAGS] [OPTIONS] [root]
 
 FLAGS:
     -h, --help
@@ -108,8 +109,7 @@ FLAGS:
 OPTIONS:
     -e, --explorer <explorer_location>
             The location of the lati-explorer code, needed for server mode Download the code from
-            https://github.com/kornysietsma/lati-explorer and then pass the file location of the "docs" subdirectory
-            containing the "index.html" file
+            https://github.com/kornysietsma/lati-explorer and specify the local directory name here.
     -o, --output <output>
             Output file, stdout if not present, or not used if sending to web server
 

@@ -59,7 +59,7 @@ fn real_main() -> Result<(), Error> {
             bail!("Server mode requires the 'explorer' path to contain a local copy of the lati-explorer files");
         }
         let explorer_location = args.explorer_location.unwrap();
-        let index_file = explorer_location.join("index.html");
+        let index_file = explorer_location.join("docs/index.html");
         if !index_file.is_file() {
             return Err(format_err!("Server mode requires the 'explorer' path to contain a local copy of the lati-explorer files - can't find {}", index_file.to_str().unwrap()));
         }
@@ -67,7 +67,8 @@ fn real_main() -> Result<(), Error> {
         let mut out = Vec::new();
         lati_scanner::run(root, vec!["loc", "git"], &mut out)?;
         let json_output = String::from_utf8(out)?;
-        lati_explorer_server::serve(&explorer_location, args.port, &json_output)?
+        let docs_dir = explorer_location.join("docs");
+        lati_explorer_server::serve(&docs_dir, args.port, &json_output)?
     } else {
         let mut out: Box<dyn io::Write> = if let Some(output) = args.output {
             Box::new(File::create(output)?)
