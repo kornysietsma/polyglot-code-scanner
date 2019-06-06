@@ -1,8 +1,16 @@
 # Language-Agnostic Toxicity Indicators
 
+Version 0.0.1 - early in-dev version
+
 ## Work-in-progress warning!
 
 This is a work in progress - it's still being fiddled with, major changes might come at any time.  Or I might abandon it as my free time evaporates.  You have been warned!
+
+### Major issues at the moment
+
+- There is no limit to git history scanning - this will scan the whole git history, which could be slow!
+- No progress indicators - you can add `-vv` to see logs, but there's no real indication of what it's doing on a slow git scan
+- You can't turn git scanning off, so if code isn't in git, the scanner will waste time looking for a git repo over and over and over
 
 ## Intro
 
