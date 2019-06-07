@@ -11,6 +11,8 @@ extern crate failure_tools;
 extern crate lazy_static;
 #[macro_use]
 extern crate derive_builder;
+#[macro_use]
+extern crate derive_getters;
 
 use failure::Error;
 use std::io;
@@ -29,7 +31,8 @@ extern crate test_shared;
 #[cfg(test)]
 extern crate zip;
 
-pub mod git_logger;
+mod git_file_history;
+mod git_logger;
 
 use git::GitCalculator;
 use git_logger::GitLogConfig;

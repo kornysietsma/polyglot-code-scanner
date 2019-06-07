@@ -22,6 +22,7 @@ failure-tools = "4.0.2"
 lazy_static = "1.3.0"
 git2 = "0.8.0"
 derive_builder = "0.7.1"
+derive-getters = "0.0.7"
 lati_explorer_server = { path = "lati_explorer_server" }
 
 [dev-dependencies]

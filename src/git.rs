@@ -2,9 +2,8 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use crate::git_logger::{
-    FileHistoryEntry, FileHistoryEntryBuilder, GitFileHistory, GitLog, GitLogConfig,
-};
+use crate::git_file_history::{FileHistoryEntry, FileHistoryEntryBuilder, GitFileHistory};
+use crate::git_logger::{GitLog, GitLogConfig};
 use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use failure::Error;
 use git2::Status;
