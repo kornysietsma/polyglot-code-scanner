@@ -7,6 +7,7 @@ extern crate failure_tools;
 extern crate lati_explorer_server;
 
 use failure::{bail, format_err, Error};
+use lati_scanner::CalculatorConfig;
 use std::fs::File;
 use std::io;
 use std::path::PathBuf;
@@ -41,6 +42,9 @@ struct Cli {
     /// The location of the lati-explorer code, needed for server mode
     /// Download the code from https://github.com/kornysietsma/lati-explorer and then pass the file location of the "docs" subdirectory containing the "index.html" file
     explorer_location: Option<PathBuf>,
+    #[structopt(long = "years", default_value = "3")]
+    /// how many years of git history to parse - default only scan the last 3 years (from now, not git head)
+    git_years: u64,
 }
 
 fn real_main() -> Result<(), Error> {
@@ -51,6 +55,10 @@ fn real_main() -> Result<(), Error> {
     if args.output.is_some() && args.server {
         bail!("Can't select server mode and specify output file!");
     }
+    let calculator_config = CalculatorConfig {
+        git_years: args.git_years,
+    };
+
     if args.server {
         if args.output.is_some() {
             bail!("Can't select server mode and specify output file!");
@@ -65,7 +73,7 @@ fn real_main() -> Result<(), Error> {
         }
 
         let mut out = Vec::new();
-        lati_scanner::run(root, vec!["loc", "git"], &mut out)?;
+        lati_scanner::run(root, calculator_config, vec!["loc", "git"], &mut out)?;
         let json_output = String::from_utf8(out)?;
         let docs_dir = explorer_location.join("docs");
         lati_explorer_server::serve(&docs_dir, args.port, &json_output)?
@@ -76,7 +84,7 @@ fn real_main() -> Result<(), Error> {
             Box::new(io::stdout())
         };
 
-        lati_scanner::run(root, vec!["loc", "git"], &mut out)?;
+        lati_scanner::run(root, calculator_config, vec!["loc", "git"], &mut out)?;
     }
 
     Ok(())

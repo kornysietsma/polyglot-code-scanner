@@ -28,6 +28,7 @@ fn parse_file(filename: &Path) -> Result<LanguageLocData, Error> {
     let language = LanguageType::from_path(filename, &config)
         .ok_or_else(|| format_err!("No language for file {:?}", filename))?; // TODO: maybe a real error type?
     let stats = language.parse(PathBuf::from(filename), &config);
+
     match stats {
         Ok(stats) => Ok(LanguageLocData {
             blanks: stats.blanks,

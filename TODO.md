@@ -1,23 +1,17 @@
 # TODO
 
-## server:
-- specify port to use
-- specify directory for lati code
-- validate directory!
-- update CLI docs and readme
-
 ## git things:
 - does a rename or copy count as a change?
-- filter by dates! Otherwise this is going to be enormous for big repos
 - advanced usage might want the full history so the UI could calculate things like churn.
 - add indicator selection to the CLI
 - need to test special cases:
-  - the repo might not be in git
-  - there might be multiple git roots (i.e. I used to scan all the repos for an org into one JSON file)
   - submodules?!
   - local checkout is not on remote origin/master (do we care?)
+- follow renames! (this is complex but would be good - currently nothing is known before a rename)
+- better tests - using code with more checkins and more date ranges (maybe some rebasing?)
 
 ## other things:
+- add a progress notifier - logs are too low level - look at indicatif https://docs.rs/indicatif/0.11.0/indicatif/
 - Can we get rid of test_shared's duplication in cargo.toml ?
 - "loc" should fall back to text file processing for unknown files (e.g. cargo.lock!) and store extension (or something for e.g. "Gemfile") as language
 - "loc" could also store size for binary files? some repos are full of e.g. pngs
@@ -27,7 +21,6 @@
 - decrease log verbosity for unknown file types
 
 ## Bigger things
-- publish to github
 - indent stats (with or without comments depending on the next bit)
 - tokei-based calculations that ignore comments - might need a tokei fork! Or can we pilfer bits of tokei?
 

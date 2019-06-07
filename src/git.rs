@@ -19,22 +19,22 @@ use git2::Repository;
 /// a struct representing git data for a file
 #[derive(Debug, PartialEq, Serialize)]
 struct GitData {
-    last_update: i64,
-    age_in_days: i64,
+    last_update: u64,
+    age_in_days: u64,
     user_count: usize,
 }
 
 #[derive(Debug)]
 pub struct GitCalculator {
     git_histories: Vec<GitFileHistory>,
-    git_log_config: GitLogConfig,
+    git_log_config: GitLogConfig, // TODO - probably should have own config struct
 }
 
 impl GitCalculator {
-    pub fn new(config: Option<GitLogConfig>) -> Self {
+    pub fn new(config: GitLogConfig) -> Self {
         GitCalculator {
             git_histories: Vec::new(),
-            git_log_config: config.unwrap_or_else(GitLogConfig::default),
+            git_log_config: config,
         }
     }
 
@@ -68,7 +68,7 @@ impl GitCalculator {
 
     fn stats_from_history(
         &self,
-        last_commit: i64,
+        last_commit: u64,
         history: &[FileHistoryEntry],
     ) -> Option<GitData> {
         // TODO!
@@ -138,7 +138,7 @@ mod test {
 
     #[test]
     fn gets_basic_stats_from_git_events() -> Result<(), Error> {
-        let one_day_in_secs: i64 = 60 * 60 * 24;
+        let one_day_in_secs: u64 = 60 * 60 * 24;
 
         let first_day = one_day_in_secs;
 

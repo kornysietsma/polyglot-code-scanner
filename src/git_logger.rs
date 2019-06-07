@@ -6,23 +6,42 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
+use std::time::{Duration, SystemTime};
 
 #[derive(Debug, Clone, Copy)]
 pub struct GitLogConfig {
     /// include merge commits in file stats - usually excluded by `git log` - see https://stackoverflow.com/questions/37801342/using-git-log-to-display-files-changed-during-merge
     include_merges: bool,
+    /// earliest commmit for filtering - secs since the epoch - could use Option but this is pretty cheap to check
+    earliest_time: u64,
 }
 
 impl GitLogConfig {
     pub fn default() -> GitLogConfig {
         GitLogConfig {
             include_merges: false,
+            earliest_time: 0,
         }
     }
     pub fn include_merges(self, include_merges: bool) -> GitLogConfig {
         let mut config = self;
         config.include_merges = include_merges;
         config
+    }
+    /// filter log by unix timestamp
+    pub fn since(self, earliest_time: u64) -> GitLogConfig {
+        let mut config = self;
+        config.earliest_time = earliest_time;
+        config
+    }
+    /// filter log by number of years before now
+    pub fn since_years(self, years: u64) -> GitLogConfig {
+        let years_ago = SystemTime::now() - Duration::from_secs(60 * 60 * 24 * 365 * years);
+        let years_ago_secs = years_ago
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        self.since(years_ago_secs)
     }
 }
 
@@ -33,8 +52,7 @@ pub struct GitLog {
     entries: Vec<GitLogEntry>,
 }
 
-/// simplified user info - based on git2::Signature but using blanks not None for now.
-/// TODO: consider using None - let the UI decide how to handle?
+/// simplified user info - based on git2::Signature
 #[derive(Debug, Serialize, PartialEq, Clone)]
 pub struct User {
     name: Option<String>,
@@ -68,9 +86,9 @@ pub struct GitLogEntry {
     summary: String,
     parents: Vec<String>,
     committer: User,
-    commit_time: i64,
+    commit_time: u64,
     author: User,
-    author_time: i64,
+    author_time: u64,
     co_authors: Vec<User>,
     file_changes: Vec<FileChange>,
 }
@@ -101,9 +119,9 @@ pub struct FileChange {
 pub struct FileHistoryEntry {
     pub id: String,
     pub committer: User,
-    pub commit_time: i64,
+    pub commit_time: u64,
     pub author: User,
-    pub author_time: i64,
+    pub author_time: u64,
     pub co_authors: Vec<User>,
     pub change: CommitChange,
     pub lines_added: u64,
@@ -142,7 +160,7 @@ impl FileHistoryEntryBuilder {
             .author(User::new(None, Some(email)))
     }
 
-    pub fn times(self, time: i64) -> Self {
+    pub fn times(self, time: u64) -> Self {
         self.commit_time(time).author_time(time)
     }
 }
@@ -152,12 +170,12 @@ pub struct GitFileHistory {
     /// repo work dir - always canonical
     workdir: PathBuf,
     history_by_file: HashMap<PathBuf, Vec<FileHistoryEntry>>,
-    last_commit: i64,
+    last_commit: u64,
 }
 
 impl GitFileHistory {
     pub fn new(log: GitLog) -> Result<GitFileHistory, Error> {
-        let mut last_commit: i64 = 0;
+        let mut last_commit: u64 = 0;
         let mut history_by_file = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
         for entry in log.entries {
             if entry.commit_time > last_commit {
@@ -191,7 +209,7 @@ impl GitFileHistory {
         Ok(self.history_by_file.get(relative_file))
     }
 
-    pub fn last_commit(&self) -> i64 {
+    pub fn last_commit(&self) -> u64 {
         self.last_commit
     }
 }
@@ -201,7 +219,6 @@ impl GitLog {
         &self.workdir
     }
 
-    // TODO: move this into GitLog impl
     pub fn new(start_dir: &Path, config: GitLogConfig) -> Result<GitLog, Error> {
         let repo = Repository::discover(start_dir)?;
 
@@ -214,12 +231,18 @@ impl GitLog {
 
         let odb = repo.odb()?;
         let mut revwalk = repo.revwalk()?;
+        revwalk.set_sorting(git2::Sort::TIME); // might need topological sorting if/when I implement rename following
         revwalk.push_head()?;
-
-        // TODO: filter by dates! This will get mad on a big history
 
         let entries: Result<Vec<_>, _> = revwalk
             .map(|oid| summarise_commit(&repo, &odb, oid, config))
+            .take_while(|c| {
+                if let Ok(Some(c)) = c {
+                    c.commit_time >= config.earliest_time
+                } else {
+                    true
+                }
+            })
             .collect();
 
         let entries = entries?.into_iter().flat_map(|e| e).collect();
@@ -231,6 +254,8 @@ impl GitLog {
     }
 }
 
+/// Summarises a git commit
+/// returns Error if error, Result<None> if the id was not actually a commit, or Result<Some<GitLogEntry>> if valid
 fn summarise_commit(
     repo: &Repository,
     odb: &Odb,
@@ -245,9 +270,9 @@ fn summarise_commit(
             debug!("processing {:?}", commit);
             let author = commit.author();
             let committer = commit.committer();
-            let author_time = author.when().seconds();
-            let commit_time = committer.when().seconds();
-            let other_time = commit.time().seconds();
+            let author_time = author.when().seconds() as u64;
+            let commit_time = committer.when().seconds() as u64;
+            let other_time = commit.time().seconds() as u64;
             if commit_time != other_time {
                 error!(
                     "Commit {:?} time {:?} != commit time {:?}",
@@ -450,9 +475,9 @@ fn summarise_delta(delta: DiffDelta, lines_added: u64, lines_deleted: u64) -> Op
 #[cfg(test)]
 mod test {
     use super::*;
-    use test_shared::*;
     use pretty_assertions::assert_eq;
     use tempfile::tempdir;
+    use test_shared::*;
 
     #[test]
     fn authorless_message_has_no_coauthors() {
@@ -509,6 +534,31 @@ mod test {
         assert_eq_json_file(
             &git_log.entries,
             "./tests/expected/git/git_sample_with_merges.json",
+        );
+
+        Ok(())
+    }
+
+    #[allow(clippy::unreadable_literal)]
+    #[test]
+    fn git_log_can_limit_to_recent_history() -> Result<(), Error> {
+        let gitdir = tempdir()?;
+        let git_root = unzip_git_sample(gitdir.path())?;
+
+        let git_log = GitLog::new(&git_root, GitLogConfig::default().since(1558521694))?;
+
+        let ids: Vec<_> = git_log
+            .entries
+            .iter()
+            .map(|h| (h.summary.as_str(), h.commit_time))
+            .collect();
+        assert_eq!(
+            ids,
+            vec![
+                ("renaming", 1558533240),
+                ("just changed parent.clj", 1558524371),
+                ("Merge branch \'fiddling\'", 1558521695)
+            ]
         );
 
         Ok(())

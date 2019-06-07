@@ -116,6 +116,8 @@ OPTIONS:
     -p, --port <port>
             The web server port [default: 3000]
 
+    --years <git_years>
+            How many years of git history to parse - default is to scan 3 years of logs
 
 ARGS:
     <root>

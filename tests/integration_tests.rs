@@ -12,7 +12,12 @@ fn it_calculates_lines_of_code() -> Result<(), Error> {
     let mut buffer: Vec<u8> = Vec::new();
     let out = Cursor::new(&mut buffer);
 
-    let result = lati_scanner::run(root, vec!["loc"], out);
+    let result = lati_scanner::run(
+        root,
+        lati_scanner::CalculatorConfig::default(),
+        vec!["loc"],
+        out,
+    );
 
     assert!(!result.is_err());
 
@@ -34,7 +39,12 @@ fn it_calculates_git_stats() -> Result<(), Error> {
     let mut buffer: Vec<u8> = Vec::new();
     let out = Cursor::new(&mut buffer);
 
-    let result = lati_scanner::run(git_root, vec!["git"], out);
+    let result = lati_scanner::run(
+        git_root,
+        lati_scanner::CalculatorConfig::default(),
+        vec!["git"],
+        out,
+    );
 
     assert!(!result.is_err());
 
