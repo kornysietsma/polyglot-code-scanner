@@ -49,10 +49,6 @@ impl ToxicityIndicatorCalculator for LocCalculator {
         "loc".to_string()
     }
 
-    fn description(&self) -> String {
-        "Lines of Code".to_string()
-    }
-
     fn calculate(&mut self, path: &Path) -> Result<Option<serde_json::Value>, Error> {
         if path.is_file() {
             let stats = parse_file(path)?;

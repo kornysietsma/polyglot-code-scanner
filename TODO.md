@@ -11,6 +11,7 @@
 - better tests - using code with more checkins and more date ranges (maybe some rebasing?)
 
 ## other things:
+- refactoring - use Into more ? "fn new<S: Into<String>>(name: S, is_file: bool)" allows the caller to decide...
 - add a progress notifier - logs are too low level - look at indicatif https://docs.rs/indicatif/0.11.0/indicatif/
 - Can we get rid of test_shared's duplication in cargo.toml ?
 - "loc" should fall back to text file processing for unknown files (e.g. cargo.lock!) and store extension (or something for e.g. "Gemfile") as language

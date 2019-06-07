@@ -98,11 +98,6 @@ impl ToxicityIndicatorCalculator for GitCalculator {
     fn name(&self) -> String {
         "git".to_string()
     }
-
-    fn description(&self) -> String {
-        "Git statistics".to_string()
-    }
-
     fn calculate(&mut self, path: &Path) -> Result<Option<serde_json::Value>, Error> {
         if path.is_file() {
             let history = match self.git_history(path) {

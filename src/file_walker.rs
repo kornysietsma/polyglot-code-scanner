@@ -15,7 +15,7 @@ fn apply_calculators_to_node(
     toxicity_indicator_calculators.iter_mut().for_each(|tic| {
         let indicators = tic.calculate(path);
         match indicators {
-            Ok(Some(indicators)) => node.add_data(tic.name().to_string(), indicators),
+            Ok(Some(indicators)) => node.add_data(tic.name(), indicators),
             Ok(None) => (),
             Err(error) => {
                 warn!(
@@ -39,7 +39,6 @@ fn walk_tree_walker(
     apply_calculators_to_node(&mut tree, prefix, toxicity_indicator_calculators);
 
     for result in walker.map(|r| r.expect("File error!")).skip(1) {
-        // note we skip the root directory!
         let p = result.path();
         let relative = p.strip_prefix(prefix)?;
         let new_child = if p.is_dir() || p.is_file() {
@@ -100,9 +99,6 @@ mod test {
         fn name(&self) -> String {
             "foo".to_string()
         }
-        fn description(&self) -> String {
-            "Foo".to_string()
-        }
         fn calculate(&mut self, path: &Path) -> Result<Option<serde_json::Value>, Error> {
             if path.is_file() {
                 Ok(Some(json!("bar")))
@@ -118,9 +114,6 @@ mod test {
     impl ToxicityIndicatorCalculator for SelfNamingTIC {
         fn name(&self) -> String {
             "filename".to_string()
-        }
-        fn description(&self) -> String {
-            "Filename".to_string()
         }
         fn calculate(&mut self, path: &Path) -> Result<Option<serde_json::Value>, Error> {
             if path.is_file() {
@@ -152,9 +145,6 @@ mod test {
     impl ToxicityIndicatorCalculator for MutableTIC {
         fn name(&self) -> String {
             "count".to_string()
-        }
-        fn description(&self) -> String {
-            "Mutable TIC".to_string()
         }
         fn calculate(&mut self, _path: &Path) -> Result<Option<serde_json::Value>, Error> {
             let result = json!(self.count);

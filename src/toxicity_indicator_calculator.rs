@@ -7,6 +7,5 @@ use std::path::Path;
 /// Wrapper for the logic that calculates toxicity indicators
 pub trait ToxicityIndicatorCalculator: Sync + std::fmt::Debug {
     fn name(&self) -> String;
-    fn description(&self) -> String;
     fn calculate(&mut self, path: &Path) -> Result<Option<Value>, Error>;
 }
