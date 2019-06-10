@@ -1,5 +1,5 @@
 #![warn(clippy::all)]
-use crate::git_logger::{CommitChange, FileChange, GitLog, GitLogEntry, User};
+use crate::git_logger::{CommitChange, FileChange, GitLog, GitLogEntry, GitLogVisitor, User};
 use failure::Error;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -66,27 +66,33 @@ pub struct GitFileHistory {
     last_commit: u64,
 }
 
+impl GitLogVisitor for GitFileHistory {
+    fn visit_entry(&mut self, entry: &GitLogEntry) -> Result<(), Error> {
+        if *entry.commit_time() > self.last_commit {
+            self.last_commit = *entry.commit_time();
+        }
+        for file_change in entry.clone().file_changes() {
+            let hash_entry = self
+                .history_by_file
+                .entry(file_change.file().clone()) // TODO: how to avoid clone? and the one 2 lines earlier?
+                .or_insert_with(Vec::new);
+            let new_entry = FileHistoryEntry::from(&entry, &file_change);
+            hash_entry.push(new_entry);
+        }
+
+        Ok(())
+    }
+}
+
 impl GitFileHistory {
     pub fn new(log: GitLog) -> Result<GitFileHistory, Error> {
-        let mut last_commit: u64 = 0;
-        let mut history_by_file = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
-        for entry in log.entries() {
-            if *entry.commit_time() > last_commit {
-                last_commit = *entry.commit_time();
-            }
-            for file_change in entry.clone().file_changes() {
-                let hash_entry = history_by_file
-                    .entry(file_change.file().clone()) // TODO: how to avoid clone? and the one 2 lines earlier?
-                    .or_insert_with(Vec::new);
-                let new_entry = FileHistoryEntry::from(&entry, &file_change);
-                hash_entry.push(new_entry);
-            }
-        }
-        Ok(GitFileHistory {
+        let mut history = GitFileHistory {
             workdir: log.workdir().to_owned(),
-            history_by_file,
-            last_commit,
-        })
+            history_by_file: HashMap::<PathBuf, Vec<FileHistoryEntry>>::new(),
+            last_commit: 0,
+        };
+        log.log(&mut history)?;
+        Ok(history)
     }
 
     /// true if this repo is valid for this file - file must exist (as we canonicalize it)

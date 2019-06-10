@@ -7,6 +7,10 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
+pub trait GitLogVisitor {
+    fn visit_entry(&mut self, entry: &GitLogEntry) -> Result<(), Error>;
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct GitLogConfig {
     /// include merge commits in file stats - usually excluded by `git log` - see https://stackoverflow.com/questions/37801342/using-git-log-to-display-files-changed-during-merge
@@ -46,11 +50,11 @@ impl GitLogConfig {
     }
 }
 
-#[derive(Debug, Serialize)]
 pub struct GitLog {
     /// repo work dir - always canonical
     workdir: PathBuf,
-    entries: Vec<GitLogEntry>,
+    config: GitLogConfig,
+    repository: Repository,
 }
 
 /// simplified user info - based on git2::Signature
@@ -119,10 +123,6 @@ impl GitLog {
         &self.workdir
     }
 
-    pub fn entries(&self) -> &Vec<GitLogEntry> {
-        &self.entries
-    }
-
     pub fn new(start_dir: &Path, config: GitLogConfig) -> Result<GitLog, Error> {
         let repo = Repository::discover(start_dir)?;
 
@@ -133,28 +133,43 @@ impl GitLog {
 
         debug!("work dir: {:?}", workdir);
 
-        let odb = repo.odb()?;
-        let mut revwalk = repo.revwalk()?;
+        Ok(GitLog {
+            workdir: workdir.to_owned(),
+            config,
+            repository: repo,
+        })
+    }
+
+    pub fn log(&self, visitor: &mut GitLogVisitor) -> Result<(), Error> {
+        let odb = self.repository.odb()?;
+        let mut revwalk = self.repository.revwalk()?;
         revwalk.set_sorting(git2::Sort::TIME); // might need topological sorting if/when I implement rename following
         revwalk.push_head()?;
 
-        let entries: Result<Vec<_>, _> = revwalk
-            .map(|oid| summarise_commit(&repo, &odb, oid, config))
+        let results: Result<Vec<_>, Error> = revwalk
+            .map(|oid| summarise_commit(&self.repository, &odb, oid, self.config))
             .take_while(|c| {
                 if let Ok(Some(c)) = c {
-                    c.commit_time >= config.earliest_time
+                    c.commit_time >= self.config.earliest_time
                 } else {
                     true
                 }
             })
+            .filter_map(|e| match e {
+                Ok(Some(c)) => Some(Ok(c)),
+                Ok(None) => None, // will be filtered out
+                Err(e) => Some(Err(e)),
+            })
+            .map(|e| match e {
+                Ok(e) => visitor.visit_entry(&e),
+                Err(e) => Err(e),
+            })
             .collect();
-
-        let entries = entries?.into_iter().flat_map(|e| e).collect();
-
-        Ok(GitLog {
-            workdir: workdir.to_owned(),
-            entries,
-        })
+        if let Err(e) = results {
+            Err(e)
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -415,15 +430,38 @@ mod test {
         assert_eq!(find_coauthors(message), expected);
     }
 
+    struct TestGitLogVisitor {
+        entries: Vec<GitLogEntry>,
+    }
+
+    impl TestGitLogVisitor {
+        fn new() -> Self {
+            TestGitLogVisitor {
+                entries: Vec::new(),
+            }
+        }
+    }
+
+    impl GitLogVisitor for TestGitLogVisitor {
+        fn visit_entry(&mut self, entry: &GitLogEntry) -> Result<(), Error> {
+            self.entries.push(entry.clone());
+            Ok(())
+        }
+    }
+
     #[test]
     fn can_extract_basic_git_log() -> Result<(), Error> {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
         let git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
+        let mut results = TestGitLogVisitor::new();
+
+        git_log.log(&mut results)?;
+
         assert_eq!(git_log.workdir.canonicalize()?, git_root.canonicalize()?);
 
-        assert_eq_json_file(&git_log.entries, "./tests/expected/git/git_sample.json");
+        assert_eq_json_file(&results.entries, "./tests/expected/git/git_sample.json");
 
         Ok(())
     }
@@ -435,8 +473,12 @@ mod test {
 
         let git_log = GitLog::new(&git_root, GitLogConfig::default().include_merges(true))?;
 
+        let mut results = TestGitLogVisitor::new();
+
+        git_log.log(&mut results)?;
+
         assert_eq_json_file(
-            &git_log.entries,
+            &results.entries,
             "./tests/expected/git/git_sample_with_merges.json",
         );
 
@@ -448,10 +490,12 @@ mod test {
     fn git_log_can_limit_to_recent_history() -> Result<(), Error> {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
-
         let git_log = GitLog::new(&git_root, GitLogConfig::default().since(1558521694))?;
+        let mut results = TestGitLogVisitor::new();
 
-        let ids: Vec<_> = git_log
+        git_log.log(&mut results)?;
+
+        let ids: Vec<_> = results
             .entries
             .iter()
             .map(|h| (h.summary.as_str(), h.commit_time))

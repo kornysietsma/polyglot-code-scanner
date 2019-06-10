@@ -1,5 +1,7 @@
 # TODO
 
+- this commit is a bit of a WIP - I've refactored the Git Log to use a callback/visitor approach, but I haven't really cleaned it up or anything...
+
 ## git things:
 - does a rename or copy count as a change?
 - advanced usage might want the full history so the UI could calculate things like churn.
