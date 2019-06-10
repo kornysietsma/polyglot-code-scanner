@@ -1,10 +1,12 @@
 #![warn(clippy::all)]
 use failure::Error;
+use git2::Revwalk;
 use git2::{Commit, Delta, DiffDelta, ObjectType, Odb, Oid, Patch, Repository, Tree};
 use regex::Regex;
 use serde::Serialize;
 use std::path::Path;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::time::{Duration, SystemTime};
 
 #[derive(Debug, Clone, Copy)]
@@ -46,11 +48,14 @@ impl GitLogConfig {
     }
 }
 
-#[derive(Debug, Serialize)]
-pub struct GitLog {
+pub struct GitLog<'a> {
     /// repo work dir - always canonical
     workdir: PathBuf,
-    entries: Vec<GitLogEntry>,
+    repo: Repository,
+    odb: Odb<'a>,
+    revwalk: Revwalk<'a>,
+    config: GitLogConfig,
+    entries: Option<Box<Iterator<Item = Result<GitLogEntry, Error>> + 'a>>,
 }
 
 /// simplified user info - based on git2::Signature
@@ -114,13 +119,9 @@ pub struct FileChange {
     lines_deleted: u64,
 }
 
-impl GitLog {
+impl<'a> GitLog<'a> {
     pub fn workdir(&self) -> &Path {
         &self.workdir
-    }
-
-    pub fn entries(&self) -> &Vec<GitLogEntry> {
-        &self.entries
     }
 
     pub fn new(start_dir: &Path, config: GitLogConfig) -> Result<GitLog, Error> {
@@ -138,23 +139,40 @@ impl GitLog {
         revwalk.set_sorting(git2::Sort::TIME); // might need topological sorting if/when I implement rename following
         revwalk.push_head()?;
 
-        let entries: Result<Vec<_>, _> = revwalk
-            .map(|oid| summarise_commit(&repo, &odb, oid, config))
-            .take_while(|c| {
-                if let Ok(Some(c)) = c {
-                    c.commit_time >= config.earliest_time
-                } else {
-                    true
-                }
-            })
-            .collect();
-
-        let entries = entries?.into_iter().flat_map(|e| e).collect();
-
         Ok(GitLog {
             workdir: workdir.to_owned(),
-            entries,
+            entries: None,
+            repo,
+            odb,
+            revwalk,
+            config,
         })
+    }
+}
+
+impl<'a> Iterator for GitLog<'a> {
+    type Item = Result<GitLogEntry, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.entries.is_none() {
+            let mut entries = self
+                .revwalk
+                .map(|oid| summarise_commit(&self.repo, &self.odb, oid, self.config))
+                .flat_map(|c| match c {
+                    Ok(None) => None,
+                    Ok(Some(result)) => Some(Ok(result.clone())),
+                    Err(e) => Some(Err(e)),
+                })
+                .take_while(|c| {
+                    if let Ok(c) = c {
+                        c.commit_time >= self.config.earliest_time
+                    } else {
+                        true
+                    }
+                });
+            self.entries = Some(Box::new(entries));
+        };
+        self.entries.unwrap().next()
     }
 }
 
@@ -423,7 +441,12 @@ mod test {
 
         assert_eq!(git_log.workdir.canonicalize()?, git_root.canonicalize()?);
 
-        assert_eq_json_file(&git_log.entries, "./tests/expected/git/git_sample.json");
+        let err_count = git_log.entries.filter(Result::is_err).count();
+        assert_eq!(err_count, 0);
+
+        let entries: Vec<_> = git_log.entries.filter_map(Result::ok).collect();
+
+        assert_eq_json_file(&entries, "./tests/expected/git/git_sample.json");
 
         Ok(())
     }
@@ -435,10 +458,12 @@ mod test {
 
         let git_log = GitLog::new(&git_root, GitLogConfig::default().include_merges(true))?;
 
-        assert_eq_json_file(
-            &git_log.entries,
-            "./tests/expected/git/git_sample_with_merges.json",
-        );
+        let err_count = git_log.entries.filter(Result::is_err).count();
+        assert_eq!(err_count, 0);
+
+        let entries: Vec<_> = git_log.entries.filter_map(Result::ok).collect();
+
+        assert_eq_json_file(&entries, "./tests/expected/git/git_sample_with_merges.json");
 
         Ok(())
     }
@@ -451,9 +476,12 @@ mod test {
 
         let git_log = GitLog::new(&git_root, GitLogConfig::default().since(1558521694))?;
 
+        let err_count = git_log.entries.filter(Result::is_err).count();
+        assert_eq!(err_count, 0);
+
         let ids: Vec<_> = git_log
             .entries
-            .iter()
+            .filter_map(Result::ok)
             .map(|h| (h.summary.as_str(), h.commit_time))
             .collect();
         assert_eq!(

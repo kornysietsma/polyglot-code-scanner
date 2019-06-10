@@ -67,21 +67,29 @@ pub struct GitFileHistory {
 }
 
 impl GitFileHistory {
-    pub fn new(log: GitLog) -> Result<GitFileHistory, Error> {
+    pub fn new(log: &mut GitLog) -> Result<GitFileHistory, Error> {
         let mut last_commit: u64 = 0;
         let mut history_by_file = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
-        for entry in log.entries() {
-            if *entry.commit_time() > last_commit {
-                last_commit = *entry.commit_time();
+        log.for_each(|entry| {
+            match entry {
+                Ok(entry) => {
+                    if *entry.commit_time() > last_commit {
+                        last_commit = *entry.commit_time();
+                    }
+                    for file_change in entry.clone().file_changes() {
+                        let hash_entry = history_by_file
+                            .entry(file_change.file().clone()) // TODO: how to avoid clone? and the one 2 lines earlier?
+                            .or_insert_with(Vec::new);
+                        let new_entry = FileHistoryEntry::from(&entry, &file_change);
+                        hash_entry.push(new_entry);
+                    }
+                }
+                Err(e) => {
+                    warn!("Ignoring invalid git log entry: {:?}", e);
+                }
             }
-            for file_change in entry.clone().file_changes() {
-                let hash_entry = history_by_file
-                    .entry(file_change.file().clone()) // TODO: how to avoid clone? and the one 2 lines earlier?
-                    .or_insert_with(Vec::new);
-                let new_entry = FileHistoryEntry::from(&entry, &file_change);
-                hash_entry.push(new_entry);
-            }
-        }
+        });
+
         Ok(GitFileHistory {
             workdir: log.workdir().to_owned(),
             history_by_file,
@@ -120,9 +128,9 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
 
-        let git_log = GitLog::new(&git_root, GitLogConfig::default())?;
+        let mut git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
-        let history = GitFileHistory::new(git_log)?;
+        let history = GitFileHistory::new(&mut git_log)?;
 
         assert_eq!(history.workdir.canonicalize()?, git_root.canonicalize()?);
 
@@ -139,9 +147,9 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
 
-        let git_log = GitLog::new(&git_root, GitLogConfig::default())?;
+        let mut git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
-        let history = GitFileHistory::new(git_log)?;
+        let history = GitFileHistory::new(&mut git_log)?;
 
         assert_eq!(
             history.is_repo_for(&git_root.join("simple/parent.clj"))?,
@@ -156,9 +164,9 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
 
-        let git_log = GitLog::new(&git_root, GitLogConfig::default())?;
+        let mut git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
-        let history = GitFileHistory::new(git_log)?;
+        let history = GitFileHistory::new(&mut git_log)?;
 
         let file_history = history.history_for(&git_root.join("simple/parent.clj"))?;
 
@@ -184,9 +192,9 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample(gitdir.path())?;
 
-        let git_log = GitLog::new(&git_root, GitLogConfig::default())?;
+        let mut git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
-        let history = GitFileHistory::new(git_log)?;
+        let history = GitFileHistory::new(&mut git_log)?;
 
         let new_file = git_root.join("simple/nonesuch.clj");
         std::fs::File::create(&new_file)?;

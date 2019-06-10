@@ -47,9 +47,9 @@ impl GitCalculator {
 
     fn add_history_for(&mut self, filename: &Path) -> Result<(), Error> {
         info!("Adding new git log for {:?}", &filename);
-        let git_log = GitLog::new(filename, self.git_log_config)?;
+        let mut git_log = GitLog::new(filename, self.git_log_config)?;
         info!("Found working dir: {:?}", git_log.workdir());
-        let history = GitFileHistory::new(git_log)?;
+        let history = GitFileHistory::new(&mut git_log)?;
         self.git_histories.push(history);
         Ok(())
     }
