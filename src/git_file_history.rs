@@ -70,7 +70,7 @@ impl GitFileHistory {
     pub fn new(log: &mut GitLog) -> Result<GitFileHistory, Error> {
         let mut last_commit: u64 = 0;
         let mut history_by_file = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
-        log.for_each(|entry| {
+        log.iterator()?.for_each(|entry| {
             match entry {
                 Ok(entry) => {
                     if *entry.commit_time() > last_commit {

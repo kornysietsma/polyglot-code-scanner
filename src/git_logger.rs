@@ -6,7 +6,6 @@ use regex::Regex;
 use serde::Serialize;
 use std::path::Path;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::time::{Duration, SystemTime};
 
 #[derive(Debug, Clone, Copy)]
@@ -48,14 +47,17 @@ impl GitLogConfig {
     }
 }
 
-pub struct GitLog<'a> {
+pub struct GitLog {
     /// repo work dir - always canonical
     workdir: PathBuf,
     repo: Repository,
+    config: GitLogConfig,
+}
+
+pub struct GitLogIterator<'a> {
+    git_log: &'a GitLog,
     odb: Odb<'a>,
     revwalk: Revwalk<'a>,
-    config: GitLogConfig,
-    entries: Option<Box<Iterator<Item = Result<GitLogEntry, Error>> + 'a>>,
 }
 
 /// simplified user info - based on git2::Signature
@@ -119,7 +121,7 @@ pub struct FileChange {
     lines_deleted: u64,
 }
 
-impl<'a> GitLog<'a> {
+impl GitLog {
     pub fn workdir(&self) -> &Path {
         &self.workdir
     }
@@ -134,96 +136,101 @@ impl<'a> GitLog<'a> {
 
         debug!("work dir: {:?}", workdir);
 
-        let odb = repo.odb()?;
-        let mut revwalk = repo.revwalk()?;
-        revwalk.set_sorting(git2::Sort::TIME); // might need topological sorting if/when I implement rename following
-        revwalk.push_head()?;
-
         Ok(GitLog {
             workdir: workdir.to_owned(),
-            entries: None,
             repo,
+            config,
+        })
+    }
+
+    pub fn iterator(&self) -> Result<GitLogIterator, Error> {
+        let odb = self.repo.odb()?;
+        let mut revwalk = self.repo.revwalk()?;
+        revwalk.set_sorting(git2::Sort::TIME); // might need topological sorting if/when I implement rename following
+        revwalk.push_head()?;
+        Ok(GitLogIterator {
+            git_log: &self,
             odb,
             revwalk,
-            config,
         })
     }
 }
 
-impl<'a> Iterator for GitLog<'a> {
+impl<'a> Iterator for GitLogIterator<'a> {
     type Item = Result<GitLogEntry, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.entries.is_none() {
-            let mut entries = self
-                .revwalk
-                .map(|oid| summarise_commit(&self.repo, &self.odb, oid, self.config))
-                .flat_map(|c| match c {
-                    Ok(None) => None,
-                    Ok(Some(result)) => Some(Ok(result.clone())),
-                    Err(e) => Some(Err(e)),
-                })
-                .take_while(|c| {
-                    if let Ok(c) = c {
-                        c.commit_time >= self.config.earliest_time
-                    } else {
-                        true
+        let mut next_item = self.revwalk.next();
+        while next_item.is_some() {
+            let c = self.summarise_commit(next_item.unwrap());
+            match c {
+                Ok(Some(c)) => {
+                    if c.commit_time >= self.git_log.config.earliest_time {
+                        return Some(Ok(c));
                     }
-                });
-            self.entries = Some(Box::new(entries));
-        };
-        self.entries.unwrap().next()
+                }
+                Ok(None) => {}
+                Err(e) => return Some(Err(e)),
+            };
+            next_item = self.revwalk.next();
+        }
+        None
     }
 }
 
-/// Summarises a git commit
-/// returns Error if error, Result<None> if the id was not actually a commit, or Result<Some<GitLogEntry>> if valid
-fn summarise_commit(
-    repo: &Repository,
-    odb: &Odb,
-    oid: Result<Oid, git2::Error>,
-    config: GitLogConfig,
-) -> Result<Option<GitLogEntry>, Error> {
-    let oid = oid?;
-    let kind = odb.read(oid)?.kind();
-    match kind {
-        ObjectType::Commit => {
-            let commit = repo.find_commit(oid)?;
-            debug!("processing {:?}", commit);
-            let author = commit.author();
-            let committer = commit.committer();
-            let author_time = author.when().seconds() as u64;
-            let commit_time = committer.when().seconds() as u64;
-            let other_time = commit.time().seconds() as u64;
-            if commit_time != other_time {
-                error!(
-                    "Commit {:?} time {:?} != commit time {:?}",
-                    commit, other_time, commit_time
-                );
-            }
-            let co_authors = if let Some(message) = commit.message() {
-                find_coauthors(message)
-            } else {
-                Vec::new()
-            };
+impl<'a> GitLogIterator<'a> {
+    /// Summarises a git commit
+    /// returns Error if error, Result<None> if the id was not actually a commit, or Result<Some<GitLogEntry>> if valid
+    fn summarise_commit(
+        &self,
+        oid: Result<Oid, git2::Error>,
+    ) -> Result<Option<GitLogEntry>, Error> {
+        let oid = oid?;
+        let kind = self.odb.read(oid)?.kind();
+        match kind {
+            ObjectType::Commit => {
+                let commit = self.git_log.repo.find_commit(oid)?;
+                debug!("processing {:?}", commit);
+                let author = commit.author();
+                let committer = commit.committer();
+                let author_time = author.when().seconds() as u64;
+                let commit_time = committer.when().seconds() as u64;
+                let other_time = commit.time().seconds() as u64;
+                if commit_time != other_time {
+                    error!(
+                        "Commit {:?} time {:?} != commit time {:?}",
+                        commit, other_time, commit_time
+                    );
+                }
+                let co_authors = if let Some(message) = commit.message() {
+                    find_coauthors(message)
+                } else {
+                    Vec::new()
+                };
 
-            let commit_tree = commit.tree()?;
-            let file_changes = commit_file_changes(&repo, &commit, &commit_tree, config);
-            Ok(Some(GitLogEntry {
-                id: oid.to_string(),
-                summary: commit.summary().unwrap_or("[no message]").to_string(),
-                parents: commit.parent_ids().map({ |p| p.to_string() }).collect(),
-                committer: signature_to_user(&committer),
-                commit_time,
-                author: signature_to_user(&author),
-                author_time,
-                co_authors,
-                file_changes,
-            }))
-        }
-        _ => {
-            info!("ignoring object type: {}", kind);
-            Ok(None)
+                let commit_tree = commit.tree()?;
+                let file_changes = commit_file_changes(
+                    &self.git_log.repo,
+                    &commit,
+                    &commit_tree,
+                    self.git_log.config,
+                );
+                Ok(Some(GitLogEntry {
+                    id: oid.to_string(),
+                    summary: commit.summary().unwrap_or("[no message]").to_string(),
+                    parents: commit.parent_ids().map({ |p| p.to_string() }).collect(),
+                    committer: signature_to_user(&committer),
+                    commit_time,
+                    author: signature_to_user(&author),
+                    author_time,
+                    co_authors,
+                    file_changes,
+                }))
+            }
+            _ => {
+                info!("ignoring object type: {}", kind);
+                Ok(None)
+            }
         }
     }
 }
@@ -441,10 +448,10 @@ mod test {
 
         assert_eq!(git_log.workdir.canonicalize()?, git_root.canonicalize()?);
 
-        let err_count = git_log.entries.filter(Result::is_err).count();
+        let err_count = git_log.iterator()?.filter(|x| Result::is_err(x)).count();
         assert_eq!(err_count, 0);
 
-        let entries: Vec<_> = git_log.entries.filter_map(Result::ok).collect();
+        let entries: Vec<_> = git_log.iterator()?.filter_map(Result::ok).collect();
 
         assert_eq_json_file(&entries, "./tests/expected/git/git_sample.json");
 
@@ -458,10 +465,10 @@ mod test {
 
         let git_log = GitLog::new(&git_root, GitLogConfig::default().include_merges(true))?;
 
-        let err_count = git_log.entries.filter(Result::is_err).count();
+        let err_count = git_log.iterator()?.filter(Result::is_err).count();
         assert_eq!(err_count, 0);
 
-        let entries: Vec<_> = git_log.entries.filter_map(Result::ok).collect();
+        let entries: Vec<_> = git_log.iterator()?.filter_map(Result::ok).collect();
 
         assert_eq_json_file(&entries, "./tests/expected/git/git_sample_with_merges.json");
 
@@ -476,20 +483,20 @@ mod test {
 
         let git_log = GitLog::new(&git_root, GitLogConfig::default().since(1558521694))?;
 
-        let err_count = git_log.entries.filter(Result::is_err).count();
+        let err_count = git_log.iterator()?.filter(Result::is_err).count();
         assert_eq!(err_count, 0);
 
         let ids: Vec<_> = git_log
-            .entries
+            .iterator()?
             .filter_map(Result::ok)
-            .map(|h| (h.summary.as_str(), h.commit_time))
+            .map(|h| (h.summary.clone(), h.commit_time))
             .collect();
         assert_eq!(
             ids,
             vec![
-                ("renaming", 1558533240),
-                ("just changed parent.clj", 1558524371),
-                ("Merge branch \'fiddling\'", 1558521695)
+                ("renaming".to_owned(), 1558533240u64),
+                ("just changed parent.clj".to_owned(), 1558524371u64),
+                ("Merge branch \'fiddling\'".to_owned(), 1558521695u64)
             ]
         );
 
