@@ -72,7 +72,7 @@ impl GitCalculator {
     ) -> Option<GitData> {
         // TODO!
         // for now, just get latest change - maybe non-trivial change? (i.e. ignore rename/copy) - or this could be configurable
-        // and get set of all authors - maybe dedupe by email.
+        // and get set of all authors - maybe deduplicate by email.
         if history.is_empty() {
             return None;
         }

@@ -167,6 +167,8 @@ impl<'a> Iterator for GitLogIterator<'a> {
                 Ok(Some(c)) => {
                     if c.commit_time >= self.git_log.config.earliest_time {
                         return Some(Ok(c));
+                    } else {
+                        return None; // short circuit!
                     }
                 }
                 Ok(None) => {}
