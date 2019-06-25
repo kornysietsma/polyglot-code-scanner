@@ -2,8 +2,12 @@
 use super::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use failure::Error;
 use serde::Serialize;
-use std::path::Path;
-use std::path::PathBuf;
+
+use content_inspector::{inspect, ContentType};
+
+use std::fs::File;
+use std::io::Read;
+use std::path::{Path, PathBuf};
 
 use tokei::{Config, LanguageType};
 
@@ -12,6 +16,8 @@ use tokei::{Config, LanguageType};
 struct LanguageLocData {
     /// Canonical language name
     pub language: String,
+    /// binary files only have bytes not lines!
+    pub binary: bool,
     /// Number of blank lines within the file.
     pub blanks: usize,
     /// Number of lines of code within the file.
@@ -21,21 +27,70 @@ struct LanguageLocData {
     pub comments: usize,
     /// Total number of lines within the file.
     pub lines: usize,
+    /// File size in bytes
+    pub bytes: u64,
+}
+
+fn safe_extension(filename: &Path) -> String {
+    match filename.extension() {
+        Some(ext) => ext.to_string_lossy().to_string(),
+        None => "no_extension".to_owned(),
+    }
+}
+
+fn file_size(filename: &Path) -> Result<u64, Error> {
+    Ok(filename.metadata()?.len())
+}
+
+impl LanguageLocData {
+    fn from_binary(language_name: String, filename: &Path) -> Result<Self, Error> {
+        Ok(LanguageLocData {
+            language: language_name,
+            binary: true,
+            blanks: 0,
+            code: 0,
+            comments: 0,
+            lines: 0,
+            bytes: file_size(filename)?,
+        })
+    }
+}
+
+const MAX_PEEK_SIZE: usize = 1024;
+
+fn file_content_type(filename: &Path) -> Result<ContentType, Error> {
+    let file = File::open(&filename)?;
+    let mut buffer: Vec<u8> = vec![];
+
+    file.take(MAX_PEEK_SIZE as u64).read_to_end(&mut buffer)?;
+    Ok(inspect(&buffer))
 }
 
 fn parse_file(filename: &Path) -> Result<LanguageLocData, Error> {
     let config = Config::default();
-    let language = LanguageType::from_path(filename, &config)
-        .ok_or_else(|| format_err!("No language for file {:?}", filename))?; // TODO: maybe a real error type?
+    let mut language_name = None;
+    let language = match LanguageType::from_path(filename, &config) {
+        Some(language) => language,
+        None => {
+            language_name = Some(safe_extension(filename));
+            if file_content_type(filename)? == ContentType::BINARY {
+                return LanguageLocData::from_binary(language_name.unwrap(), filename);
+            }
+            LanguageType::Text
+        }
+    };
+    let language_name = language_name.unwrap_or_else(|| language.name().to_string());
     let stats = language.parse(PathBuf::from(filename), &config);
 
     match stats {
         Ok(stats) => Ok(LanguageLocData {
+            binary: false,
             blanks: stats.blanks,
             code: stats.code,
             comments: stats.comments,
             lines: stats.lines,
-            language: language.name().to_string(),
+            language: language_name,
+            bytes: file_size(filename)?,
         }),
         Err((error, _pathbuf)) => Err(Error::from(error)),
     }

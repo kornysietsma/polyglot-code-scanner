@@ -1,9 +1,8 @@
 # TODO
 
 ## loc and general
+- add test that checks binary files and unknown text files (e.g. erb)
 - clear out logs for unknown file type - maybe only log each type once?
-- "loc" should fall back to text file processing for unknown files (e.g. cargo.lock!) and store extension (or something for e.g. "Gemfile") as language - see https://github.com/sharkdp/content_inspector for checking for binary
-- "loc" could also store size for binary files? some repos are full of e.g. pngs
 - the UI might need an option "show binary files" - maybe an alternative view to loc.  Tricky as we would need a complete re-draw - but for now, can just store the size and let the ui choose.
 - ignore pattern e.g. for vendored javascript
 
