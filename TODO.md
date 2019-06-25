@@ -1,5 +1,12 @@
 # TODO
 
+## loc and general
+- clear out logs for unknown file type - maybe only log each type once?
+- "loc" should fall back to text file processing for unknown files (e.g. cargo.lock!) and store extension (or something for e.g. "Gemfile") as language - see https://github.com/sharkdp/content_inspector for checking for binary
+- "loc" could also store size for binary files? some repos are full of e.g. pngs
+- the UI might need an option "show binary files" - maybe an alternative view to loc.  Tricky as we would need a complete re-draw - but for now, can just store the size and let the ui choose.
+- ignore pattern e.g. for vendored javascript
+
 ## git things:
 - does a rename or copy count as a change?
 - advanced usage might want the full history so the UI could calculate things like churn.
@@ -14,16 +21,14 @@
 - refactoring - use Into more ? "fn new<S: Into<String>>(name: S, is_file: bool)" allows the caller to decide...
 - add a progress notifier - logs are too low level - look at indicatif https://docs.rs/indicatif/0.11.0/indicatif/
 - Can we get rid of test_shared's duplication in cargo.toml ?
-- "loc" should fall back to text file processing for unknown files (e.g. cargo.lock!) and store extension (or something for e.g. "Gemfile") as language
-- "loc" could also store size for binary files? some repos are full of e.g. pngs
- - the UI might need an option "show binary files" - maybe an alternative view to loc.  Tricky as we would need a complete re-draw
 - "-P" cli option is confusing - it's pretty printing _for logs_ !
 - can we make the log default "warn"??
-- decrease log verbosity for unknown file types
+- config file so things like ignore pattern are "sticky" ? Nice to have a `.lati.config` file you could drop in to a local repo
 
 ## Bigger things
 - indent stats (with or without comments depending on the next bit)
 - tokei-based calculations that ignore comments - might need a tokei fork! Or can we pilfer bits of tokei?
+  - as a start needs to somehow use or clone tokei::language::syntax::SyntaxCounter so not a small job.
 
 ## UI stuff
 - integrate new formats into existing UI
