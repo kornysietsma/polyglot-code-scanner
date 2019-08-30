@@ -4,7 +4,7 @@
 - add test that checks binary files and unknown text files (e.g. erb)
 - clear out logs for unknown file type - maybe only log each type once?
 - the UI might need an option "show binary files" - maybe an alternative view to loc.  Tricky as we would need a complete re-draw - but for now, can just store the size and let the ui choose.
-- ignore pattern e.g. for vendored javascript
+- ignore patterns e.g. for vendored javascript, generated code
 
 ## git things:
 - does a rename or copy count as a change?
