@@ -1,17 +1,17 @@
 #![allow(dead_code)]
+use log::Level::Trace;
 use std::{
     borrow::Cow,
     fmt,
     fs::File,
-    io::{self, Read, BufRead, BufReader},
+    io::{self, BufRead, BufReader, Read},
     path::{Path, PathBuf},
     str::FromStr,
 };
-use log::Level::Trace;
 
 // from tokei deps:
-use grep_searcher::LineIter;
 use encoding_rs_io::DecodeReaderBytesBuilder;
+use grep_searcher::LineIter;
 
 use tokei::{Config, LanguageType, Stats};
 
@@ -73,7 +73,6 @@ impl SliceExt for [u8] {
         false
     }
 }
-
 
 pub(crate) struct SyntaxCounter {
     pub(crate) allows_nested: bool,
@@ -185,7 +184,6 @@ impl SyntaxCounter {
                     } else {
                         trace!("Start {:?}", start);
                     }
-
                 }
 
                 return Some(start.len());
@@ -277,10 +275,10 @@ pub fn parse_lines<'a>(
     mut stats: Stats,
 ) -> Vec<String> {
     let mut syntax = SyntaxCounter::new(language);
-        let mut code_lines:Vec<String> = Vec::new();
+    let mut code_lines: Vec<String> = Vec::new();
 
     for line in lines {
-        let raw_line:String = String::from_utf8_lossy(line).to_string();
+        let raw_line: String = String::from_utf8_lossy(line).to_string();
 
         if line.trim().is_empty() {
             stats.blanks += 1;
@@ -302,7 +300,14 @@ pub fn parse_lines<'a>(
             }};
         }
 
-        if parse_basic(language, &syntax, line, &raw_line, &mut stats, &mut code_lines) {
+        if parse_basic(
+            language,
+            &syntax,
+            line,
+            &raw_line,
+            &mut stats,
+            &mut code_lines,
+        ) {
             continue;
         }
 
@@ -372,39 +377,40 @@ pub fn parse_lines<'a>(
             stats.code += 1;
             trace!("Code No.{}", stats.code);
         }
-
     }
 
     stats.lines = stats.blanks + stats.code + stats.comments;
     code_lines
 }
 
-    /// Parses the text provided. Returns `Stats` on success.
-    pub fn parse_from_str<A: AsRef<str>>(language:LanguageType,
-                          path: PathBuf,
-                          text: A,
-                          config: &Config)
-        -> Vec<String>
-    {
-        parse_from_slice(language, path, text.as_ref().as_bytes(), config)
-    }
+/// Parses the text provided. Returns `Stats` on success.
+pub fn parse_from_str<A: AsRef<str>>(
+    language: LanguageType,
+    path: PathBuf,
+    text: A,
+    config: &Config,
+) -> Vec<String> {
+    parse_from_slice(language, path, text.as_ref().as_bytes(), config)
+}
 
-        /// Parses the text provided. Returning `Stats` on success.
-    pub fn parse_from_slice<A: AsRef<[u8]>>(language:LanguageType,
-                          path: PathBuf,
-                          text: A,
-                          config: &Config)
-        -> Vec<String>
-    {
-        let lines = LineIter::new(b'\n', text.as_ref());
-        let mut stats = Stats::new(path);
+/// Parses the text provided. Returning `Stats` on success.
+pub fn parse_from_slice<A: AsRef<[u8]>>(
+    language: LanguageType,
+    path: PathBuf,
+    text: A,
+    config: &Config,
+) -> Vec<String> {
+    let lines = LineIter::new(b'\n', text.as_ref());
+    let mut stats = Stats::new(path);
 
-        if language.is_blank() {
-            lines.map (|line| String::from_utf8_lossy(line).to_string() ).collect()
-        } else {
-            parse_lines(language, config, lines, stats)
-        }
+    if language.is_blank() {
+        lines
+            .map(|line| String::from_utf8_lossy(line).to_string())
+            .collect()
+    } else {
+        parse_lines(language, config, lines, stats)
     }
+}
 
 #[cfg(test)]
 mod tests {
@@ -423,15 +429,19 @@ with blanks
 yow
 */
 foo();"#;
-        let result = parse_from_str(LanguageType::JavaScript,
-         PathBuf::from("the_path"),
-          code, &Config::default());
+        let result = parse_from_str(
+            LanguageType::JavaScript,
+            PathBuf::from("the_path"),
+            code,
+            &Config::default(),
+        );
 
-        let expected:Vec<String> = vec!["function foo() {\n".to_owned(),
-        "\n".to_owned(),
-        "    blah;\n".to_owned(),
-        "}\n".to_owned(),
-        "foo();".to_owned()
+        let expected: Vec<String> = vec![
+            "function foo() {\n".to_owned(),
+            "\n".to_owned(),
+            "    blah;\n".to_owned(),
+            "}\n".to_owned(),
+            "foo();".to_owned(),
         ];
 
         assert_eq!(result, expected);
