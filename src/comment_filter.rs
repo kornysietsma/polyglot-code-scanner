@@ -238,7 +238,9 @@ fn parse_basic(
     language: LanguageType,
     syntax: &SyntaxCounter,
     line: &[u8],
+    raw_line: &str,
     stats: &mut Stats,
+    code_lines: &mut Vec<String>,
 ) -> bool {
     if syntax.quote.is_some()
         || !syntax.stack.is_empty()
@@ -258,6 +260,7 @@ fn parse_basic(
         trace!("Comment No.{}", stats.comments);
     } else {
         stats.code += 1;
+        code_lines.push(raw_line.to_owned());
         trace!("Code No.{}", stats.code);
     }
 
@@ -272,14 +275,18 @@ pub fn parse_lines<'a>(
     config: &Config,
     lines: impl IntoIterator<Item = &'a [u8]>,
     mut stats: Stats,
-) -> Stats {
+) -> Vec<String> {
     let mut syntax = SyntaxCounter::new(language);
+        let mut code_lines:Vec<String> = Vec::new();
 
     for line in lines {
+        let raw_line:String = String::from_utf8_lossy(line).to_string();
+
         if line.trim().is_empty() {
             stats.blanks += 1;
             trace!("Blank No.{}", stats.blanks);
             continue;
+            // TODO: can I add the blank line to code/comments???
         }
 
         // FORTRAN has a rule where it only counts as a comment if it's the
@@ -295,7 +302,7 @@ pub fn parse_lines<'a>(
             }};
         }
 
-        if parse_basic(language, &syntax, line, &mut stats) {
+        if parse_basic(language, &syntax, line, &raw_line, &mut stats, &mut code_lines) {
             continue;
         }
 
@@ -361,6 +368,7 @@ pub fn parse_lines<'a>(
             trace!("Comment No.{}", stats.comments);
             trace!("Was the Comment stack empty?: {}", !had_multi_line);
         } else {
+            code_lines.push(raw_line);
             stats.code += 1;
             trace!("Code No.{}", stats.code);
         }
@@ -368,53 +376,31 @@ pub fn parse_lines<'a>(
     }
 
     stats.lines = stats.blanks + stats.code + stats.comments;
-    stats
+    code_lines
 }
-
-    pub fn parse(language:LanguageType, path: PathBuf, config: &Config) -> Result<Stats, (io::Error, PathBuf)> {
-        let text = {
-            let f = match File::open(&path) {
-                Ok(f) => f,
-                Err(e) => return Err((e, path)),
-            };
-            let mut s = Vec::new();
-            let mut reader = DecodeReaderBytesBuilder::new()
-                                .build(f);
-
-            if let Err(e) = reader.read_to_end(&mut s) {
-                return Err((e, path));
-            }
-            s
-        };
-
-        Ok(parse_from_slice(language, path, &text, config))
-    }
 
     /// Parses the text provided. Returns `Stats` on success.
     pub fn parse_from_str<A: AsRef<str>>(language:LanguageType,
                           path: PathBuf,
                           text: A,
                           config: &Config)
-        -> Stats
+        -> Vec<String>
     {
         parse_from_slice(language, path, text.as_ref().as_bytes(), config)
     }
 
-    /// Parses the text provided. Returning `Stats` on success.
+        /// Parses the text provided. Returning `Stats` on success.
     pub fn parse_from_slice<A: AsRef<[u8]>>(language:LanguageType,
                           path: PathBuf,
                           text: A,
                           config: &Config)
-        -> Stats
+        -> Vec<String>
     {
         let lines = LineIter::new(b'\n', text.as_ref());
         let mut stats = Stats::new(path);
 
-        if language.is_blank() { 
-            let count = lines.count();
-            stats.lines = count;
-            stats.code = count;
-            stats
+        if language.is_blank() {
+            lines.map (|line| String::from_utf8_lossy(line).to_string() ).collect()
         } else {
             parse_lines(language, config, lines, stats)
         }
@@ -426,20 +412,28 @@ mod tests {
 
     #[test]
     pub fn can_strip_comments() {
-        let code = r#"
-            function foo() {
-                blah;
-                // comment
-            }
-            /* longer comment
-            asdfa
-            */
-            foo();
-        "#;
+        let code = r#"function foo() {
+
+    blah;
+    // comment
+}
+/* longer comment
+with blanks
+
+yow
+*/
+foo();"#;
         let result = parse_from_str(LanguageType::JavaScript,
          PathBuf::from("the_path"),
           code, &Config::default());
 
-        assert_eq!(result, Stats::new(PathBuf::from("the_path")));
+        let expected:Vec<String> = vec!["function foo() {\n".to_owned(),
+        "\n".to_owned(),
+        "    blah;\n".to_owned(),
+        "}\n".to_owned(),
+        "foo();".to_owned()
+        ];
+
+        assert_eq!(result, expected);
     }
 }
