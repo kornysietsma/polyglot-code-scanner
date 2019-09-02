@@ -1,10 +1,7 @@
-#![allow(dead_code)]
 use log::Level::Trace;
 use std::{
     borrow::Cow,
-    fmt,
-    fs::File,
-    io::{self, BufRead, BufReader, Read},
+    io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
     str::FromStr,
 };
