@@ -9,7 +9,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use tokei::{Config, LanguageType};
+use tokei::{Config, LanguageType, Stats};
 
 /// a struct representing tokei language data - based on tokei::Stats and tokei::Languages::name
 #[derive(Debug, PartialEq, Serialize)]
@@ -80,7 +80,7 @@ fn parse_file(filename: &Path) -> Result<LanguageLocData, Error> {
         }
     };
     let language_name = language_name.unwrap_or_else(|| language.name().to_string());
-    let stats = language.parse(PathBuf::from(filename), &config);
+    let stats = language.parse::<Stats>(PathBuf::from(filename), &config);
 
     match stats {
         Ok(stats) => Ok(LanguageLocData {
