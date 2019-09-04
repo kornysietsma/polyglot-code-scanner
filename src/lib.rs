@@ -18,13 +18,12 @@ use failure::Error;
 use std::io;
 use std::path::PathBuf;
 
+mod code_line_data;
 mod file_walker;
-mod comment_filter;
 mod flare;
 mod git;
 mod loc;
 mod toxicity_indicator_calculator;
-
 
 #[cfg(test)]
 extern crate tempfile;
