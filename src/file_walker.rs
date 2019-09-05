@@ -10,7 +10,7 @@ use std::path::Path;
 fn apply_calculators_to_node(
     node: &mut FlareTreeNode,
     path: &Path,
-    toxicity_indicator_calculators: &mut Vec<Box<ToxicityIndicatorCalculator>>,
+    toxicity_indicator_calculators: &mut Vec<Box<dyn ToxicityIndicatorCalculator>>,
 ) {
     toxicity_indicator_calculators.iter_mut().for_each(|tic| {
         let indicators = tic.calculate(path);
@@ -32,7 +32,7 @@ fn apply_calculators_to_node(
 fn walk_tree_walker(
     walker: Walk,
     prefix: &Path,
-    toxicity_indicator_calculators: &mut Vec<Box<ToxicityIndicatorCalculator>>,
+    toxicity_indicator_calculators: &mut Vec<Box<dyn ToxicityIndicatorCalculator>>,
 ) -> Result<flare::FlareTreeNode, Error> {
     let mut tree = FlareTreeNode::new("flare", false);
 
@@ -69,7 +69,7 @@ fn walk_tree_walker(
 
 pub fn walk_directory(
     root: &Path,
-    toxicity_indicator_calculators: &mut Vec<Box<ToxicityIndicatorCalculator>>,
+    toxicity_indicator_calculators: &mut Vec<Box<dyn ToxicityIndicatorCalculator>>,
 ) -> Result<flare::FlareTreeNode, Error> {
     walk_tree_walker(
         WalkBuilder::new(root).build(),
@@ -129,7 +129,7 @@ mod test {
         let root = Path::new("./tests/data/simple/");
         let simple_tic = SimpleTIC {};
         let self_naming_tic = SelfNamingTIC {};
-        let calculators: &mut Vec<Box<ToxicityIndicatorCalculator>> =
+        let calculators: &mut Vec<Box<dyn ToxicityIndicatorCalculator>> =
             &mut vec![Box::new(simple_tic), Box::new(self_naming_tic)];
 
         let tree = walk_directory(root, calculators).unwrap();
@@ -157,7 +157,7 @@ mod test {
     fn can_mutate_state_of_calculator() {
         let root = Path::new("./tests/data/simple/");
         let tic = MutableTIC { count: 0 };
-        let calculators: &mut Vec<Box<ToxicityIndicatorCalculator>> = &mut vec![Box::new(tic)];
+        let calculators: &mut Vec<Box<dyn ToxicityIndicatorCalculator>> = &mut vec![Box::new(tic)];
 
         let tree = walk_directory(root, calculators).unwrap();
 

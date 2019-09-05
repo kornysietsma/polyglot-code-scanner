@@ -69,7 +69,7 @@ impl LanguageSummary for CodeLines {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokei::{Config, LanguageSummary, LanguageType};
+    use tokei::{Config, LanguageType};
 
     #[test]
     pub fn can_process_tabs_and_spaces() {
