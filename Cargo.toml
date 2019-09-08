@@ -25,9 +25,9 @@ derive_builder = "0.7.1"
 derive-getters = "0.0.7"
 content_inspector = "0.2.4"
 lati_explorer_server = { path = "lati_explorer_server" }
-
 encoding_rs_io = "0.1.6"
 grep-searcher = "0.1.4"
+histogram = "0.6.9"
 
 [dev-dependencies]
 test_shared = { path = "test_shared" }

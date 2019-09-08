@@ -8,18 +8,26 @@ use tokei::LanguageSummary;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CodeLineData {
-    pub spaces: i32,
-    pub tabs: i32,
-    pub text: i32,
+    pub spaces: u32,
+    pub tabs: u32,
+    pub text: u32,
 }
 
 impl CodeLineData {
     fn new(line: &[u8]) -> Self {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"^(\s*)([^\n]*)\n?$").unwrap();
+            static ref RE: Regex = Regex::new(r"^(?-u)([ \t]*)([^\n]*)\n?$").unwrap();
         }
-        println!("scanning '{}'", String::from_utf8_lossy(line));
-        let caps = RE.captures(line).unwrap();
+        let rcaps = RE.captures(line);
+        if rcaps.is_none() {
+            error!("Bad regex parsing: '{:?}'", line);
+            return CodeLineData {
+                spaces: 0,
+                tabs: 0,
+                text: 0,
+            };
+        }
+        let caps = rcaps.unwrap();
         let whitespace_chars: &[u8] = &caps[1];
         let text_chars: &[u8] = &caps[2];
         let mut spaces = 0;
@@ -37,7 +45,7 @@ impl CodeLineData {
         CodeLineData {
             spaces,
             tabs,
-            text: text as i32,
+            text: text as u32,
         }
     }
 }

@@ -22,6 +22,7 @@ mod code_line_data;
 mod file_walker;
 mod flare;
 mod git;
+mod indentation;
 mod loc;
 mod toxicity_indicator_calculator;
 
@@ -37,6 +38,7 @@ mod git_logger;
 
 use git::GitCalculator;
 use git_logger::GitLogConfig;
+use indentation::IndentationCalculator;
 use loc::LocCalculator;
 use toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 
@@ -51,10 +53,6 @@ impl CalculatorConfig {
     }
 }
 
-// TODO: would love to somehow calculate this from the types (via macro?) but for now this is manual:
-#[allow(dead_code)]
-const TOXICITY_INDICATOR_CALCULATOR_NAMES: &[&str] = &["loc"];
-
 pub fn named_toxicity_indicator_calculator(
     name: &str,
     config: &CalculatorConfig,
@@ -64,6 +62,7 @@ pub fn named_toxicity_indicator_calculator(
         "git" => Some(Box::new(GitCalculator::new(
             GitLogConfig::default().since_years(config.git_years),
         ))),
+        "indentation" => Some(Box::new(IndentationCalculator {})),
         _ => None,
     }
 }

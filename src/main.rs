@@ -73,7 +73,12 @@ fn real_main() -> Result<(), Error> {
         }
 
         let mut out = Vec::new();
-        lati_scanner::run(root, calculator_config, vec!["loc", "git"], &mut out)?;
+        lati_scanner::run(
+            root,
+            calculator_config,
+            vec!["loc", "git", "indentation"],
+            &mut out,
+        )?;
         let json_output = String::from_utf8(out)?;
         let docs_dir = explorer_location.join("docs");
         lati_explorer_server::serve(&docs_dir, args.port, &json_output)?
@@ -84,7 +89,12 @@ fn real_main() -> Result<(), Error> {
             Box::new(io::stdout())
         };
 
-        lati_scanner::run(root, calculator_config, vec!["loc", "git"], &mut out)?;
+        lati_scanner::run(
+            root,
+            calculator_config,
+            vec!["loc", "git", "indentation"],
+            &mut out,
+        )?;
     }
 
     Ok(())
