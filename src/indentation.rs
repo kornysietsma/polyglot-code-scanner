@@ -3,6 +3,9 @@
 use super::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use failure::Error;
 use serde::Serialize;
+#[macro_use]
+use lazy_static;
+use std::sync::Mutex;
 
 use content_inspector::{inspect, ContentType};
 
@@ -31,7 +34,11 @@ struct IndentationData {
 
 impl IndentationData {
     fn new(codeLines: CodeLines) -> Option<Self> {
-        let mut histogram = Histogram::new();
+        lazy_static! {
+            static ref HISTOGRAM: Mutex<Histogram> =
+                Mutex::new(Histogram::configure().max_value(1000).build().unwrap());
+        }
+        let mut histogram = HISTOGRAM.lock().unwrap();
         for line in codeLines.lines {
             if line.text > 0 {
                 let indentation = line.spaces + line.tabs * 4;
