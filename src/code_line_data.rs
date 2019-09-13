@@ -1,8 +1,6 @@
-use regex::bytes::Regex;
-use std::path::PathBuf;
-#[macro_use]
-use lazy_static;
 use grep_searcher::LineIter;
+use std::convert::TryInto;
+use std::path::PathBuf;
 
 use tokei::LanguageSummary;
 
@@ -15,37 +13,30 @@ pub struct CodeLineData {
 
 impl CodeLineData {
     fn new(line: &[u8]) -> Self {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"^(?-u)([ \t]*)([^\n]*)\n?$").unwrap();
-        }
-        let rcaps = RE.captures(line);
-        if rcaps.is_none() {
-            error!("Bad regex parsing: '{:?}'", line);
-            return CodeLineData {
-                spaces: 0,
-                tabs: 0,
-                text: 0,
-            };
-        }
-        let caps = rcaps.unwrap();
-        let whitespace_chars: &[u8] = &caps[1];
-        let text_chars: &[u8] = &caps[2];
-        let mut spaces = 0;
-        let mut tabs = 0;
-        for ch in whitespace_chars {
-            if *ch == b' ' {
+        let mut spaces: u32 = 0;
+        let mut tabs: u32 = 0;
+        let mut text: Option<usize> = None;
+        for ix in 0..line.len() {
+            let c = line[ix];
+            if c == b' ' {
                 spaces += 1;
-            } else if *ch == b'\t' {
+            } else if c == b'\t' {
                 tabs += 1;
             } else {
-                panic!("Invalid whitespace char: {}", *ch);
+                text = Some(
+                    String::from_utf8_lossy(&line[ix..line.len()])
+                        .trim()
+                        .chars()
+                        .count(),
+                );
+                break;
             }
         }
-        let text = String::from_utf8_lossy(text_chars).chars().count();
+
         CodeLineData {
             spaces,
             tabs,
-            text: text as u32,
+            text: text.unwrap_or(0) as u32,
         }
     }
 }
