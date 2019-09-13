@@ -1,5 +1,4 @@
 use grep_searcher::LineIter;
-use std::convert::TryInto;
 use std::path::PathBuf;
 
 use tokei::LanguageSummary;

@@ -33,13 +33,13 @@ struct IndentationData {
 }
 
 impl IndentationData {
-    fn new(codeLines: CodeLines) -> Option<Self> {
+    fn new(code_lines: CodeLines) -> Option<Self> {
         lazy_static! {
             static ref HISTOGRAM: Mutex<Histogram> =
                 Mutex::new(Histogram::configure().max_value(1000).build().unwrap());
         }
         let mut histogram = HISTOGRAM.lock().unwrap();
-        for line in codeLines.lines {
+        for line in code_lines.lines {
             if line.text > 0 {
                 let indentation = line.spaces + line.tabs * 4;
                 histogram.increment(indentation as u64).unwrap();
@@ -62,13 +62,6 @@ impl IndentationData {
     }
 }
 
-fn safe_extension(filename: &Path) -> String {
-    match filename.extension() {
-        Some(ext) => ext.to_string_lossy().to_string(),
-        None => "no_extension".to_owned(),
-    }
-}
-
 // TODO: remove duplication with loc.rs
 const MAX_PEEK_SIZE: usize = 1024;
 
@@ -82,11 +75,9 @@ fn file_content_type(filename: &Path) -> Result<ContentType, Error> {
 
 fn parse_file(filename: &Path) -> Result<Option<IndentationData>, Error> {
     let config = Config::default();
-    let mut language_name = None;
     let language = match LanguageType::from_path(filename, &config) {
         Some(language) => language,
         None => {
-            language_name = Some(safe_extension(filename));
             if file_content_type(filename)? == ContentType::BINARY {
                 return Ok(None);
             }

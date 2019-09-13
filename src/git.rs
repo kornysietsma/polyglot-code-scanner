@@ -118,7 +118,7 @@ impl ToxicityIndicatorCalculator for GitCalculator {
                 ))) // TODO: maybe explicit error? Though this should be fatal
             } else {
                 info!("No git history found for file: {:?}", path);
-                return Ok(None);
+                Ok(None)
             }
         } else {
             Ok(None)
