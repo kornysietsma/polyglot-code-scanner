@@ -2,3 +2,6 @@
 **/*.rs.bk
 .idea
 .vscode
+/.cargo
+/.rustc_info.json
+/debug
