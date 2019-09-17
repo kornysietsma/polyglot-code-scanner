@@ -29,6 +29,39 @@ pub struct GitCalculator {
     git_log_config: GitLogConfig, // TODO - probably should have own config struct
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct GitInfo {
+    pub remote_url: Option<String>,
+    pub head: Option<String>,
+}
+
+fn repository_head(repository: &Repository) -> Result<String, Error> {
+    let head = repository.head()?;
+    let head_ref = head.resolve()?;
+    Ok(head_ref.peel_to_commit()?.id().to_string())
+}
+
+impl GitInfo {
+    pub fn new(path: &Path, repository: Repository) -> Self {
+        let remote = repository.find_remote("origin");
+        let remote_url = match remote {
+            Err(e) => {
+                warn!("Error fetching origin for {:?}: {}", path, e);
+                None
+            }
+            Ok(remote) => remote.url().map(str::to_owned),
+        };
+        let head = match repository_head(&repository) {
+            Err(e) => {
+                warn!("Error fetching head for {:?}: {}", path, e);
+                None
+            }
+            Ok(head) => Some(head),
+        };
+        GitInfo { remote_url, head }
+    }
+}
+
 impl GitCalculator {
     pub fn new(config: GitLogConfig) -> Self {
         GitCalculator {
@@ -70,7 +103,6 @@ impl GitCalculator {
         last_commit: u64,
         history: &[FileHistoryEntry],
     ) -> Option<GitData> {
-        // TODO!
         // for now, just get latest change - maybe non-trivial change? (i.e. ignore rename/copy) - or this could be configurable
         // and get set of all authors - maybe deduplicate by email.
         if history.is_empty() {
@@ -121,7 +153,23 @@ impl ToxicityIndicatorCalculator for GitCalculator {
                 Ok(None)
             }
         } else {
-            Ok(None)
+            let git_path = path.join(".git");
+            if git_path.is_dir() {
+                match Repository::discover(path) {
+                    Ok(repository) => {
+                        let info = GitInfo::new(path, repository);
+                        Ok(Some(serde_json::value::to_value(info).expect(
+                            "Serializable object couldn't be serialized to JSON",
+                        )))
+                    }
+                    Err(e) => {
+                        warn!("Can't find git repository at {:?}, {}", path, e);
+                        Ok(None)
+                    }
+                }
+            } else {
+                Ok(None)
+            }
         }
     }
 }
