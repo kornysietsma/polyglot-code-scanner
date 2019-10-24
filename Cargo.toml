@@ -6,31 +6,31 @@ description = "Language-agnostic toxicity indicators - scans code directories an
 edition = "2018"
 
 [dependencies]
-tokei = { path = "../tokei" }
+tokei = { git = "https://github.com/kornysietsma/tokei", branch = "generic-stats-aggregation" }
 ignore = "0.4"
-serde = { version = "1.0.90",features = ["derive"] }
+serde = { version = "1.0.101",features = ["derive"] }
 erased-serde = "0.3"
 serde_json = "1.0"
 regex = "1"
-failure = "0.1.5"
+failure = "0.1.6"
 clap = "~2.33.0"
-structopt = "~0.2.15"
+structopt = "0.2.18"
 log = "0.4"
 clap-log-flag = "0.2.1"
 clap-verbosity-flag = "0.2.0"
-failure-tools = "4.0.2"
-lazy_static = "1.3.0"
+failure-tools = "4.0.3"
+lazy_static = "1.4.0"
 git2 = "0.8.0"
-derive_builder = "0.7.1"
-derive-getters = "0.0.7"
+derive_builder = "0.8.0"
+derive-getters = "0.1.0"
 content_inspector = "0.2.4"
 lati_explorer_server = { path = "lati_explorer_server" }
 encoding_rs_io = "0.1.6"
-grep-searcher = "0.1.4"
+grep-searcher = "0.1.6"
 histogram = "0.6.9"
 
 [dev-dependencies]
 test_shared = { path = "test_shared" }
-tempfile = "3.0.8"
-zip = "0.5.2"
+tempfile = "3.1.0"
+zip = "0.5.3"
 pretty_assertions = "0.6.1"

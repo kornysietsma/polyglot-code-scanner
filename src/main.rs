@@ -5,6 +5,8 @@ extern crate clap_log_flag;
 extern crate clap_verbosity_flag;
 extern crate failure_tools;
 extern crate lati_explorer_server;
+extern crate log;
+extern crate structopt;
 
 use failure::{bail, format_err, Error};
 use lati_scanner::CalculatorConfig;

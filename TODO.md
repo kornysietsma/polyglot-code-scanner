@@ -17,13 +17,14 @@
 
 ## git things:
 
-- does a rename or copy count as a change?
+- does a rename or copy count as a change, if no lines of code change?
 - add indicator selection to the CLI
 - need to test special cases:
   - submodules?!
   - local checkout is not on remote origin/master (do we care?)
 - follow renames! (this is complex but would be good - currently nothing is known before a rename)
 - better tests - using code with more checkins and more date ranges (maybe some rebasing?)
+- check names for uniqueness, not emails - noreply@github.com isn't a user
 
 ### churn:
 
@@ -50,8 +51,6 @@
 
 ## UI stuff
 
-- integrate new formats into existing UI
-- minimal UI - no project selector
 - consider two UI modes:
   1. dynamic mode - just host a local web server
   2. static mode - publish a static server of current dir for uploading
