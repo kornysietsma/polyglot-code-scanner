@@ -20,6 +20,7 @@ use structopt::StructOpt;
 /// Language-agnostic Toxicity Indicators scanner
 ///
 /// Scans source code and generates indicators that may (or may not) show toxic code.
+/// Ignores files specified by `.gitignore` or `.lati_ignore` files
 /// See https://github.com/kornysietsma/lati-scanner for details
 struct Cli {
     #[structopt(flatten)]

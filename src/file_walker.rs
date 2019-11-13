@@ -72,7 +72,9 @@ pub fn walk_directory(
     toxicity_indicator_calculators: &mut Vec<Box<dyn ToxicityIndicatorCalculator>>,
 ) -> Result<flare::FlareTreeNode, Error> {
     walk_tree_walker(
-        WalkBuilder::new(root).build(),
+        WalkBuilder::new(root)
+            .add_custom_ignore_filename(".lati_ignore")
+            .build(),
         root,
         toxicity_indicator_calculators,
     )

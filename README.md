@@ -122,6 +122,12 @@ The basic process is:
 - this will fail if it can't see the `docs` directory where resources actually live.
 - Once the files are scanned, open a web browser to http://localhost:3000 (or you can specify a different port on the commandline)
 
+## Ignoring files
+
+Git ignored files in `.gitignore` are not scanned.
+
+You can also manually add `.lati_ignore` files anywhere in the codebase, to list extra files to be ignored - the syntax is [the same as .gitignore's](https://git-scm.com/docs/gitignore)
+
 ## Usage
 
 ```
