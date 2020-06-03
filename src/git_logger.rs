@@ -75,12 +75,12 @@ impl User {
         }
     }
 
-    /// used for deduping users - returns email if it exists, otherwise name, otherwise an error value
+    /// used for deduping users - returns name if it exists, otherwise email, otherwise an error value
     pub fn identifier(&self) -> &str {
-        if let Some(email) = &self.email {
-            email
-        } else if let Some(name) = &self.name {
+        if let Some(name) = &self.name {
             name
+        } else if let Some(email) = &self.email {
+            email
         } else {
             "[blank user]"
         }

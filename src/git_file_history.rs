@@ -1,6 +1,9 @@
 #![warn(clippy::all)]
 use crate::git_logger::{CommitChange, FileChange, GitLog, GitLogEntry, User};
+use chrono::offset::TimeZone;
+use chrono::Utc;
 use failure::Error;
+use indicatif::{ProgressBar, ProgressStyle};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -70,11 +73,17 @@ impl GitFileHistory {
     pub fn new(log: &mut GitLog) -> Result<GitFileHistory, Error> {
         let mut last_commit: u64 = 0;
         let mut history_by_file = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
+        let progress_bar = ProgressBar::new_spinner()
+            .with_style(ProgressStyle::default_spinner().template("[{elapsed}] {msg}"));
         log.iterator()?.for_each(|entry| {
+            progress_bar.tick();
             match entry {
                 Ok(entry) => {
-                    if *entry.commit_time() > last_commit {
-                        last_commit = *entry.commit_time();
+                    let commit_time = *entry.commit_time();
+                    let fmt_time = Utc.timestamp(commit_time as i64, 0).to_string();
+                    progress_bar.set_message(&fmt_time);
+                    if commit_time > last_commit {
+                        last_commit = commit_time;
                     }
                     for file_change in entry.clone().file_changes() {
                         let hash_entry = history_by_file
