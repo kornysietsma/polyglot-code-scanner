@@ -74,6 +74,7 @@ pub fn walk_directory(
     walk_tree_walker(
         WalkBuilder::new(root)
             .add_custom_ignore_filename(".lati_ignore")
+            .sort_by_file_name(|name1, name2| name1.cmp(name2))
             .build(),
         root,
         toxicity_indicator_calculators,
