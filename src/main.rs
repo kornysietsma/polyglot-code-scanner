@@ -1,5 +1,6 @@
 #![warn(clippy::all)]
 
+extern crate chrono;
 extern crate clap;
 extern crate clap_log_flag;
 extern crate clap_verbosity_flag;
@@ -8,7 +9,6 @@ extern crate indicatif;
 extern crate lati_explorer_server;
 extern crate log;
 extern crate structopt;
-extern crate chrono;
 
 use failure::{bail, format_err, Error};
 use lati_scanner::CalculatorConfig;
@@ -50,6 +50,9 @@ struct Cli {
     #[structopt(long = "years", default_value = "3")]
     /// how many years of git history to parse - default only scan the last 3 years (from now, not git head)
     git_years: u64,
+    #[structopt(long = "detailed-git")]
+    /// Include detailed git information - output may be big!
+    detailed_git: bool,
 }
 
 fn real_main() -> Result<(), Error> {
@@ -62,6 +65,7 @@ fn real_main() -> Result<(), Error> {
     }
     let calculator_config = CalculatorConfig {
         git_years: args.git_years,
+        detailed: args.detailed_git,
     };
 
     if args.server {

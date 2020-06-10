@@ -29,6 +29,7 @@ struct GitData {
 pub struct GitCalculator {
     git_histories: Vec<GitFileHistory>,
     git_log_config: GitLogConfig, // TODO - probably should have own config struct
+    detailed: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -65,10 +66,11 @@ impl GitInfo {
 }
 
 impl GitCalculator {
-    pub fn new(config: GitLogConfig) -> Self {
+    pub fn new(config: GitLogConfig, detailed: bool) -> Self {
         GitCalculator {
             git_histories: Vec::new(),
             git_log_config: config,
+            detailed,
         }
     }
 
@@ -90,7 +92,6 @@ impl GitCalculator {
     }
 
     fn unique_changers(history: &FileHistoryEntry) -> HashSet<&User> {
-        // TODO: test me!
         history
             .co_authors
             .iter()
@@ -209,6 +210,54 @@ mod test {
         let calculator = GitCalculator {
             git_histories: Vec::new(),
             git_log_config: GitLogConfig::default(),
+            detailed: false,
+        };
+
+        let today = first_day + 5 * one_day_in_secs;
+
+        let stats = calculator.stats_from_history(today, &events);
+
+        assert_eq!(
+            stats,
+            Some(GitData {
+                last_update: first_day + 3 * one_day_in_secs,
+                age_in_days: 2,
+                user_count: 3,
+                users: vec![
+                    User::new(None, Some("jo@smith.com")),
+                    User::new(None, Some("x@smith.com")),
+                    User::new(Some("Why"), Some("y@smith.com"))
+                ],
+            })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn gets_detailed_stats_from_git_events() -> Result<(), Error> {
+        let one_day_in_secs: u64 = 60 * 60 * 24;
+
+        let first_day = one_day_in_secs;
+
+        let events: Vec<FileHistoryEntry> = vec![
+            FileHistoryEntryBuilder::test_default()
+                .emails("jo@smith.com")
+                .times(first_day)
+                .id("1111")
+                .build()
+                .map_err(failure::err_msg)?,
+            FileHistoryEntryBuilder::test_default()
+                .emails("x@smith.com")
+                .times(first_day + 3 * one_day_in_secs)
+                .author(User::new(Some("Why"), Some("y@smith.com")))
+                .id("2222")
+                .build()
+                .map_err(failure::err_msg)?,
+        ];
+        let calculator = GitCalculator {
+            git_histories: Vec::new(),
+            git_log_config: GitLogConfig::default(),
+            detailed: true,
         };
 
         let today = first_day + 5 * one_day_in_secs;

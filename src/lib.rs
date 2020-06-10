@@ -45,11 +45,15 @@ use toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 // simple structure for config for any calculators -
 pub struct CalculatorConfig {
     pub git_years: u64,
+    pub detailed: bool,
 }
 
 impl CalculatorConfig {
     pub fn default() -> Self {
-        CalculatorConfig { git_years: 3 }
+        CalculatorConfig {
+            git_years: 3,
+            detailed: false,
+        }
     }
 }
 
@@ -61,6 +65,7 @@ pub fn named_toxicity_indicator_calculator(
         "loc" => Some(Box::new(LocCalculator {})),
         "git" => Some(Box::new(GitCalculator::new(
             GitLogConfig::default().since_years(config.git_years),
+            config.detailed,
         ))),
         "indentation" => Some(Box::new(IndentationCalculator {})),
         _ => None,
