@@ -100,6 +100,7 @@ Currently the following indicators are implemented:
   - the age in days since the last commit for this file
   - the timestamp (seconds since the epoch) of the last commit for this file
   - the number of unique users who have touched this file (taken from authors, committers, and "Co-authored-by" comments)
+    - uniqueness is a combination of name + email - this might show excess numbers, consumers should de-duplicate this!
   - indentation - indentation is a good proxy for complexity! The output includes medians and quantiles for indentation (in spaces, with tabs assumed to be 4 spaces) for complexity display
 
 I aim to add more indicators as I go.

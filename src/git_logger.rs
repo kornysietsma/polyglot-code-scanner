@@ -61,7 +61,7 @@ pub struct GitLogIterator<'a> {
 }
 
 /// simplified user info - based on git2::Signature
-#[derive(Debug, Serialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Eq, Hash, Clone)]
 pub struct User {
     name: Option<String>,
     email: Option<String>,
@@ -72,17 +72,6 @@ impl User {
         User {
             name: name.map(|x| x.to_owned()),
             email: email.map(|x| x.to_owned()),
-        }
-    }
-
-    /// used for deduping users - returns name if it exists, otherwise email, otherwise an error value
-    pub fn identifier(&self) -> &str {
-        if let Some(name) = &self.name {
-            name
-        } else if let Some(email) = &self.email {
-            email
-        } else {
-            "[blank user]"
         }
     }
 }
@@ -504,7 +493,6 @@ mod test {
 
         Ok(())
     }
-
 }
 
 // run a single test with:

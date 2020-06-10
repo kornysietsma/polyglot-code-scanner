@@ -3,7 +3,7 @@
 #![allow(unused_imports)]
 
 use crate::git_file_history::{FileHistoryEntry, FileHistoryEntryBuilder, GitFileHistory};
-use crate::git_logger::{GitLog, GitLogConfig};
+use crate::git_logger::{GitLog, GitLogConfig, User};
 use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use failure::Error;
 use git2::Status;
@@ -87,14 +87,13 @@ impl GitCalculator {
         Ok(())
     }
 
-    fn unique_changers(history: &FileHistoryEntry) -> HashSet<&str> {
+    fn unique_changers(history: &FileHistoryEntry) -> HashSet<&User> {
         // TODO: test me!
         history
             .co_authors
             .iter()
             .chain(once(&history.author))
             .chain(once(&history.committer))
-            .map(|u| u.identifier())
             .collect()
     }
 
@@ -112,7 +111,7 @@ impl GitCalculator {
 
         let age_in_days = (last_commit - last_update) / (60 * 60 * 24);
 
-        let changers: HashSet<&str> = history
+        let changers: HashSet<&User> = history
             .iter()
             .flat_map(|h| GitCalculator::unique_changers(h))
             .collect();
