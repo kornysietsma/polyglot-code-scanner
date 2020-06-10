@@ -10,6 +10,7 @@ use git2::Status;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::iter::once;
+use std::iter::FromIterator;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -21,6 +22,7 @@ struct GitData {
     last_update: u64,
     age_in_days: u64,
     user_count: usize,
+    users: Vec<User>,
 }
 
 #[derive(Debug)]
@@ -116,10 +118,14 @@ impl GitCalculator {
             .flat_map(|h| GitCalculator::unique_changers(h))
             .collect();
 
+        let mut changer_list: Vec<User> = changers.into_iter().cloned().collect();
+        changer_list.sort();
+
         Some(GitData {
             last_update,
             age_in_days,
-            user_count: changers.len(),
+            user_count: changer_list.len(),
+            users: changer_list,
         })
     }
 }
@@ -195,7 +201,7 @@ mod test {
             FileHistoryEntryBuilder::test_default()
                 .emails("x@smith.com")
                 .times(first_day + 3 * one_day_in_secs)
-                .author(User::new(None, Some("y@smith.com")))
+                .author(User::new(Some("Why"), Some("y@smith.com")))
                 .id("2222")
                 .build()
                 .map_err(failure::err_msg)?,
@@ -214,7 +220,12 @@ mod test {
             Some(GitData {
                 last_update: first_day + 3 * one_day_in_secs,
                 age_in_days: 2,
-                user_count: 3
+                user_count: 3,
+                users: vec![
+                    User::new(None, Some("jo@smith.com")),
+                    User::new(None, Some("x@smith.com")),
+                    User::new(Some("Why"), Some("y@smith.com"))
+                ],
             })
         );
         Ok(())

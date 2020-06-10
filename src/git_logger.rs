@@ -61,7 +61,8 @@ pub struct GitLogIterator<'a> {
 }
 
 /// simplified user info - based on git2::Signature
-#[derive(Debug, Serialize, PartialEq, Eq, Hash, Clone)]
+/// everything is derived, seems to work OK as the structure is so simple
+#[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord, Serialize)]
 pub struct User {
     name: Option<String>,
     email: Option<String>,

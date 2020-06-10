@@ -13,7 +13,10 @@
                 "git": {
                   "age_in_days": 0,
                   "last_update": 1558533240,
-                  "user_count": 1
+                  "user_count": 1,
+                  "users": [
+                    { "name": "Korny Sietsma", "email": "korny@sietsma.com" }
+                  ]
                 }
               }
             }
@@ -25,7 +28,11 @@
             "git": {
               "age_in_days": 0,
               "last_update": 1558524371,
-              "user_count": 2
+              "user_count": 2,
+              "users": [
+                { "name": "Korny Sietsma", "email": "korny@sietsma.com" },
+                { "name": "hermoine", "email": "hgranger@durmstrang.de" }
+              ]
             }
           }
         }
