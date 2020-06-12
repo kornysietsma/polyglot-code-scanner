@@ -92,7 +92,7 @@ pub struct GitLogEntry {
 }
 
 /// the various kinds of git change we care about - a serializable subset of git2::Delta
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 pub enum CommitChange {
     Add,
     Rename,

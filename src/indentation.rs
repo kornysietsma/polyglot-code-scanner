@@ -29,6 +29,8 @@ struct IndentationData {
     pub p75: u64,
     pub p90: u64,
     pub p99: u64,
+    /// the sum of indentations - probably best measure according to [HGH08]
+    pub sum: u64,
 }
 
 impl IndentationData {
@@ -38,10 +40,12 @@ impl IndentationData {
                 Mutex::new(Histogram::configure().max_value(1000).build().unwrap());
         }
         let mut histogram = HISTOGRAM.lock().unwrap();
+        let mut sum: u64 = 0;
         for line in code_lines.lines {
             if line.text > 0 {
                 let indentation = line.spaces + line.tabs * 4;
                 histogram.increment(indentation as u64).unwrap();
+                sum += indentation as u64;
             }
         }
         if histogram.entries() == 0 {
@@ -56,6 +60,7 @@ impl IndentationData {
                 p75: histogram.percentile(75.0).unwrap(),
                 p90: histogram.percentile(90.0).unwrap(),
                 p99: histogram.percentile(99.0).unwrap(),
+                sum,
             })
         }
     }
@@ -123,5 +128,6 @@ mod test {
             .unwrap();
         assert_eq!(indentation.lines, 3);
         assert_eq!(indentation.p99, 2);
+        assert_eq!(indentation.sum, 2);
     }
 }

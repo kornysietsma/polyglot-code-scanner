@@ -3,7 +3,7 @@
 #![allow(unused_imports)]
 
 use crate::git_file_history::{FileHistoryEntry, FileHistoryEntryBuilder, GitFileHistory};
-use crate::git_logger::{GitLog, GitLogConfig, User};
+use crate::git_logger::{CommitChange, GitLog, GitLogConfig, User};
 use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use failure::Error;
 use git2::Status;
@@ -24,6 +24,18 @@ struct GitData {
     user_count: usize,
     users: Vec<User>,
 }
+
+/// Just enough git information to determine day of change and who touched the file
+/// we don't really care at a high level which authors or how many lines were changed
+/// if one author made 10 changes and one made 1, the smaller change might have had a bigger impact
+#[derive(Debug, PartialEq, Serialize)]
+pub struct GitDetails {
+    pub commit_day: u64,
+    pub users: Vec<User>,
+}
+
+// TODO: idiomatic way to say "I can make a GitDetails from a FileHistoryEntry"
+// TODO: also GitDetails should implement Ord by timestamps
 
 #[derive(Debug)]
 pub struct GitCalculator {
