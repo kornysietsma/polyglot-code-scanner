@@ -12,6 +12,7 @@
               "data": {
                 "git": {
                   "age_in_days": 0,
+                  "creation_date": null,
                   "last_update": 1558533240,
                   "user_count": 1,
                   "users": [
@@ -27,6 +28,7 @@
           "data": {
             "git": {
               "age_in_days": 0,
+              "creation_date": 1558521386,
               "last_update": 1558524371,
               "user_count": 2,
               "users": [

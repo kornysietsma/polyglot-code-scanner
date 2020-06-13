@@ -8,6 +8,7 @@ use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use failure::Error;
 use git2::Status;
 use serde::Serialize;
+use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::iter::once;
 use std::iter::FromIterator;
@@ -21,21 +22,36 @@ use git2::Repository;
 struct GitData {
     last_update: u64,
     age_in_days: u64,
+    // we only have a creation date if there was an Add change in the dates scanned
+    creation_date: Option<u64>,
     user_count: usize,
     users: Vec<User>,
 }
 
-/// Just enough git information to determine day of change and who touched the file
-/// we don't really care at a high level which authors or how many lines were changed
-/// if one author made 10 changes and one made 1, the smaller change might have had a bigger impact
-#[derive(Debug, PartialEq, Serialize)]
+/// Git information for a given day, summarized
+/// we don't distinguish multiple changes in a day currently, so if one person changed 1 line and another changed 100 you can't tell the difference.
+/// It is assumed that people work as teams to some degree!
+/// This could be revisited if needed, but I'm trying to keep the log size sane
+#[derive(Debug, PartialEq, Eq, Serialize)]
 pub struct GitDetails {
     pub commit_day: u64,
-    pub users: Vec<User>,
+    pub users: Vec<User>, // TODO: plan eventually to use a User dictionary so we save JSON space, just store user ID.
+    pub commits: u64,
+    pub lines_added: u64,
+    pub lines_deleted: u64,
 }
 
-// TODO: idiomatic way to say "I can make a GitDetails from a FileHistoryEntry"
-// TODO: also GitDetails should implement Ord by timestamps
+impl Ord for GitDetails {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.commit_day.cmp(&other.commit_day)
+    }
+}
+
+impl PartialOrd for GitDetails {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 #[derive(Debug)]
 pub struct GitCalculator {
@@ -122,6 +138,10 @@ impl GitCalculator {
         if history.is_empty() {
             return None;
         }
+        let creation_date = history
+            .iter()
+            .find(|h| h.change == CommitChange::Add)
+            .map(|h| h.author_time);
         let last_update = history.iter().map(|h| h.commit_time).max()?;
 
         let age_in_days = (last_commit - last_update) / (60 * 60 * 24);
@@ -137,6 +157,7 @@ impl GitCalculator {
         Some(GitData {
             last_update,
             age_in_days,
+            creation_date,
             user_count: changer_list.len(),
             users: changer_list,
         })
@@ -234,6 +255,7 @@ mod test {
             Some(GitData {
                 last_update: first_day + 3 * one_day_in_secs,
                 age_in_days: 2,
+                creation_date: Some(86400),
                 user_count: 3,
                 users: vec![
                     User::new(None, Some("jo@smith.com")),
@@ -281,6 +303,7 @@ mod test {
             Some(GitData {
                 last_update: first_day + 3 * one_day_in_secs,
                 age_in_days: 2,
+                creation_date: Some(86400),
                 user_count: 3,
                 users: vec![
                     User::new(None, Some("jo@smith.com")),
