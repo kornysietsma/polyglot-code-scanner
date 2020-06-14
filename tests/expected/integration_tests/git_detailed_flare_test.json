@@ -18,7 +18,20 @@
                   "users": [
                     { "name": "Korny Sietsma", "email": "korny@sietsma.com" }
                   ],
-                  "details": null
+                  "details": [
+                    {
+                      "commit_day": 1558483200,
+                      "commits": 1,
+                      "lines_added": 0,
+                      "lines_deleted": 0,
+                      "users": [
+                        {
+                          "name": "Korny Sietsma",
+                          "email": "korny@sietsma.com"
+                        }
+                      ]
+                    }
+                  ]
                 }
               }
             }
@@ -36,7 +49,18 @@
                 { "name": "Korny Sietsma", "email": "korny@sietsma.com" },
                 { "name": "hermoine", "email": "hgranger@durmstrang.de" }
               ],
-              "details": null
+              "details": [
+                {
+                  "commit_day": 1558483200,
+                  "commits": 3,
+                  "lines_added": 8,
+                  "lines_deleted": 1,
+                  "users": [
+                    { "name": "Korny Sietsma", "email": "korny@sietsma.com" },
+                    { "name": "hermoine", "email": "hgranger@durmstrang.de" }
+                  ]
+                }
+              ]
             }
           }
         }

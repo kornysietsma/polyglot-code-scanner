@@ -5,10 +5,12 @@
 use crate::git_file_history::{FileHistoryEntry, FileHistoryEntryBuilder, GitFileHistory};
 use crate::git_logger::{CommitChange, GitLog, GitLogConfig, User};
 use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use failure::Error;
 use git2::Status;
 use serde::Serialize;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::iter::once;
 use std::iter::FromIterator;
@@ -26,6 +28,7 @@ struct GitData {
     creation_date: Option<u64>,
     user_count: usize,
     users: Vec<User>,
+    details: Option<Vec<GitDetails>>,
 }
 
 /// Git information for a given day, summarized
@@ -35,7 +38,7 @@ struct GitData {
 #[derive(Debug, PartialEq, Eq, Serialize)]
 pub struct GitDetails {
     pub commit_day: u64,
-    pub users: Vec<User>, // TODO: plan eventually to use a User dictionary so we save JSON space, just store user ID.
+    pub users: HashSet<User>, // TODO: plan eventually to use a User dictionary so we save JSON space, just store user ID.
     pub commits: u64,
     pub lines_added: u64,
     pub lines_deleted: u64,
@@ -93,6 +96,14 @@ impl GitInfo {
     }
 }
 
+fn append_unique_users(users: &mut Vec<User>, new_users: HashSet<&User>) {
+    let new_users_cloned = new_users.into_iter().cloned();
+    let old_users: HashSet<User> = users.drain(..).chain(new_users_cloned).collect();
+    let mut all_users: Vec<User> = old_users.into_iter().collect();
+
+    users.append(&mut all_users);
+}
+
 impl GitCalculator {
     pub fn new(config: GitLogConfig, detailed: bool) -> Self {
         GitCalculator {
@@ -138,6 +149,8 @@ impl GitCalculator {
         if history.is_empty() {
             return None;
         }
+        let mut details: HashMap<u64, GitDetails> = HashMap::new();
+
         let creation_date = history
             .iter()
             .find(|h| h.change == CommitChange::Add)
@@ -151,8 +164,36 @@ impl GitCalculator {
             .flat_map(|h| GitCalculator::unique_changers(h))
             .collect();
 
+        for entry in history {
+            let commit_time = NaiveDateTime::from_timestamp(entry.commit_time as i64, 0);
+            let start_of_day: u64 = commit_time
+                .date()
+                .and_time(NaiveTime::from_num_seconds_from_midnight(0, 0))
+                .timestamp() as u64;
+
+            let daily_details = details.entry(start_of_day).or_insert(GitDetails {
+                commit_day: start_of_day,
+                users: HashSet::new(),
+                commits: 0,
+                lines_added: 0,
+                lines_deleted: 0,
+            });
+            daily_details.commits += 1;
+            daily_details
+                .users
+                .extend(GitCalculator::unique_changers(entry).into_iter().cloned());
+            daily_details.lines_added += entry.lines_added;
+            daily_details.lines_deleted += entry.lines_deleted;
+        }
+
         let mut changer_list: Vec<User> = changers.into_iter().cloned().collect();
         changer_list.sort();
+
+        let mut details_vec: Vec<GitDetails> = details
+            .into_iter()
+            .map(|(_k, v)| v)
+            .collect::<Vec<GitDetails>>();
+        details_vec.sort();
 
         Some(GitData {
             last_update,
@@ -160,6 +201,11 @@ impl GitCalculator {
             creation_date,
             user_count: changer_list.len(),
             users: changer_list,
+            details: if self.detailed {
+                Some(details_vec)
+            } else {
+                None // TODO: don't waste time processing details if we don't want them!
+            },
         })
     }
 }
@@ -262,6 +308,7 @@ mod test {
                     User::new(None, Some("x@smith.com")),
                     User::new(Some("Why"), Some("y@smith.com"))
                 ],
+                details: None
             })
         );
         Ok(())
@@ -298,6 +345,30 @@ mod test {
 
         let stats = calculator.stats_from_history(today, &events);
 
+        let jo = User::new(None, Some("jo@smith.com"));
+        let x = User::new(None, Some("x@smith.com"));
+        let y = User::new(Some("Why"), Some("y@smith.com"));
+
+        let jo_set: HashSet<User> = vec![jo].into_iter().collect();
+        let xy_set: HashSet<User> = vec![x, y].into_iter().collect();
+
+        let expected_details: Option<Vec<GitDetails>> = Some(vec![
+            GitDetails {
+                commit_day: 86400,
+                users: jo_set,
+                commits: 1,
+                lines_added: 0,
+                lines_deleted: 0,
+            },
+            GitDetails {
+                commit_day: 345600,
+                users: xy_set,
+                commits: 1,
+                lines_added: 0,
+                lines_deleted: 0,
+            },
+        ]);
+
         assert_eq!(
             stats,
             Some(GitData {
@@ -310,6 +381,7 @@ mod test {
                     User::new(None, Some("x@smith.com")),
                     User::new(Some("Why"), Some("y@smith.com"))
                 ],
+                details: expected_details
             })
         );
         Ok(())
