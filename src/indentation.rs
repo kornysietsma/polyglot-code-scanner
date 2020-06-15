@@ -17,6 +17,7 @@ use tokei::{Config, LanguageType};
 use super::code_line_data::CodeLines;
 
 use histogram::Histogram;
+use serde_json::Value;
 
 /// a struct representing file indentation data
 #[derive(Debug, PartialEq, Serialize)]
@@ -114,6 +115,10 @@ impl ToxicityIndicatorCalculator for IndentationCalculator {
         } else {
             Ok(None)
         }
+    }
+
+    fn metadata(&self) -> Result<Option<Value>, Error> {
+        Ok(None)
     }
 }
 

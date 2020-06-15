@@ -9,7 +9,7 @@ use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use failure::Error;
 use git2::Status;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -20,6 +20,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use git2::Repository;
+use serde_json::{json, Value};
 
 /// a struct representing git data for a file
 #[derive(Debug, PartialEq, Serialize)]
@@ -40,6 +41,7 @@ struct GitData {
 #[derive(Debug, PartialEq, Eq, Serialize)]
 pub struct GitDetails {
     pub commit_day: u64,
+    #[serde(serialize_with = "ordered_set")]
     pub users: HashSet<usize>, // dictionary IDs
     pub commits: u64,
     pub lines_added: u64,
@@ -58,16 +60,27 @@ impl PartialOrd for GitDetails {
     }
 }
 
+fn ordered_set<S>(value: &HashSet<usize>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut ordered: Vec<&usize> = value.iter().collect();
+    ordered.sort();
+    ordered.serialize(serializer)
+}
+
+/// History of any git roots discovered by the calculator
 ///  Split from GitCalculator as we need to mutate the dictionary while borrowing the history immutably
 #[derive(Debug)]
 pub struct GitHistories {
-    git_histories: Vec<GitFileHistory>,
+    git_file_histories: Vec<GitFileHistory>,
+    /// config used to initialize any git histories
     git_log_config: GitLogConfig,
 }
 
 #[derive(Debug)]
 pub struct GitCalculator {
-    git_histories: GitHistories,
+    histories: GitHistories,
     detailed: bool,
     dictionary: GitUserDictionary,
 }
@@ -115,7 +128,7 @@ fn append_unique_users(users: &mut Vec<User>, new_users: HashSet<&User>) {
 
 impl GitHistories {
     fn git_history(&self, filename: &Path) -> Option<&GitFileHistory> {
-        self.git_histories
+        self.git_file_histories
             .iter()
             .find(|h| h.is_repo_for(filename).unwrap())
         // TODO can we get rid of unwrap here?
@@ -127,7 +140,7 @@ impl GitHistories {
         let mut git_log = GitLog::new(filename, self.git_log_config)?;
         info!("Found working dir: {:?}", git_log.workdir());
         let history = GitFileHistory::new(&mut git_log)?;
-        self.git_histories.push(history);
+        self.git_file_histories.push(history);
         Ok(())
     }
     fn unique_changers(
@@ -219,8 +232,8 @@ impl GitHistories {
 impl GitCalculator {
     pub fn new(config: GitLogConfig, detailed: bool) -> Self {
         GitCalculator {
-            git_histories: GitHistories {
-                git_histories: Vec::new(),
+            histories: GitHistories {
+                git_file_histories: Vec::new(),
                 git_log_config: config,
             },
             detailed,
@@ -235,20 +248,21 @@ impl ToxicityIndicatorCalculator for GitCalculator {
     }
     fn calculate(&mut self, path: &Path) -> Result<Option<serde_json::Value>, Error> {
         if path.is_file() {
-            let history = match self.git_histories.git_history(path) {
+            // TODO: refactor this into a method on histories (I tried this but got into a mess with mutable and immutable refs to self!)
+            let history = match self.histories.git_history(path) {
                 Some(history) => history,
                 None => {
                     warn!("Loading git history for {}", path.display());
-                    self.git_histories.add_history_for(path)?;
+                    self.histories.add_history_for(path)?;
                     warn!("history loaded.");
-                    self.git_histories.git_history(path).unwrap()
+                    self.histories.git_history(path).unwrap()
                 }
             };
             let last_commit = history.last_commit();
             let file_history = history.history_for(path)?;
 
             if let Some(file_history) = file_history {
-                let stats = self.git_histories.stats_from_history(
+                let stats = self.histories.stats_from_history(
                     &mut self.dictionary,
                     last_commit,
                     file_history,
@@ -281,6 +295,12 @@ impl ToxicityIndicatorCalculator for GitCalculator {
             }
         }
     }
+
+    fn metadata(&self) -> Result<Option<Value>, Error> {
+        let dictionary = serde_json::value::to_value(&self.dictionary)
+            .expect("Serializable object couldn't be serialized to JSON");
+        Ok(Some(json!({ "users": dictionary })))
+    }
 }
 
 #[cfg(test)]
@@ -310,23 +330,15 @@ mod test {
                 .build()
                 .map_err(failure::err_msg)?,
         ];
-        let mut calculator = GitCalculator {
-            git_histories: GitHistories {
-                git_histories: Vec::new(),
-                git_log_config: GitLogConfig::default(),
-            },
-            detailed: false,
-            dictionary: GitUserDictionary::new(),
+        let histories = GitHistories {
+            git_file_histories: Vec::new(),
+            git_log_config: GitLogConfig::default(),
         };
+        let mut dictionary = GitUserDictionary::new();
 
         let today = first_day + 5 * one_day_in_secs;
 
-        let stats = calculator.git_histories.stats_from_history(
-            &mut calculator.dictionary,
-            today,
-            &events,
-            false,
-        );
+        let stats = histories.stats_from_history(&mut dictionary, today, &events, false);
 
         assert_eq!(
             stats,
@@ -335,7 +347,7 @@ mod test {
                 age_in_days: 2,
                 creation_date: Some(86400),
                 user_count: 3,
-                users: vec![0, 1, 2], // TODO: check gagainst dictionary!
+                users: vec![0, 1, 2], // TODO: check against dictionary!
                 details: None
             })
         );
@@ -364,8 +376,8 @@ mod test {
                 .map_err(failure::err_msg)?,
         ];
         let mut calculator = GitCalculator {
-            git_histories: GitHistories {
-                git_histories: Vec::new(),
+            histories: GitHistories {
+                git_file_histories: Vec::new(),
                 git_log_config: GitLogConfig::default(),
             },
             detailed: true,
@@ -374,7 +386,7 @@ mod test {
 
         let today = first_day + 5 * one_day_in_secs;
 
-        let stats = calculator.git_histories.stats_from_history(
+        let stats = calculator.histories.stats_from_history(
             &mut calculator.dictionary,
             today,
             &events,

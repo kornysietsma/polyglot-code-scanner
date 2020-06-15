@@ -42,6 +42,24 @@
     "git": {
       "head": "93ae0c7c7cd93b3c4ea1bf103bde4deafef798ad",
       "remote_url": null
+    },
+    "git_meta": {
+      "users": [
+        {
+          "id": 0,
+          "user": {
+            "email": "korny@sietsma.com",
+            "name": "Korny Sietsma"
+          }
+        },
+        {
+          "id": 1,
+          "user": {
+            "email": "hgranger@durmstrang.de",
+            "name": "hermoine"
+          }
+        }
+      ]
     }
   }
 }

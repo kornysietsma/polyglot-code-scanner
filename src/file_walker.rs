@@ -84,7 +84,7 @@ pub fn walk_directory(
 #[cfg(test)]
 mod test {
     use super::*;
-    use serde_json::json;
+    use serde_json::{json, Value};
     use test_shared::*;
 
     #[test]
@@ -109,6 +109,10 @@ mod test {
                 Ok(None)
             }
         }
+
+        fn metadata(&self) -> Result<Option<Value>, Error> {
+            unimplemented!()
+        }
     }
 
     #[derive(Debug)]
@@ -124,6 +128,10 @@ mod test {
             } else {
                 Ok(None)
             }
+        }
+
+        fn metadata(&self) -> Result<Option<Value>, Error> {
+            unimplemented!()
         }
     }
 
@@ -153,6 +161,10 @@ mod test {
             let result = json!(self.count);
             self.count += 1;
             Ok(Some(result))
+        }
+
+        fn metadata(&self) -> Result<Option<Value>, Error> {
+            unimplemented!()
         }
     }
 

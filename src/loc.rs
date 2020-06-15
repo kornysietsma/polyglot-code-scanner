@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
+use serde_json::Value;
 use tokei::{Config, LanguageType, Stats};
 
 /// a struct representing tokei language data - based on tokei::Stats and tokei::Languages::name
@@ -113,6 +114,10 @@ impl ToxicityIndicatorCalculator for LocCalculator {
         } else {
             Ok(None)
         }
+    }
+
+    fn metadata(&self) -> Result<Option<Value>, Error> {
+        Ok(None)
     }
 }
 

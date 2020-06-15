@@ -8,4 +8,6 @@ use std::path::Path;
 pub trait ToxicityIndicatorCalculator: std::fmt::Debug {
     fn name(&self) -> String;
     fn calculate(&mut self, path: &Path) -> Result<Option<Value>, Error>;
+    /// root-level metadata - output after all files added
+    fn metadata(&self) -> Result<Option<Value>, Error>;
 }

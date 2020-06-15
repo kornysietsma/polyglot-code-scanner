@@ -13,6 +13,8 @@ extern crate lazy_static;
 extern crate derive_builder;
 #[macro_use]
 extern crate derive_getters;
+#[macro_use]
+extern crate serde;
 
 use failure::Error;
 use std::io;
@@ -89,7 +91,16 @@ where
 
     let mut tics = maybe_tics.expect("Some toxicity indicator calculator names don't exist!");
 
-    let tree = file_walker::walk_directory(&root, &mut tics)?;
+    let mut tree = file_walker::walk_directory(&root, &mut tics)?;
+
+    for tic in tics {
+        match tic.metadata()? {
+            Some(metadata) => {
+                tree.add_data(tic.name() + "_meta", metadata);
+            }
+            None => (),
+        }
+    }
 
     serde_json::to_writer_pretty(out, &tree)?;
     Ok(())
