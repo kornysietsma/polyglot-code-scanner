@@ -16,7 +16,7 @@ use tokei::{Config, LanguageType};
 
 use super::code_line_data::CodeLines;
 
-use histogram::Histogram;
+use hdrhistogram::Histogram;
 use serde_json::Value;
 
 /// a struct representing file indentation data
@@ -26,7 +26,7 @@ struct IndentationData {
     pub minimum: u64,
     pub maximum: u64,
     pub median: u64,
-    pub stddev: u64,
+    pub stddev: f64,
     pub p75: u64,
     pub p90: u64,
     pub p99: u64,
@@ -36,31 +36,34 @@ struct IndentationData {
 
 impl IndentationData {
     fn new(code_lines: CodeLines) -> Option<Self> {
-        lazy_static! {
-            static ref HISTOGRAM: Mutex<Histogram> =
-                Mutex::new(Histogram::configure().max_value(1000).build().unwrap());
-        }
-        let mut histogram = HISTOGRAM.lock().unwrap();
+        // we used to have this - reinstate if creating histogram for every file is too slow.  But who knows, file I/O might be much bigger.
+        // lazy_static! {
+        //     static ref HISTOGRAM: Mutex<Histogram<u64>> =
+        //         Mutex::new(Histogram::<u64>::new(3).unwrap());
+        // }
+        let mut histogram = Histogram::<u64>::new(3).expect("Can't create histogram");
         let mut sum: u64 = 0;
         for line in code_lines.lines {
             if line.text > 0 {
                 let indentation = line.spaces + line.tabs * 4;
-                histogram.increment(indentation as u64).unwrap();
+                histogram
+                    .record(indentation as u64)
+                    .expect("Invalid histogram value!");
                 sum += indentation as u64;
             }
         }
-        if histogram.entries() == 0 {
+        if histogram.is_empty() {
             None
         } else {
             Some(IndentationData {
-                lines: histogram.entries(),
-                minimum: histogram.minimum().unwrap(),
-                maximum: histogram.maximum().unwrap(),
-                median: histogram.percentile(50.0).unwrap(),
-                stddev: histogram.stddev().unwrap(),
-                p75: histogram.percentile(75.0).unwrap(),
-                p90: histogram.percentile(90.0).unwrap(),
-                p99: histogram.percentile(99.0).unwrap(),
+                lines: histogram.len(),
+                minimum: histogram.low(),
+                maximum: histogram.high(),
+                median: histogram.value_at_quantile(0.5),
+                stddev: histogram.stdev(),
+                p75: histogram.value_at_quantile(0.75),
+                p90: histogram.value_at_quantile(0.90),
+                p99: histogram.value_at_quantile(0.99),
                 sum,
             })
         }
