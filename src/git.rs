@@ -147,12 +147,15 @@ impl GitHistories {
         history: &FileHistoryEntry,
         dictionary: &mut GitUserDictionary,
     ) -> HashSet<usize> {
-        let users: HashSet<&User> = history
+        let mut users: Vec<&User> = history
             .co_authors
             .iter()
             .chain(once(&history.author))
             .chain(once(&history.committer))
             .collect();
+        users.sort();
+        users.dedup();
+        // this used to use a HashSet but I want deterministic ordering and so I want it in a vec anyway
         users.into_iter().map(|u| dictionary.register(u)).collect()
     }
 
@@ -309,6 +312,12 @@ mod test {
     use crate::git_logger::{CommitChange, User};
     use pretty_assertions::assert_eq;
 
+    lazy_static! {
+        static ref USER_JO: User = User::new(None, Some("jo@smith.com"));
+        static ref USER_X: User = User::new(None, Some("x@smith.com"));
+        static ref USER_Y: User = User::new(Some("Why"), Some("y@smith.com"));
+    }
+
     #[test]
     fn gets_basic_stats_from_git_events() -> Result<(), Error> {
         let one_day_in_secs: u64 = 60 * 60 * 24;
@@ -347,10 +356,16 @@ mod test {
                 age_in_days: 2,
                 creation_date: Some(86400),
                 user_count: 3,
-                users: vec![0, 1, 2], // TODO: check against dictionary!
+                users: vec![0, 1, 2],
                 details: None
             })
         );
+
+        assert_eq!(dictionary.user_count(), 3);
+        assert_eq!(dictionary.user_id(&USER_JO), Some(&0));
+        assert_eq!(dictionary.user_id(&USER_X), Some(&1));
+        assert_eq!(dictionary.user_id(&USER_Y), Some(&2));
+
         Ok(())
     }
 
@@ -375,27 +390,15 @@ mod test {
                 .build()
                 .map_err(failure::err_msg)?,
         ];
-        let mut calculator = GitCalculator {
-            histories: GitHistories {
-                git_file_histories: Vec::new(),
-                git_log_config: GitLogConfig::default(),
-            },
-            detailed: true,
-            dictionary: GitUserDictionary::new(),
+        let histories = GitHistories {
+            git_file_histories: Vec::new(),
+            git_log_config: GitLogConfig::default(),
         };
+        let mut dictionary = GitUserDictionary::new();
 
         let today = first_day + 5 * one_day_in_secs;
 
-        let stats = calculator.histories.stats_from_history(
-            &mut calculator.dictionary,
-            today,
-            &events,
-            true,
-        );
-
-        let jo = User::new(None, Some("jo@smith.com"));
-        let x = User::new(None, Some("x@smith.com"));
-        let y = User::new(Some("Why"), Some("y@smith.com"));
+        let stats = histories.stats_from_history(&mut dictionary, today, &events, true);
 
         let jo_set: HashSet<usize> = vec![0].into_iter().collect();
         let xy_set: HashSet<usize> = vec![1, 2].into_iter().collect();
@@ -428,6 +431,12 @@ mod test {
                 details: expected_details
             })
         );
+
+        assert_eq!(dictionary.user_count(), 3);
+        assert_eq!(dictionary.user_id(&USER_JO), Some(&0));
+        assert_eq!(dictionary.user_id(&USER_X), Some(&1));
+        assert_eq!(dictionary.user_id(&USER_Y), Some(&2));
+
         Ok(())
     }
 }

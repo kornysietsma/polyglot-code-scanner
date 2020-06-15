@@ -13,7 +13,6 @@ extern crate lazy_static;
 extern crate derive_builder;
 #[macro_use]
 extern crate derive_getters;
-#[macro_use]
 extern crate serde;
 
 use failure::Error;
