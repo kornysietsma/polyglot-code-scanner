@@ -15,21 +15,14 @@
                   "creation_date": null,
                   "last_update": 1558533240,
                   "user_count": 1,
-                  "users": [
-                    { "name": "Korny Sietsma", "email": "korny@sietsma.com" }
-                  ],
+                  "users": [0],
                   "details": [
                     {
                       "commit_day": 1558483200,
                       "commits": 1,
                       "lines_added": 0,
                       "lines_deleted": 0,
-                      "users": [
-                        {
-                          "name": "Korny Sietsma",
-                          "email": "korny@sietsma.com"
-                        }
-                      ]
+                      "users": [0]
                     }
                   ]
                 }
@@ -45,20 +38,14 @@
               "creation_date": 1558521386,
               "last_update": 1558524371,
               "user_count": 2,
-              "users": [
-                { "name": "Korny Sietsma", "email": "korny@sietsma.com" },
-                { "name": "hermoine", "email": "hgranger@durmstrang.de" }
-              ],
+              "users": [0, 1],
               "details": [
                 {
                   "commit_day": 1558483200,
                   "commits": 3,
                   "lines_added": 8,
                   "lines_deleted": 1,
-                  "users": [
-                    { "name": "Korny Sietsma", "email": "korny@sietsma.com" },
-                    { "name": "hermoine", "email": "hgranger@durmstrang.de" }
-                  ]
+                  "users": [1, 0]
                 }
               ]
             }

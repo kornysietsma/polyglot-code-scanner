@@ -22,6 +22,7 @@ mod code_line_data;
 mod file_walker;
 mod flare;
 mod git;
+mod git_user_dictionary;
 mod indentation;
 mod loc;
 mod toxicity_indicator_calculator;

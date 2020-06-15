@@ -15,9 +15,7 @@
                   "creation_date": null,
                   "last_update": 1558533240,
                   "user_count": 1,
-                  "users": [
-                    { "name": "Korny Sietsma", "email": "korny@sietsma.com" }
-                  ],
+                  "users": [0],
                   "details": null
                 }
               }
@@ -32,10 +30,7 @@
               "creation_date": 1558521386,
               "last_update": 1558524371,
               "user_count": 2,
-              "users": [
-                { "name": "Korny Sietsma", "email": "korny@sietsma.com" },
-                { "name": "hermoine", "email": "hgranger@durmstrang.de" }
-              ],
+              "users": [0, 1],
               "details": null
             }
           }
