@@ -50,9 +50,9 @@ struct Cli {
     #[structopt(long = "years", default_value = "3")]
     /// how many years of git history to parse - default only scan the last 3 years (from now, not git head)
     git_years: u64,
-    #[structopt(long = "detailed-git")]
-    /// Include detailed git information - output may be big!
-    detailed_git: bool,
+    #[structopt(long = "no-detailed-git")]
+    /// Don't include detailed git information - output may be big!
+    no_detailed_git: bool,
 }
 
 fn real_main() -> Result<(), Error> {
@@ -65,7 +65,7 @@ fn real_main() -> Result<(), Error> {
     }
     let calculator_config = CalculatorConfig {
         git_years: args.git_years,
-        detailed: args.detailed_git,
+        detailed: !args.no_detailed_git,
     };
 
     if args.server {

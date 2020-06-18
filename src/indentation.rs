@@ -2,9 +2,7 @@
 #![allow(clippy::cast_lossless)]
 use super::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use failure::Error;
-use lazy_static;
 use serde::Serialize;
-use std::sync::Mutex;
 
 use content_inspector::{inspect, ContentType};
 
