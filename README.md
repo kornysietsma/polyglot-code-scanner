@@ -1,5 +1,19 @@
 # Language-Agnostic Toxicity Indicators
 
+## WARNING - readme is out of date
+
+I've been making changes, need to clean up lots of docs.
+
+I only really pushed because I realised that I foolishly pushed code using a client's email address!  (I wasn't using this at a client site, but I globally changed my git email - foolish move, never do this)
+
+Thankfully following <https://help.github.com/en/github/using-git/changing-author-info> let me remove these from history.
+
+If you cloned/forked this repo in the last year you might have some history glitches!  I hope not. I don't think people are cloning this much :)
+
+More docs coming soon!
+
+--
+
 Version 0.0.1 - early in-dev version
 
 This is part of a growing set of tools to help us identify toxic code in large codebases,
