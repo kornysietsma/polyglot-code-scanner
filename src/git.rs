@@ -38,8 +38,11 @@ struct GitData {
 /// we don't distinguish multiple changes in a day currently, so if one person changed 1 line and another changed 100 you can't tell the difference.
 /// It is assumed that people work as teams to some degree!
 /// This could be revisited if needed, but I'm trying to keep the log size sane
+/// Also dates are summarized by "author date" - had to pick author or commit date, and
+/// author dates seem more reliable.  But it's named "commit_day" as that's more understandable
 #[derive(Debug, PartialEq, Eq, Serialize)]
 pub struct GitDetails {
+    /// Note this is based on "author date" - commit dates can be all over the place with PRs, rebasing and the like.
     pub commit_day: u64,
     #[serde(serialize_with = "ordered_set")]
     pub users: HashSet<usize>, // dictionary IDs
@@ -125,7 +128,13 @@ fn append_unique_users(users: &mut Vec<User>, new_users: HashSet<&User>) {
 
     users.append(&mut all_users);
 }
-
+fn start_of_day(secs_since_epoch: u64) -> u64 {
+    let date_time = NaiveDateTime::from_timestamp(secs_since_epoch as i64, 0);
+    date_time
+        .date()
+        .and_time(NaiveTime::from_num_seconds_from_midnight(0, 0))
+        .timestamp() as u64
+}
 impl GitHistories {
     fn git_history(&self, filename: &Path) -> Option<&GitFileHistory> {
         self.git_file_histories
@@ -187,14 +196,10 @@ impl GitHistories {
             .collect();
 
         for entry in history {
-            let commit_time = NaiveDateTime::from_timestamp(entry.commit_time as i64, 0);
-            let start_of_day: u64 = commit_time
-                .date()
-                .and_time(NaiveTime::from_num_seconds_from_midnight(0, 0))
-                .timestamp() as u64;
+            let author_day = start_of_day(entry.author_time);
 
-            let daily_details = details.entry(start_of_day).or_insert(GitDetails {
-                commit_day: start_of_day,
+            let daily_details = details.entry(author_day).or_insert(GitDetails {
+                commit_day: author_day,
                 users: HashSet::new(),
                 commits: 0,
                 lines_added: 0,

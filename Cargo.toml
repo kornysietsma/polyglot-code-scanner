@@ -1,8 +1,8 @@
 [package]
-name = "lati_scanner"
+name = "polyglot_code_scanner"
 version = "0.0.1"
 authors = ["Korny Sietsma <korny@sietsma.com>"]
-description = "Language-agnostic toxicity indicators - scans code directories and generates flare files for d3 visualisation"
+description = "Polyglot Code Scanner - scans source code and generates tree-structured JSON files for d3 visualisation"
 edition = "2018"
 
 [dependencies]
@@ -24,7 +24,6 @@ git2 = "0.8.0"
 derive_builder = "0.8.0"
 derive-getters = "0.1.0"
 content_inspector = "0.2.4"
-lati_explorer_server = { path = "lati_explorer_server" }
 encoding_rs_io = "0.1.6"
 grep-searcher = "0.1.6"
 hdrhistogram = "7.1.0"

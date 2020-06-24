@@ -1,4 +1,11 @@
-# Language-Agnostic Toxicity Indicators
+# Polyglot Code Scanner
+
+This used to be named "lati-scanner" for language-agnostic toxicity indicators - but I had feedback that this was silly :)
+Also I'm no longer just wanting to look for toxic code - this has evolved into something more general, for exploring large polyglot source code bases in general, so I'm renaming it.
+
+There is also a new spiffy visualizer, not yet pushed to github (as it's not ready, and relies on hand-forked bits of other repos that need cleaning up!)
+
+The new visualizer is react+d3 based so I'm also ditching the static server that was here - it doesn't really add value.
 
 ## WARNING - readme is out of date
 
@@ -44,7 +51,7 @@ in conjunction with the [lati-explorer](https://github.com/kornysietsma/lati-exp
 
 ## Installation and running
 
-I haven't distributed binary files yet - you'll need [to install rust and cargo](https://www.rust-lang.org/tools/install) and then compile and install `lati-scanner`.
+I haven't distributed binary files yet - you'll need [to install rust and cargo](https://www.rust-lang.org/tools/install) and then compile and install `polyglot_code_scanner`.
 
 If you have the code cloned locally you can install it with:
 
@@ -52,23 +59,23 @@ If you have the code cloned locally you can install it with:
 
 or if you want to install from github without downloading:
 
-`cargo install --git https://github.com/kornysietsma/lati-scanner`
+`cargo install --git https://github.com/kornysietsma/polyglot-code-scanner`
 
-These will install to `~/.cargo/bin/lati_scanner` on a \*nix style machine. You can put this in your PATH, or just run it from this directory. As a binary it has no other dependencies.
+These will install to `~/.cargo/bin/polyglot_code_scanner` on a \*nix style machine. You can put this in your PATH, or just run it from this directory. As a binary it has no other dependencies.
 
 ### Running from source
 
-You can also just run it from the source directory with `cargo run lati-scanner -- (other command line arguments)`
+You can also just run it from the source directory with `cargo run polyglot_code_scanner -- (other command line arguments)`
 
 ### Getting help
 
 This readme might be out of date - the help might be more accurate:
 
-`lati_scanner -h`
+`polyglot_code_scanner -h`
 
 ### Simple file output
 
-This is the default mode - the `lati-scanner` command produces a "[flare](https://github.com/d3/d3-hierarchy#hierarchy)" JSON file - a not-very-precisely documented format used by [d3](https://d3.org) hierarchical visualisations, especially my own [toxic code explorer](https://github.com/kornysietsma/toxic-code-explorer-demo/) (which is due for a refresh soon!)
+This is the default mode - the `polyglot_code_scanner` command produces a "[flare](https://github.com/d3/d3-hierarchy#hierarchy)" JSON file - a not-very-precisely documented format used by [d3](https://d3.org) hierarchical visualisations, especially my own [toxic code explorer](https://github.com/kornysietsma/toxic-code-explorer-demo/) (which is due for a refresh soon!)
 
 A basic output sample looks something like:
 
@@ -125,15 +132,15 @@ You can visualise the data by cloning [lati-explorer](https://github.com/kornysi
 
 ### Web Server mode
 
-This is operated by the `--server` option (see below for command-line options, or run `lati-scanner --help`)
+This is operated by the `--server` option (see below for command-line options, or run `polyglot_code_scanner --help`)
 
-You also need to have downloaded the [lati-explorer](https://github.com/kornysietsma/lati-explorer) source code to your local machine - `lati-scanner` doesn't embed all the HTML, CSS and JavaScript for the server, you need to download it yourself. (for now, there might be an embedded version one day, though it'll make the binary bigger!)
+You also need to have downloaded the [lati-explorer](https://github.com/kornysietsma/lati-explorer) source code to your local machine - `polyglot_code_scanner` doesn't embed all the HTML, CSS and JavaScript for the server, you need to download it yourself. (for now, there might be an embedded version one day, though it'll make the binary bigger!)
 
 The basic process is:
 
 - Download lati-explorer from https://github.com/kornysietsma/lati-explorer
-- Run `lati-scanner` specifying the location of this project directory:
-  `lati-scanner --server -e ~/my_stuff/lati-explorer`
+- Run `polyglot_code_scanner` specifying the location of this project directory:
+  `polyglot_code_scanner --server -e ~/my_stuff/lati-explorer`
 - this will fail if it can't see the `docs` directory where resources actually live.
 - Once the files are scanned, open a web browser to http://localhost:3000 (or you can specify a different port on the commandline)
 
@@ -146,7 +153,7 @@ You can also manually add `.lati_ignore` files anywhere in the codebase, to list
 ## Usage
 
 ```
-lati_scanner [FLAGS] [OPTIONS] [root]
+polyglot_code_scanner [FLAGS] [OPTIONS] [root]
 
 FLAGS:
     -h, --help

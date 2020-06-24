@@ -2,7 +2,7 @@
 name = "test_shared"
 version = "0.0.1"
 authors = ["Korny Sietsma <korny@sietsma.com>"]
-description = "Shared test helpers for lati-scanner"
+description = "Shared test helpers for polyglot_code_scanner"
 edition = "2018"
 
 [dependencies]

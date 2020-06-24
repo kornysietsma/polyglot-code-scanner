@@ -12,9 +12,9 @@ fn it_calculates_lines_of_code() -> Result<(), Error> {
     let mut buffer: Vec<u8> = Vec::new();
     let out = Cursor::new(&mut buffer);
 
-    let result = lati_scanner::run(
+    let result = polyglot_code_scanner::run(
         root,
-        lati_scanner::CalculatorConfig::default(),
+        polyglot_code_scanner::CalculatorConfig::default(),
         vec!["loc"],
         out,
     );
@@ -39,9 +39,9 @@ fn it_calculates_git_stats() -> Result<(), Error> {
     let mut buffer: Vec<u8> = Vec::new();
     let out = Cursor::new(&mut buffer);
 
-    let result = lati_scanner::run(
+    let result = polyglot_code_scanner::run(
         git_root,
-        lati_scanner::CalculatorConfig::default(),
+        polyglot_code_scanner::CalculatorConfig::default(),
         vec!["git"],
         out,
     );
@@ -66,10 +66,10 @@ fn it_calculates_detailed_git_stats() -> Result<(), Error> {
     let mut buffer: Vec<u8> = Vec::new();
     let out = Cursor::new(&mut buffer);
 
-    let mut config = lati_scanner::CalculatorConfig::default();
+    let mut config = polyglot_code_scanner::CalculatorConfig::default();
     config.detailed = true;
 
-    let result = lati_scanner::run(git_root, config, vec!["git"], out);
+    let result = polyglot_code_scanner::run(git_root, config, vec!["git"], out);
 
     assert!(!result.is_err());
 

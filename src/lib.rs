@@ -101,6 +101,8 @@ where
         }
     }
 
-    serde_json::to_writer_pretty(out, &tree)?;
+    // TODO: add pretty / non-pretty option to commandline?
+    // for big trees, pretty is a lot bigger. You can always use `jq` to view as pretty file.
+    serde_json::to_writer(out, &tree)?;
     Ok(())
 }

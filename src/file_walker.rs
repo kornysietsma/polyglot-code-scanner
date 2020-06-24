@@ -73,7 +73,7 @@ pub fn walk_directory(
 ) -> Result<flare::FlareTreeNode, Error> {
     walk_tree_walker(
         WalkBuilder::new(root)
-            .add_custom_ignore_filename(".lati_ignore")
+            .add_custom_ignore_filename(".polyglot_code_scanner_ignore")
             .sort_by_file_name(|name1, name2| name1.cmp(name2))
             .build(),
         root,
