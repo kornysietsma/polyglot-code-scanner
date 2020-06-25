@@ -1,16 +1,16 @@
 {
-    "name": "flare",
-    "children": [
+  "name": "<root>",
+  "children": [
+    {
+      "name": "child",
+      "children": [
         {
-            "name": "child",
-            "children": [
-                {
-                    "name": "a.txt"
-                }
-            ]
-        },
-        {
-            "name": "parent.clj"
+          "name": "a.txt"
         }
-    ]
+      ]
+    },
+    {
+      "name": "parent.clj"
+    }
+  ]
 }

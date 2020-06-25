@@ -1,28 +1,28 @@
 {
-    "name": "flare",
-    "children": [
+  "name": "<root>",
+  "children": [
+    {
+      "name": "child",
+      "children": [
         {
-            "name": "child",
-            "children": [
-                {
-                    "name": "a.txt",
-                    "data": {
-                        "count": 2
-                    }
-                }
-            ],
-            "data": {
-                "count": 1
-            }
-        },
-        {
-            "name": "parent.clj",
-            "data": {
-                "count": 3
-            }
+          "name": "a.txt",
+          "data": {
+            "count": 2
+          }
         }
-    ],
-    "data": {
-        "count": 0
+      ],
+      "data": {
+        "count": 1
+      }
+    },
+    {
+      "name": "parent.clj",
+      "data": {
+        "count": 3
+      }
     }
+  ],
+  "data": {
+    "count": 0
+  }
 }

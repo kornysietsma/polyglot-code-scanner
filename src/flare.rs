@@ -5,6 +5,8 @@ use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 
+pub static ROOT_NAME: &str = "<root>";
+
 #[derive(Debug, PartialEq)]
 pub struct FlareTreeNode {
     name: OsString,

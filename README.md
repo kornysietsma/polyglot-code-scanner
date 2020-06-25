@@ -81,7 +81,7 @@ A basic output sample looks something like:
 
 ```
 {
-  "name": "flare",
+  "name": "<root>",
   "children": [
     {
       "name": "foo.clj",

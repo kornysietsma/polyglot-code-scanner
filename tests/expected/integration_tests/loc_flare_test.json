@@ -1,38 +1,38 @@
 {
-    "name": "flare",
-    "children": [
+  "name": "<root>",
+  "children": [
+    {
+      "name": "child",
+      "children": [
         {
-            "name": "child",
-            "children": [
-                {
-                    "name": "a.txt",
-                    "data": {
-                        "loc": {
-                            "language": "Plain Text",
-                            "binary": false,
-                            "blanks": 0,
-                            "code": 2,
-                            "comments": 0,
-                            "lines": 2,
-                            "bytes": 19
-                        }
-                    }
-                }
-            ]
-        },
-        {
-            "name": "parent.clj",
-            "data": {
-                "loc": {
-                    "language": "Clojure",
-                    "binary": false,
-                    "blanks": 1,
-                    "code": 3,
-                    "comments": 0,
-                    "lines": 4,
-                    "bytes": 31
-                }
+          "name": "a.txt",
+          "data": {
+            "loc": {
+              "language": "Plain Text",
+              "binary": false,
+              "blanks": 0,
+              "code": 2,
+              "comments": 0,
+              "lines": 2,
+              "bytes": 19
             }
+          }
         }
-    ]
+      ]
+    },
+    {
+      "name": "parent.clj",
+      "data": {
+        "loc": {
+          "language": "Clojure",
+          "binary": false,
+          "blanks": 1,
+          "code": 3,
+          "comments": 0,
+          "lines": 4,
+          "bytes": 31
+        }
+      }
+    }
+  ]
 }

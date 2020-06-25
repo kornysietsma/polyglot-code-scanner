@@ -34,7 +34,7 @@ fn walk_tree_walker(
     prefix: &Path,
     toxicity_indicator_calculators: &mut Vec<Box<dyn ToxicityIndicatorCalculator>>,
 ) -> Result<flare::FlareTreeNode, Error> {
-    let mut tree = FlareTreeNode::new("flare", false);
+    let mut tree = FlareTreeNode::new(flare::ROOT_NAME, false);
 
     apply_calculators_to_node(&mut tree, prefix, toxicity_indicator_calculators);
 
