@@ -9,7 +9,7 @@ use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use failure::Error;
 use git2::Status;
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -23,8 +23,8 @@ use git2::Repository;
 use serde_json::{json, Value};
 
 /// a struct representing git data for a file
-#[derive(Debug, PartialEq, Serialize)]
-struct GitData {
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct GitData {
     last_update: u64,
     age_in_days: u64,
     // we only have a creation date if there was an Add change in the dates scanned
@@ -40,7 +40,7 @@ struct GitData {
 /// This could be revisited if needed, but I'm trying to keep the log size sane
 /// Also dates are summarized by "author date" - had to pick author or commit date, and
 /// author dates seem more reliable.  But it's named "commit_day" as that's more understandable
-#[derive(Debug, PartialEq, Eq, Serialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GitDetails {
     /// Note this is based on "author date" - commit dates can be all over the place with PRs, rebasing and the like.
     pub commit_day: u64,

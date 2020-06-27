@@ -2,6 +2,7 @@
 
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 
@@ -12,11 +13,10 @@ pub struct FlareTreeNode {
     name: OsString,
     is_file: bool,
     children: Vec<FlareTreeNode>,
-    data: HashMap<String, serde_json::Value>,
+    data: HashMap<String, Value>,
 }
 
 impl FlareTreeNode {
-    #[cfg(test)]
     pub fn name(&self) -> &OsString {
         &self.name
     }
@@ -40,7 +40,7 @@ impl FlareTreeNode {
         Self::new(name, false)
     }
 
-    pub fn add_data<S: Into<String>>(&mut self, key: S, value: serde_json::Value) {
+    pub fn add_data<S: Into<String>>(&mut self, key: S, value: Value) {
         self.data.insert(key.into(), value); // TODO: should we return what insert returns? Or self?
     }
 
@@ -80,6 +80,14 @@ impl FlareTreeNode {
             }
             None => Some(self),
         }
+    }
+
+    pub fn get_data(&self, key: &str) -> Option<&Value> {
+        self.data.get(key)
+    }
+
+    pub fn get_children(&self) -> &Vec<FlareTreeNode> {
+        &self.children
     }
 }
 

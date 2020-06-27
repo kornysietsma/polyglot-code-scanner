@@ -20,6 +20,7 @@ use std::io;
 use std::path::PathBuf;
 
 mod code_line_data;
+mod coupling;
 mod file_walker;
 mod flare;
 mod git;
@@ -93,13 +94,12 @@ where
     let mut tree = file_walker::walk_directory(&root, &mut tics)?;
 
     for tic in tics {
-        match tic.metadata()? {
-            Some(metadata) => {
-                tree.add_data(tic.name() + "_meta", metadata);
-            }
-            None => (),
+        if let Some(metadata) = tic.metadata()? {
+            tree.add_data(tic.name() + "_meta", metadata);
         }
     }
+
+    coupling::gather_coupling(&mut tree, coupling::CouplingConfig::default())?; // roughly 3 months
 
     // TODO: add pretty / non-pretty option to commandline?
     // for big trees, pretty is a lot bigger. You can always use `jq` to view as pretty file.
