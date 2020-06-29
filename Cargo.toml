@@ -1,6 +1,6 @@
 [package]
 name = "polyglot_code_scanner"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Korny Sietsma <korny@sietsma.com>"]
 description = "Polyglot Code Scanner - scans source code and generates tree-structured JSON files for d3 visualisation"
 edition = "2018"
@@ -16,7 +16,7 @@ failure = "0.1.6"
 clap = "~2.33.0"
 structopt = "0.2.18"
 log = "0.4"
-clap-log-flag = "0.2.1"
+fern = "0.5"
 clap-verbosity-flag = "0.2.0"
 failure-tools = "4.0.3"
 lazy_static = "1.4.0"

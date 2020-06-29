@@ -20,7 +20,7 @@ use std::io;
 use std::path::PathBuf;
 
 mod code_line_data;
-mod coupling;
+pub mod coupling;
 mod file_walker;
 mod flare;
 mod git;
@@ -39,6 +39,7 @@ extern crate zip;
 mod git_file_history;
 mod git_logger;
 
+use crate::coupling::CouplingConfig;
 use git::GitCalculator;
 use git_logger::GitLogConfig;
 use indentation::IndentationCalculator;
@@ -78,6 +79,7 @@ pub fn named_toxicity_indicator_calculator(
 pub fn run<W>(
     root: PathBuf,
     config: CalculatorConfig,
+    coupling_config: Option<CouplingConfig>,
     toxicity_indicator_calculator_names: Vec<&str>,
     out: W,
 ) -> Result<(), Error>
@@ -99,10 +101,10 @@ where
         }
     }
 
-    coupling::gather_coupling(&mut tree, coupling::CouplingConfig::default())?; // roughly 3 months
+    if let Some(cc) = coupling_config {
+        coupling::gather_coupling(&mut tree, cc)?;
+    }
 
-    // TODO: add pretty / non-pretty option to commandline?
-    // for big trees, pretty is a lot bigger. You can always use `jq` to view as pretty file.
     serde_json::to_writer(out, &tree)?;
     Ok(())
 }

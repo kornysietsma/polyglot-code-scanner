@@ -260,9 +260,9 @@ impl ToxicityIndicatorCalculator for GitCalculator {
             let history = match self.histories.git_history(path) {
                 Some(history) => history,
                 None => {
-                    warn!("Loading git history for {}", path.display());
+                    info!("Loading git history for {}", path.display());
                     self.histories.add_history_for(path)?;
-                    warn!("history loaded.");
+                    info!("history loaded.");
                     self.histories.git_history(path).unwrap()
                 }
             };
