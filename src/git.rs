@@ -280,7 +280,8 @@ impl ToxicityIndicatorCalculator for GitCalculator {
                     "Serializable object couldn't be serialized to JSON",
                 ))) // TODO: maybe explicit error? Though this should be fatal
             } else {
-                info!("No git history found for file: {:?}", path);
+                // probably outside date range
+                debug!("No git history found for file: {:?}", path);
                 Ok(None)
             }
         } else {

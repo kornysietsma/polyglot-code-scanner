@@ -6,16 +6,17 @@ use serde_json::Value;
 use std::collections::hash_map::Iter;
 use std::collections::{HashMap, HashSet};
 use std::path::{Components, Path, PathBuf};
+use std::rc::Rc;
 
 struct DailyStats {
     /// all files changed for a given day (in secs since epoch)
-    stats: HashMap<u64, Vec<PathBuf>>,
+    stats: HashMap<u64, Vec<Rc<PathBuf>>>,
 }
 
 impl DailyStats {
     pub fn new(root: &FlareTreeNode) -> Result<Self, Error> {
-        let mut stats: HashMap<u64, Vec<PathBuf>> = HashMap::new();
-        DailyStats::accumulate_stats(&mut stats, root, PathBuf::new())?;
+        let mut stats: HashMap<u64, Vec<Rc<PathBuf>>> = HashMap::new();
+        DailyStats::accumulate_stats(&mut stats, root, Rc::new(PathBuf::new()))?;
         Ok(DailyStats { stats })
     }
     pub fn is_empty(&self) -> bool {
@@ -27,24 +28,23 @@ impl DailyStats {
     pub fn latest(&self) -> u64 {
         *self.stats.keys().max().unwrap()
     }
-    pub fn iter(&self) -> Iter<'_, u64, Vec<PathBuf>> {
+    pub fn iter(&self) -> Iter<'_, u64, Vec<Rc<PathBuf>>> {
         self.stats.iter()
     }
-    pub fn get(&self, day: u64) -> Option<&Vec<PathBuf>> {
+    pub fn get(&self, day: u64) -> Option<&Vec<Rc<PathBuf>>> {
         self.stats.get(&day)
     }
 
     fn accumulate_stats(
-        stats: &mut HashMap<u64, Vec<PathBuf>>,
+        stats: &mut HashMap<u64, Vec<Rc<PathBuf>>>,
         node: &FlareTreeNode,
-        path: PathBuf,
+        path: Rc<PathBuf>,
     ) -> Result<(), Error> {
         let lines = node
             .get_data("loc")
             .and_then(|loc| loc.get("code"))
             .and_then(|x| x.as_u64())
             .unwrap_or(0);
-        debug!("Lines {}", lines);
         if lines > 0 {
             if let Some(Value::Object(value)) = node.get_data("git") {
                 if let Some(Value::Array(details)) = value.get("details") {
@@ -61,8 +61,8 @@ impl DailyStats {
         };
 
         for child in node.get_children() {
-            let mut child_path = path.clone();
-            child_path.push(child.name());
+            let mut child_path = Rc::clone(&path);
+            (*Rc::make_mut(&mut child_path)).push(child.name());
             DailyStats::accumulate_stats(stats, &child, child_path)?;
         }
         Ok(())
@@ -71,26 +71,26 @@ impl DailyStats {
 
 #[derive(Debug, Clone)]
 struct FileStats {
-    name: PathBuf,
+    name: Rc<PathBuf>,
     commits: u64,
-    coupled_files: HashMap<PathBuf, u64>,
+    coupled_files: HashMap<Rc<PathBuf>, u64>,
 }
 
 impl FileStats {
-    fn new(name: PathBuf) -> Self {
+    fn new(name: Rc<PathBuf>) -> Self {
         FileStats {
             name,
             commits: 0,
             coupled_files: HashMap::new(),
         }
     }
-    fn add_file(&mut self, file: PathBuf) {
+    fn add_file(&mut self, file: Rc<PathBuf>) {
         if file != self.name {
             let count = self.coupled_files.entry(file).or_insert(0);
             *count += 1;
         }
     }
-    fn add_files(&mut self, files: Vec<PathBuf>) {
+    fn add_files(&mut self, files: Vec<Rc<PathBuf>>) {
         for file in files {
             self.add_file(file)
         }
@@ -99,13 +99,13 @@ impl FileStats {
     fn filter_by_ratio(&self, min_coupling_ratio: f64) -> FileStats {
         let commits = self.commits as f64;
         FileStats {
-            name: self.name.to_owned(),
+            name: self.name.clone(),
             commits: self.commits,
             coupled_files: self
                 .coupled_files
                 .iter()
                 .filter(|(_file, days)| **days as f64 / commits >= min_coupling_ratio)
-                .map(|(file, days)| (file.to_owned(), *days))
+                .map(|(file, days)| (file.clone(), *days))
                 .collect(),
         }
     }
@@ -115,7 +115,7 @@ impl FileStats {
 struct CouplingBucket {
     bucket_start: u64,
     bucket_size: u64,
-    file_stats: HashMap<PathBuf, FileStats>,
+    file_stats: HashMap<Rc<PathBuf>, FileStats>,
 }
 
 impl CouplingBucket {
@@ -128,9 +128,9 @@ impl CouplingBucket {
     }
     fn add_files(
         &mut self,
-        files: Vec<PathBuf>,
-        previous_day: Option<Vec<PathBuf>>,
-        next_day: Option<Vec<PathBuf>>,
+        files: Vec<Rc<PathBuf>>,
+        previous_day: Option<Vec<Rc<PathBuf>>>,
+        next_day: Option<Vec<Rc<PathBuf>>>,
     ) {
         // source is just today's files
         // destination is any unique files in yesterday, today or tomorow
@@ -146,8 +146,8 @@ impl CouplingBucket {
         for file in files.iter() {
             let entry = self
                 .file_stats
-                .entry(file.to_owned())
-                .or_insert_with(|| FileStats::new(file.to_owned()));
+                .entry(file.clone())
+                .or_insert_with(|| FileStats::new(file.clone()));
             (*entry).add_files(all_destinations.clone());
         }
     }
@@ -181,6 +181,10 @@ impl CouplingBuckets {
             buckets: (0..bucketing_config.bucket_count)
                 .map(|bucket| {
                     let bucket_start: u64 = bucketing_config.bucket_start(bucket);
+                    info!(
+                        "Processing bucket {} of {}",
+                        bucket, bucketing_config.bucket_count
+                    );
                     let mut coupling_bucket = CouplingBucket::new(bucket_start, bucket_size);
                     daily_stats
                         .iter()
@@ -203,18 +207,18 @@ impl CouplingBuckets {
                 .collect(),
         }
     }
-    fn all_files(&self) -> HashSet<PathBuf> {
+    fn all_files(&self) -> HashSet<Rc<PathBuf>> {
         self.buckets
             .iter()
             .flat_map(|(_, coupling_bucket)| coupling_bucket.file_stats.keys().cloned())
             .collect()
     }
-    fn file_coupling_data(&self, file: PathBuf) -> SerializableCouplingData {
+    fn file_coupling_data(&self, file: Rc<PathBuf>) -> SerializableCouplingData {
         SerializableCouplingData::new(
             self.buckets
                 .iter()
                 .filter(|(_bucket, coupling_bucket)| {
-                    coupling_bucket.file_stats.contains_key(&file.to_owned())
+                    coupling_bucket.file_stats.contains_key(&file.clone())
                 })
                 .map(|(bucket, coupling_bucket)| {
                     let bucket_start =
@@ -245,7 +249,7 @@ struct SerializableCouplingBucketData {
     pub bucket_start: u64,
     pub bucket_end: u64,
     pub commit_days: u64,
-    pub coupled_files: Vec<(PathBuf, u64)>,
+    pub coupled_files: Vec<(Rc<PathBuf>, u64)>,
 }
 
 /// Data to save in the Json tree for a file
@@ -339,14 +343,15 @@ impl Serialize for BucketingConfig {
     }
 }
 
-pub fn gather_coupling(tree: &mut FlareTreeNode, config: CouplingConfig) -> Result<(), Error> {
-    info!("Gathering coupling stats - accumulating daily counts");
-    let bucket_size = config.bucket_size(); // TODO - can we work in days not secs?
+fn daily_stats_to_buckets(
+    tree: &FlareTreeNode,
+    config: CouplingConfig,
+) -> Result<Option<(BucketingConfig, CouplingBuckets)>, Error> {
     let mut daily_stats = DailyStats::new(&tree)?;
 
     if daily_stats.is_empty() {
         warn!("No stats found, no coupling data processed");
-        return Ok(());
+        return Ok(None);
     }
 
     info!("Gathering coupling stats - building buckets");
@@ -357,6 +362,19 @@ pub fn gather_coupling(tree: &mut FlareTreeNode, config: CouplingConfig) -> Resu
     let bucketing_config = BucketingConfig::new(config, earliest, latest);
 
     let filtered_buckets = CouplingBuckets::new(config, &daily_stats, bucketing_config);
+    Ok(Some((bucketing_config, filtered_buckets)))
+}
+
+pub fn gather_coupling(tree: &mut FlareTreeNode, config: CouplingConfig) -> Result<(), Error> {
+    info!("Gathering coupling stats - accumulating daily counts");
+    let bucket_info = daily_stats_to_buckets(tree, config)?;
+
+    let (bucketing_config, filtered_buckets) = match bucket_info {
+        Some(result) => result,
+        None => return Ok(()),
+    };
+
+    info!("Gathering coupling stats - applying buckets to JSON tree");
 
     for file in filtered_buckets.all_files() {
         if let Some(tree_node) = tree.get_in_mut(&mut file.components().clone()) {
@@ -455,18 +473,21 @@ mod test {
         let stats = DailyStats::new(&tree).unwrap();
         assert_eq!(stats.is_empty(), false);
 
-        let mut expected: HashMap<u64, Vec<PathBuf>> = HashMap::new();
-        expected.insert(DAY1, vec![Path::new("root_file_1.txt").to_path_buf()]);
+        let mut expected: HashMap<u64, Vec<Rc<PathBuf>>> = HashMap::new();
+        expected.insert(
+            DAY1,
+            vec![Rc::new(Path::new("root_file_1.txt").to_path_buf())],
+        );
         expected.insert(
             DAY21,
             vec![
-                Path::new("root_file_1.txt").to_path_buf(),
-                Path::new("child1/child1_file_1.txt").to_path_buf(),
+                Rc::new(Path::new("root_file_1.txt").to_path_buf()),
+                Rc::new(Path::new("child1/child1_file_1.txt").to_path_buf()),
             ],
         );
         expected.insert(
             DAY22,
-            vec![Path::new("child1/child1_file_1.txt").to_path_buf()],
+            vec![Rc::new(Path::new("child1/child1_file_1.txt").to_path_buf())],
         );
 
         assert_eq!(expected, stats.stats)
@@ -503,12 +524,12 @@ mod test {
     }
 
     fn make_test_daily_stats(data: Vec<(u64, Vec<&str>)>) -> DailyStats {
-        let stats_inner: HashMap<u64, Vec<PathBuf>> = data
+        let stats_inner: HashMap<u64, Vec<Rc<PathBuf>>> = data
             .iter()
             .map(|(day, namelist)| {
-                let paths: Vec<PathBuf> = namelist
+                let paths: Vec<Rc<PathBuf>> = namelist
                     .iter()
-                    .map(|name| Path::new(name).to_path_buf())
+                    .map(|name| Rc::new(Path::new(name).to_path_buf()))
                     .collect();
                 (*day, paths)
             })
@@ -544,7 +565,7 @@ mod test {
         // if I were doing this properly I'd test the coupling data - but this is a side project,
         // I'll leave it as a TODO item ...
         // and test by serializing - more of an integration test than a unit test...
-        let bar_data = coupling_buckets.file_coupling_data(Path::new("bar").to_path_buf());
+        let bar_data = coupling_buckets.file_coupling_data(Rc::new(Path::new("bar").to_path_buf()));
         let bar_value = serde_json::value::to_value(bar_data).expect("Can't serialize!");
         let bar_expected = json!({
           "buckets": [
@@ -558,7 +579,7 @@ mod test {
         });
         assert_eq!(bar_value, bar_expected);
 
-        let baz_data = coupling_buckets.file_coupling_data(Path::new("baz").to_path_buf());
+        let baz_data = coupling_buckets.file_coupling_data(Rc::new(Path::new("baz").to_path_buf()));
         let baz_value = serde_json::value::to_value(baz_data).expect("Can't serialize!");
         let baz_expected = json!({
           "buckets": [
@@ -572,7 +593,7 @@ mod test {
         });
         assert_eq!(baz_value, baz_expected);
 
-        let foo_data = coupling_buckets.file_coupling_data(Path::new("foo").to_path_buf());
+        let foo_data = coupling_buckets.file_coupling_data(Rc::new(Path::new("foo").to_path_buf()));
         let foo_value = serde_json::value::to_value(foo_data).expect("Can't serialize!");
         let foo_expected = json!({
           "buckets": [
@@ -628,7 +649,7 @@ mod test {
 
         assert_eq!(files, vec!["baz", "foo"]);
 
-        let foo_data = coupling_buckets.file_coupling_data(Path::new("foo").to_path_buf());
+        let foo_data = coupling_buckets.file_coupling_data(Rc::new(Path::new("foo").to_path_buf()));
         let foo_value = serde_json::value::to_value(foo_data).expect("Can't serialize!");
         let foo_expected = json!({
           "buckets": [
