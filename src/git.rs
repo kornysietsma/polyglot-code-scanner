@@ -182,10 +182,26 @@ impl GitHistories {
         }
         let mut details: HashMap<u64, GitDetails> = HashMap::new();
 
-        let creation_date = history
+        let first_date = history.iter().map(|h| h.author_time).min();
+
+        let mut creation_date = history
             .iter()
-            .find(|h| h.change == CommitChange::Add)
-            .map(|h| h.author_time);
+            .filter(|h| h.change == CommitChange::Add)
+            .map(|h| h.author_time)
+            .min();
+
+        if let Some(creation) = creation_date {
+            // TODO: test this!
+            if first_date.unwrap() < creation {
+                debug!(
+                    "File has a git date {:?} before the first Add operation {:?}",
+                    first_date.unwrap(),
+                    creation
+                );
+                creation_date = None;
+            }
+        }
+
         let last_update = history.iter().map(|h| h.commit_time).max()?;
 
         let age_in_days = (last_commit - last_update) / (60 * 60 * 24);
