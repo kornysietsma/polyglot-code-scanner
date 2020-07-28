@@ -1,53 +1,10 @@
 # Polyglot Code Scanner
 
-This used to be named "lati-scanner" for language-agnostic toxicity indicators - but I had feedback that this was silly :)
-Also I'm no longer just wanting to look for toxic code - this has evolved into something more general, for exploring large polyglot source code bases in general, so I'm renaming it.
-
-There is also a new spiffy visualizer, not yet pushed to github (as it's not ready, and relies on hand-forked bits of other repos that need cleaning up!)
-
-The new visualizer is react+d3 based so I'm also ditching the static server that was here - it doesn't really add value.
-
-## WARNING - readme is out of date
-
-I've been making changes, need to clean up lots of docs.
-
-I only really pushed because I realised that I foolishly pushed code using a client's email address!  (I wasn't using this at a client site, but I globally changed my git email - foolish move, never do this)
-
-Thankfully following <https://help.github.com/en/github/using-git/changing-author-info> let me remove these from history.
-
-If you cloned/forked this repo in the last year you might have some history glitches!  I hope not. I don't think people are cloning this much :)
-
-More docs coming soon!
-
---
-
-Version 0.0.1 - early in-dev version
-
-This is part of a growing set of tools to help us identify toxic code in large codebases,
-using language-agnostic approaches. Or at least, lightweight tools that work in a very wide range
-of languages - this code might not work for your [befunge](https://esolangs.org/wiki/Befunge) project!
-
-## Work-in-progress warning!
-
-This is a work in progress - it's still being fiddled with, major changes might come at any time. Or I might abandon it as my free time evaporates. You have been warned!
-
-### Major issues at the moment
-
-- There are no progress indicators - you can add `-vv` to see logs, but there's no real indication of what it's doing on a slow git scan
-- You can't turn git scanning off, so if code isn't in git, the scanner will waste time looking for a git repo over and over and over
-- You can't pick and choose which indicators to scan for - it runs them all
+This is part of my Polyglot Code tools - for the main documentation, see <https://polyglot.korny.info>
 
 ## Intro
 
-This application scans source code directories, looking for measures that can be
-useful for identifying toxic code.
-
-I prefer to call these "indicators" rather than "metrics" as many of them are not precise enough
-to really warrant the name "metrics" - they are ways of identifying bad code, but not a metric
-you'd want to use in any scientific way.
-
-There are two ways to run this - as a simple CLI tool, producing a JSON data file as its output; or as a local web server
-in conjunction with the [lati-explorer](https://github.com/kornysietsma/lati-explorer) D3 visualisation.
+This application scans source code directories, identifying a range of code metrics and other data, and storing the results in a JSON file for later visualisation by the [Polyglot Code Explorer](https://polyglot.korny.info/tools/explorer/description/)
 
 ## Installation and running
 
@@ -55,13 +12,11 @@ I haven't distributed binary files yet - you'll need [to install rust and cargo]
 
 If you have the code cloned locally you can install it with:
 
-`cargo install --path . --force`
+~~~sh
+$ cargo build --release
+~~~
 
-or if you want to install from github without downloading:
-
-`cargo install --git https://github.com/kornysietsma/polyglot-code-scanner`
-
-These will install to `~/.cargo/bin/polyglot_code_scanner` on a \*nix style machine. You can put this in your PATH, or just run it from this directory. As a binary it has no other dependencies.
+The binary will be built in the `target/release` directory.
 
 ### Running from source
 
@@ -72,47 +27,6 @@ You can also just run it from the source directory with `cargo run polyglot_code
 This readme might be out of date - the help might be more accurate:
 
 `polyglot_code_scanner -h`
-
-### Simple file output
-
-This is the default mode - the `polyglot_code_scanner` command produces a "[flare](https://github.com/d3/d3-hierarchy#hierarchy)" JSON file - a not-very-precisely documented format used by [d3](https://d3.org) hierarchical visualisations, especially my own [toxic code explorer](https://github.com/kornysietsma/toxic-code-explorer-demo/) (which is due for a refresh soon!)
-
-A basic output sample looks something like:
-
-```
-{
-  "name": "<root>",
-  "children": [
-    {
-      "name": "foo.clj",
-      "data": {
-        "loc": {
-          "blanks": 1,
-          "code": 3,
-          "comments": 0,
-          "language": "Clojure",
-          "lines": 4
-        },
-        "git": {
-          "age_in_days": 56,
-          "last_update": 1554826216,
-          "user_count": 1
-        },
-        "indentation": {
-          "lines": 8,
-          "maximum": 6,
-          "median": 4,
-          "minimum": 0,
-          "p75": 6,
-          "p90": 6,
-          "p99": 6,
-          "stddev": 3
-        }
-      }
-    }
-  ]
-}
-```
 
 Currently the following indicators are implemented:
 
@@ -126,69 +40,47 @@ Currently the following indicators are implemented:
 
 I aim to add more indicators as I go.
 
-### Viewing the data
-
-You can visualise the data by cloning [lati-explorer](https://github.com/kornysietsma/lati-explorer) and then copying the output JSON file into that codebase - or use the web server mode:
-
-### Web Server mode
-
-This is operated by the `--server` option (see below for command-line options, or run `polyglot_code_scanner --help`)
-
-You also need to have downloaded the [lati-explorer](https://github.com/kornysietsma/lati-explorer) source code to your local machine - `polyglot_code_scanner` doesn't embed all the HTML, CSS and JavaScript for the server, you need to download it yourself. (for now, there might be an embedded version one day, though it'll make the binary bigger!)
-
-The basic process is:
-
-- Download lati-explorer from https://github.com/kornysietsma/lati-explorer
-- Run `polyglot_code_scanner` specifying the location of this project directory:
-  `polyglot_code_scanner --server -e ~/my_stuff/lati-explorer`
-- this will fail if it can't see the `docs` directory where resources actually live.
-- Once the files are scanned, open a web browser to http://localhost:3000 (or you can specify a different port on the commandline)
-
 ## Ignoring files
 
 Git ignored files in `.gitignore` are not scanned.
 
-You can also manually add `.lati_ignore` files anywhere in the codebase, to list extra files to be ignored - the syntax is [the same as .gitignore's](https://git-scm.com/docs/gitignore)
+You can also manually add `.polyglot_code_scanner_ignore` files anywhere in the codebase, to list extra files to be ignored - the syntax is [the same as .gitignore's](https://git-scm.com/docs/gitignore)
 
 ## Usage
 
-```
+~~~text
 polyglot_code_scanner [FLAGS] [OPTIONS] [root]
 
+USAGE:
+    polyglot_code_scanner [FLAGS] [OPTIONS] [root]
+
 FLAGS:
-    -h, --help
-            Prints help information (--help for more info)
-
-    -s, --server
-            Run a web server to display the lati-explorer visualisation Requires "-e" to indicate where to find the
-            lati-explorer code Download the code from https://github.com/kornysietsma/lati-explorer if you want to see
-            pretty visualisations
-    -V, --version
-            Prints version information
-
-    -v, --verbosity
-            Pass many times for more log output
-
-            By default, it'll only report errors. Passing `-v` one time also prints warnings, `-vv` enables info
-            logging, `-vvv` debug, and `-vvvv` trace.
+    -c, --coupling           include temporal coupling data
+    -h, --help               Prints help information
+        --no-detailed-git    Don't include detailed git information - output may be big!
+    -V, --version            Prints version information
+    -v, --verbose            Logging verbosity, v = error, vv = warn, vvv = info (default), vvvv = debug, vvvvv = trace
 
 OPTIONS:
-    -e, --explorer <explorer_location>
-            The location of the lati-explorer code, needed for server mode Download the code from
-            https://github.com/kornysietsma/lati-explorer and specify the local directory name here.
+        --coupling-bucket-days <bucket_days>
+            how many days are reviewed for one "bucket" of temporal coupling [default: 91]
+
+        --years <git_years>
+            how many years of git history to parse - default only scan the last 3 years (from now, not git head)
+            [default: 3]
+        --coupling-min-ratio <min_coupling_ratio>
+            what is the minimum ratio of (other file changes)/(this file changes) to include a file in coupling stats
+            [default: 0.25]
+        --coupling-source-days <min_source_days>
+            how many days should a file change in a bucket for it to generate coupling stats [default: 10]
+
     -o, --output <output>
             Output file, stdout if not present, or not used if sending to web server
 
-    -p, --port <port>
-            The web server port [default: 3000]
-
-    --years <git_years>
-            How many years of git history to parse - default is to scan 3 years of logs
 
 ARGS:
-    <root>
-            Root directory, current dir if not present
-```
+    <root>    Root directory, current dir if not present
+~~~
 
 ## Why rust?
 

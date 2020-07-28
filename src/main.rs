@@ -19,11 +19,11 @@ use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt()]
-/// Language-agnostic Toxicity Indicators scanner
+/// Polyglot Code Scanner
 ///
 /// Scans source code and generates indicators that may (or may not) show toxic code.
 /// Ignores files specified by `.gitignore` or `.polyglot_code_scanner_ignore` files
-/// See https://github.com/kornysietsma/polyglot-code-scanner for details
+/// See https://polyglot.korny.info for details
 struct Cli {
     #[structopt(
         short = "v",
