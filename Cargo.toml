@@ -29,9 +29,13 @@ grep-searcher = "0.1.6"
 hdrhistogram = "7.1.0"
 indicatif = "0.13.0"
 chrono = "0.4"
+openssl = { version = '0.10.30', optional = true }
 
 [dev-dependencies]
 test_shared = { path = "test_shared" }
 tempfile = "3.1.0"
 zip = "0.5.3"
 pretty_assertions = "0.6.1"
+
+[features]
+vendored-openssl = ['openssl/vendored']
