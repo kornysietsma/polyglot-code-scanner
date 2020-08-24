@@ -13,7 +13,7 @@ DEPLOY_TO_GITHUB: &DEPLOY_TO_GITHUB
     - git config --local user.email "korny@sietsma.com"
     - name="polyglot-code-scanner-$TRAVIS_TAG-$TARGET"
     - mkdir $name
-    - cp target/$TARGET/release/polyglot-code-scanner $name/
+    - cp target/$TARGET/release/polyglot_code_scanner $name/
     - cp README.md LICENSE.txt $name/
     - tar czvf $name.tar.gz $name
   deploy:
