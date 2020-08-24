@@ -9,7 +9,7 @@ extern crate indicatif;
 extern crate log;
 extern crate structopt;
 
-use failure::{bail, format_err, Error};
+use failure::Error;
 use polyglot_code_scanner::coupling::CouplingConfig;
 use polyglot_code_scanner::CalculatorConfig;
 use std::fs::File;
@@ -104,7 +104,7 @@ fn real_main() -> Result<(), Error> {
         detailed: !args.no_detailed_git,
     };
 
-    let coupling_config = if (args.coupling) {
+    let coupling_config = if args.coupling {
         Some(CouplingConfig::new(
             args.bucket_days,
             args.min_source_days,

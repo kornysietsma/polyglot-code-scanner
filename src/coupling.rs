@@ -5,7 +5,7 @@ use serde::{Serialize, Serializer};
 use serde_json::Value;
 use std::collections::hash_map::Iter;
 use std::collections::{HashMap, HashSet};
-use std::path::{Components, Path, PathBuf};
+use std::path::PathBuf;
 use std::rc::Rc;
 
 struct DailyStats {
@@ -347,7 +347,7 @@ fn daily_stats_to_buckets(
     tree: &FlareTreeNode,
     config: CouplingConfig,
 ) -> Result<Option<(BucketingConfig, CouplingBuckets)>, Error> {
-    let mut daily_stats = DailyStats::new(&tree)?;
+    let daily_stats = DailyStats::new(&tree)?;
 
     if daily_stats.is_empty() {
         warn!("No stats found, no coupling data processed");
@@ -408,6 +408,7 @@ mod test {
     use serde_json::json;
     use std::ffi::OsString;
     use std::path::Path;
+    #[allow(unused_imports)] // boilerplate for getting shared test logic
     use test_shared::*;
 
     const DAY_SIZE: u64 = 24 * 60 * 60;
@@ -431,7 +432,7 @@ mod test {
     }
 
     impl FakeGitData {
-        fn new(days: &Vec<u64>) -> Self {
+        fn new(days: &[u64]) -> Self {
             FakeGitData {
                 details: Some(
                     days.iter()
@@ -448,20 +449,17 @@ mod test {
     fn build_test_tree() -> FlareTreeNode {
         let mut root = FlareTreeNode::dir("root");
         let mut root_file_1 = FlareTreeNode::file("root_file_1.txt");
-        root_file_1.add_data("git", FakeGitData::new(&vec![DAY1, DAY21]).to_json());
+        root_file_1.add_data("git", FakeGitData::new(&[DAY1, DAY21]).to_json());
         root_file_1.add_data("loc", json!({"code": 12}));
         root.append_child(root_file_1);
         root.append_child(FlareTreeNode::file("root_file_2.txt"));
         let mut child1 = FlareTreeNode::dir("child1");
         let mut child1_file1 = FlareTreeNode::file("child1_file_1.txt");
-        child1_file1.add_data("git", FakeGitData::new(&vec![DAY21, DAY22]).to_json());
+        child1_file1.add_data("git", FakeGitData::new(&[DAY21, DAY22]).to_json());
         child1_file1.add_data("loc", json!({"code": 122}));
         child1.append_child(child1_file1);
         let mut child1_file2 = FlareTreeNode::file("binary_file.zip");
-        child1_file2.add_data(
-            "git",
-            FakeGitData::new(&vec![DAY21, DAY22, DAY23]).to_json(),
-        );
+        child1_file2.add_data("git", FakeGitData::new(&[DAY21, DAY22, DAY23]).to_json());
         child1.append_child(child1_file2);
         root.append_child(child1);
         root

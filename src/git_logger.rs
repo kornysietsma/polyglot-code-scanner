@@ -127,7 +127,7 @@ impl GitLog {
         debug!("work dir: {:?}", workdir);
 
         Ok(GitLog {
-            workdir: workdir.to_owned(),
+            workdir,
             repo,
             config,
         })
@@ -210,7 +210,7 @@ impl<'a> GitLogIterator<'a> {
                 Ok(Some(GitLogEntry {
                     id: oid.to_string(),
                     summary: commit.summary().unwrap_or("[no message]").to_string(),
-                    parents: commit.parent_ids().map({ |p| p.to_string() }).collect(),
+                    parents: commit.parent_ids().map(|p| p.to_string()).collect(),
                     committer: signature_to_user(&committer),
                     commit_time,
                     author: signature_to_user(&author),
