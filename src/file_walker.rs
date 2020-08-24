@@ -5,6 +5,8 @@ use super::flare::FlareTreeNode;
 use super::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use failure::Error;
 use ignore::{Walk, WalkBuilder};
+#[allow(unused_imports)]
+use path_slash::PathExt;
 use std::path::Path;
 
 fn apply_calculators_to_node(
@@ -124,7 +126,7 @@ mod test {
         }
         fn calculate(&mut self, path: &Path) -> Result<Option<serde_json::Value>, Error> {
             if path.is_file() {
-                Ok(Some(json!(path.to_str())))
+                Ok(Some(json!(path.to_slash_lossy())))
             } else {
                 Ok(None)
             }
