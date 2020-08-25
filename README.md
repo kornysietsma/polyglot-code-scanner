@@ -8,9 +8,9 @@ This application scans source code directories, identifying a range of code metr
 
 ## Installation and running
 
-I haven't distributed binary files yet - you'll need [to install rust and cargo](https://www.rust-lang.org/tools/install) and then compile and install `polyglot_code_scanner`.
+See also <https://polyglot.korny.info/tools/scanner/howto> for more detailed instructions for fetching binary releases, and running the scanner.
 
-If you have the code cloned locally you can install it with:
+To compile and run from source, you'll need [to install rust and cargo](https://www.rust-lang.org/tools/install) and then from a copy of this project, you can build a binary package with:
 
 ~~~sh
 $ cargo build --release
@@ -20,25 +20,17 @@ The binary will be built in the `target/release` directory.
 
 ### Running from source
 
-You can also just run it from the source directory with `cargo run polyglot_code_scanner -- (other command line arguments)`
+You can also just run it from the source directory with `cargo run polyglot_code_scanner -- (other command line arguments)` - this will be slower as it runs un-optimised code with more debug information.  But it's a lot faster for development.
 
 ### Getting help
 
-This readme might be out of date - the help might be more accurate:
+See <https://polyglot.korny.info> for the main documentation for this project.
 
-`polyglot_code_scanner -h`
+You can get up-to-date command-line help by running
 
-Currently the following indicators are implemented:
-
-- loc - lines of code - uses the [tokei](https://github.com/XAMPPRocky/tokei) library to produce lines of code and other stats for many programming languages. Unsupported languages it will try to just count lines of text.
-- git - git stats - for now, this produces very basic stats:
-  - the age in days since the last commit for this file
-  - the timestamp (seconds since the epoch) of the last commit for this file
-  - the number of unique users who have touched this file (taken from authors, committers, and "Co-authored-by" comments)
-    - uniqueness is a combination of name + email - this might show excess numbers, consumers should de-duplicate this!
-  - indentation - indentation is a good proxy for complexity! The output includes medians and quantiles for indentation (in spaces, with tabs assumed to be 4 spaces) for complexity display
-
-I aim to add more indicators as I go.
+```sh
+polyglot_code_scanner -h
+```
 
 ## Ignoring files
 
