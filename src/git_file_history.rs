@@ -135,7 +135,7 @@ mod test {
     #[test]
     fn can_get_log_by_filename() -> Result<(), Error> {
         let gitdir = tempdir()?;
-        let git_root = unzip_git_sample(gitdir.path())?;
+        let git_root = unzip_git_sample("git_sample", gitdir.path())?;
 
         let mut git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
@@ -154,7 +154,7 @@ mod test {
     #[test]
     fn can_tell_if_file_is_in_git_repo() -> Result<(), Error> {
         let gitdir = tempdir()?;
-        let git_root = unzip_git_sample(gitdir.path())?;
+        let git_root = unzip_git_sample("git_sample", gitdir.path())?;
 
         let mut git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
@@ -171,7 +171,7 @@ mod test {
     #[test]
     fn can_get_history_for_file() -> Result<(), Error> {
         let gitdir = tempdir()?;
-        let git_root = unzip_git_sample(gitdir.path())?;
+        let git_root = unzip_git_sample("git_sample", gitdir.path())?;
 
         let mut git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
@@ -199,7 +199,7 @@ mod test {
     #[test]
     fn no_history_for_files_not_known() -> Result<(), Error> {
         let gitdir = tempdir()?;
-        let git_root = unzip_git_sample(gitdir.path())?;
+        let git_root = unzip_git_sample("git_sample", gitdir.path())?;
 
         let mut git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 

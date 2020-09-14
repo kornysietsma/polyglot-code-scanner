@@ -34,9 +34,12 @@ pub fn unzip_to_dir(dest: &Path, zipname: &str) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn unzip_git_sample(workdir: &Path) -> Result<PathBuf, Error> {
-    unzip_to_dir(workdir, "tests/data/git/git_sample.zip")?;
-    Ok(PathBuf::from(workdir).join("git_sample"))
+/// unzip a git zip file - assumes the name shortname.zip and contains a shortname directory in the file
+/// returns the working directory in the unzipped data
+pub fn unzip_git_sample(shortname: &str, workdir: &Path) -> Result<PathBuf, Error> {
+    let zip_name = "tests/data/git/".to_owned() + shortname + ".zip";
+    unzip_to_dir(workdir, &zip_name)?;
+    Ok(PathBuf::from(workdir).join(shortname))
 }
 
 pub fn assert_eq_json_file<T: ?Sized>(actual: &T, expected_file: &str)

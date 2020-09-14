@@ -435,7 +435,7 @@ mod test {
     #[test]
     fn can_extract_basic_git_log() -> Result<(), Error> {
         let gitdir = tempdir()?;
-        let git_root = unzip_git_sample(gitdir.path())?;
+        let git_root = unzip_git_sample("git_sample", gitdir.path())?;
         let git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
         assert_eq!(git_log.workdir.canonicalize()?, git_root.canonicalize()?);
@@ -453,7 +453,7 @@ mod test {
     #[test]
     fn git_log_can_include_merge_changes() -> Result<(), Error> {
         let gitdir = tempdir()?;
-        let git_root = unzip_git_sample(gitdir.path())?;
+        let git_root = unzip_git_sample("git_sample", gitdir.path())?;
 
         let git_log = GitLog::new(&git_root, GitLogConfig::default().include_merges(true))?;
 
@@ -471,7 +471,7 @@ mod test {
     #[test]
     fn git_log_can_limit_to_recent_history() -> Result<(), Error> {
         let gitdir = tempdir()?;
-        let git_root = unzip_git_sample(gitdir.path())?;
+        let git_root = unzip_git_sample("git_sample", gitdir.path())?;
 
         let git_log = GitLog::new(&git_root, GitLogConfig::default().since(1558521694))?;
 
