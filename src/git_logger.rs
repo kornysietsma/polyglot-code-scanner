@@ -311,6 +311,7 @@ fn scan_diffs(
     parent: Option<&Commit>,
 ) -> Result<Vec<FileChange>, Error> {
     let mut diff = repo.diff_tree_to_tree(parent_tree, Some(&commit_tree), None)?;
+    // Identify renames, None means default settings - see https://libgit2.org/libgit2/#HEAD/group/diff/git_diff_find_similar
     diff.find_similar(None)?;
     let file_changes = diff
         .deltas()
@@ -397,6 +398,7 @@ fn summarise_delta(delta: DiffDelta, lines_added: u64, lines_deleted: u64) -> Op
 mod test {
     use super::*;
     use pretty_assertions::assert_eq;
+    use serde_json::json;
     use tempfile::tempdir;
     use test_shared::*;
 
@@ -494,7 +496,153 @@ mod test {
 
         Ok(())
     }
-}
 
+    #[test]
+    fn git_log_tracks_renames() -> Result<(), Error> {
+        let gitdir = tempdir()?;
+        let git_root = unzip_git_sample("rename_simple", gitdir.path())?;
+
+        let git_log = GitLog::new(&git_root, GitLogConfig::default())?;
+
+        let err_count = git_log.iterator()?.filter(Result::is_err).count();
+        assert_eq!(err_count, 0);
+
+        let mut entries: Vec<_> = git_log.iterator()?.filter_map(Result::ok).collect();
+        entries.sort_by(|a, b| a.author_time.cmp(&b.author_time));
+
+        let changes: Vec<String> = entries
+            .iter()
+            .map(|entry| entry.summary.to_owned())
+            .collect();
+
+        assert_eq!(
+            changes,
+            vec![
+                "initial commit",
+                "unrelated commit",
+                "moving a to c",
+                "moving and renaming"
+            ]
+        );
+
+        let file_changes: Vec<Vec<FileChange>> = entries
+            .iter()
+            .map(|entry| {
+                let mut entries = entry.file_changes.clone();
+                entries.sort_by(|a, b| a.file.cmp(&b.file));
+                entries
+            })
+            .collect();
+
+        assert_eq_json_value(
+            &file_changes,
+            &json!([
+                    [{"change":"Add",
+                      "file":"a.txt",
+                      "lines_added": 4,
+                      "lines_deleted": 0,
+                      "old_file": null}
+                    ],
+                    [{"change":"Add",
+                      "file":"b.txt",
+                      "lines_added": 1,
+                      "lines_deleted": 0,
+                      "old_file": null}
+                    ],
+                    [{"change":"Rename",
+                      "file":"c.txt",
+                      "lines_added": 0,
+                      "lines_deleted": 0,
+                      "old_file": "a.txt"}
+                    ],
+                    [{"change":"Rename",
+                      "file":"d.txt",
+                      "lines_added": 1,
+                      "lines_deleted": 0,
+                      "old_file": "c.txt"}
+                    ]
+                   ]
+                ),
+        );
+
+        Ok(())
+    }
+}
+/*
+<Array([
+<    Array([
+<        Object({
+<            "change": String(
+<                "Add",
+<            ),
+<            "file": String(
+<                "a.txt",
+<            ),
+<            "lines_added": Number(
+<                4,
+<            ),
+<            "lines_deleted": Number(
+<                0,
+<            ),
+<            "old_file": Null,
+<        }),
+<    ]),
+<    Array([
+<        Object({
+<            "change": String(
+<                "Add",
+<            ),
+<            "file": String(
+<                "b.txt",
+<            ),
+<            "lines_added": Number(
+<                1,
+<            ),
+<            "lines_deleted": Number(
+<                0,
+<            ),
+<            "old_file": Null,
+<        }),
+<    ]),
+<    Array([
+<        Object({
+<            "change": String(
+<                "Rename",
+<            ),
+<            "file": String(
+<                "c.txt",
+<            ),
+<            "lines_added": Number(
+<                0,
+<            ),
+<            "lines_deleted": Number(
+<                0,
+<            ),
+<            "old_file": String(
+<                "a.txt",
+<            ),
+<        }),
+<    ]),
+<    Array([
+<        Object({
+<            "change": String(
+<                "Rename",
+<            ),
+<            "file": String(
+<                "d.txt",
+<            ),
+<            "lines_added": Number(
+<                1,
+<            ),
+<            "lines_deleted": Number(
+<                0,
+<            ),
+<            "old_file": String(
+<                "c.txt",
+<            ),
+<        }),
+<    ]),
+<])
+*/
 // run a single test with:
 // cargo test -- --nocapture can_extract_basic_git_log | grep -v "running 0 tests" | grep -v "0 passed" | grep -v -e '^\s*$'
