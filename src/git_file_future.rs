@@ -1,5 +1,4 @@
 #![warn(clippy::all)]
-use crate::git_logger::{CommitChange, FileChange};
 use git2::Oid;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -39,24 +38,14 @@ impl GitFileFutureRegistry {
         }
     }
 
-    pub fn register(&mut self, id: &Oid, parent_ids: &[Oid], file_changes: &[FileChange]) {
+    pub fn register(
+        &mut self,
+        id: &Oid,
+        parent_ids: &[Oid],
+        file_changes: &[(PathBuf, FileNameChange)],
+    ) {
         let entry = self.rev_changes.entry(*id).or_insert_with(RevChange::new);
-        for file_change in file_changes {
-            match file_change.change() {
-                CommitChange::Rename => {
-                    (*entry).files.insert(
-                        file_change.old_file().as_ref().unwrap().to_path_buf(),
-                        FileNameChange::Renamed(file_change.file().to_path_buf()),
-                    );
-                }
-                CommitChange::Delete => {
-                    (*entry)
-                        .files
-                        .insert(file_change.file().to_path_buf(), FileNameChange::Deleted());
-                }
-                _ => (),
-            }
-        }
+        (*entry).files.extend(file_changes.iter().cloned());
         for parent_id in parent_ids {
             let entry = self
                 .rev_changes
@@ -97,14 +86,18 @@ mod test {
     use failure::Error;
     use pretty_assertions::assert_eq;
 
+    fn pb(name: &str) -> PathBuf {
+        PathBuf::from(name)
+    }
+
     #[test]
     fn trivial_repo_returns_original_name() -> Result<(), Error> {
         let mut registry = GitFileFutureRegistry::new();
         let my_id = Oid::from_str("01")?;
         registry.register(&my_id, &[], &[]);
         assert_eq!(
-            registry.final_name(&my_id, PathBuf::from("foo.txt")),
-            Some(PathBuf::from("foo.txt"))
+            registry.final_name(&my_id, pb("foo.txt")),
+            Some(pb("foo.txt"))
         );
         Ok(())
     }
@@ -113,17 +106,15 @@ mod test {
     fn simple_rename_returns_old_name() -> Result<(), Error> {
         let mut registry = GitFileFutureRegistry::new();
         let my_id = Oid::from_str("01")?;
-        let file_change = FileChange {
-            file: PathBuf::from("bar.txt"),
-            old_file: Some(PathBuf::from("foo.txt")),
-            change: CommitChange::Rename,
-            lines_added: 0u64,
-            lines_deleted: 0u64,
-        };
-        registry.register(&my_id, &[], &[file_change]);
+
+        registry.register(
+            &my_id,
+            &[],
+            &[(pb("foo.txt"), FileNameChange::Renamed(pb("bar.txt")))],
+        );
         assert_eq!(
-            registry.final_name(&my_id, PathBuf::from("foo.txt")),
-            Some(PathBuf::from("bar.txt"))
+            registry.final_name(&my_id, pb("foo.txt")),
+            Some(pb("bar.txt"))
         );
         Ok(())
     }

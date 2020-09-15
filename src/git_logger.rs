@@ -105,11 +105,11 @@ pub enum CommitChange {
 /// TODO: this is public as I use it in tests in git_file_future, which is ugly. Find a better way once the tests are working.
 #[derive(Debug, Serialize, Clone, Getters)]
 pub struct FileChange {
-    pub file: PathBuf,
-    pub old_file: Option<PathBuf>,
-    pub change: CommitChange,
-    pub lines_added: u64,
-    pub lines_deleted: u64,
+    file: PathBuf,
+    old_file: Option<PathBuf>,
+    change: CommitChange,
+    lines_added: u64,
+    lines_deleted: u64,
 }
 
 impl GitLog {
@@ -201,6 +201,11 @@ impl<'a> GitLogIterator<'a> {
                     Vec::new()
                 };
 
+                warn!(
+                    "Commit id {}: {}",
+                    oid.to_string(),
+                    commit.summary().unwrap_or("[no message]").to_string()
+                );
                 let commit_tree = commit.tree()?;
                 let file_changes = commit_file_changes(
                     &self.git_log.repo,
@@ -208,6 +213,13 @@ impl<'a> GitLogIterator<'a> {
                     &commit_tree,
                     self.git_log.config,
                 );
+                for fc in file_changes.iter() {
+                    if let Some(old) = &fc.old_file {
+                        warn!("    {:?} - {:?} to {:?} ", fc.change, old, fc.file);
+                    } else {
+                        warn!("    {:?} - {:?}", fc.change, fc.file)
+                    }
+                }
                 Ok(Some(GitLogEntry {
                     id: oid.to_string(),
                     summary: commit.summary().unwrap_or("[no message]").to_string(),
@@ -275,6 +287,7 @@ fn commit_file_changes(
     commit_tree: &Tree,
     config: GitLogConfig,
 ) -> Vec<FileChange> {
+    warn!("parents {:?}", commit.parent_ids().collect::<Vec<Oid>>());
     if commit.parent_count() == 0 {
         info!("Commit {} has no parent", commit.id());
 
