@@ -2,9 +2,7 @@
   {
     "id": "93ae0c7c7cd93b3c4ea1bf103bde4deafef798ad",
     "summary": "renaming",
-    "parents": [
-      "0dbd54d4c524ecc776f381e660cce9b2dd92162c"
-    ],
+    "parents": ["0dbd54d4c524ecc776f381e660cce9b2dd92162c"],
     "committer": {
       "name": "Korny Sietsma",
       "email": "korny@sietsma.com"
@@ -29,9 +27,7 @@
   {
     "id": "0dbd54d4c524ecc776f381e660cce9b2dd92162c",
     "summary": "just changed parent.clj",
-    "parents": [
-      "1ef4f2a8301699964d7bb397d3f2e86d8d9776b3"
-    ],
+    "parents": ["1ef4f2a8301699964d7bb397d3f2e86d8d9776b3"],
     "committer": {
       "name": "Korny Sietsma",
       "email": "korny@sietsma.com"
@@ -96,38 +92,9 @@
     ]
   },
   {
-    "id": "cdf8709362c267198d04d47e55e66071fdd5f52b",
-    "summary": "removed excess line",
-    "parents": [
-      "ca239efb9b26db57ac9e2ec3e2df1c42578a46f8"
-    ],
-    "committer": {
-      "name": "Korny Sietsma",
-      "email": "korny@sietsma.com"
-    },
-    "commit_time": 1558521648,
-    "author": {
-      "name": "Korny Sietsma",
-      "email": "korny@sietsma.com"
-    },
-    "author_time": 1558521648,
-    "co_authors": [],
-    "file_changes": [
-      {
-        "file": "simple/child/a.txt",
-        "old_file": null,
-        "change": "Modify",
-        "lines_added": 1,
-        "lines_deleted": 2
-      }
-    ]
-  },
-  {
     "id": "a0ae9997cfdf49fd0cbf54dacc72c778af337519",
     "summary": "made some changes with a bigger comment",
-    "parents": [
-      "ca239efb9b26db57ac9e2ec3e2df1c42578a46f8"
-    ],
+    "parents": ["ca239efb9b26db57ac9e2ec3e2df1c42578a46f8"],
     "committer": {
       "name": "Korny Sietsma",
       "email": "korny@sietsma.com"
@@ -158,6 +125,32 @@
         "change": "Modify",
         "lines_added": 3,
         "lines_deleted": 1
+      }
+    ]
+  },
+
+  {
+    "id": "cdf8709362c267198d04d47e55e66071fdd5f52b",
+    "summary": "removed excess line",
+    "parents": ["ca239efb9b26db57ac9e2ec3e2df1c42578a46f8"],
+    "committer": {
+      "name": "Korny Sietsma",
+      "email": "korny@sietsma.com"
+    },
+    "commit_time": 1558521648,
+    "author": {
+      "name": "Korny Sietsma",
+      "email": "korny@sietsma.com"
+    },
+    "author_time": 1558521648,
+    "co_authors": [],
+    "file_changes": [
+      {
+        "file": "simple/child/a.txt",
+        "old_file": null,
+        "change": "Modify",
+        "lines_added": 1,
+        "lines_deleted": 2
       }
     ]
   },

@@ -13,7 +13,7 @@ See also <https://polyglot.korny.info/tools/scanner/howto> for more detailed ins
 To compile and run from source, you'll need [to install rust and cargo](https://www.rust-lang.org/tools/install) and then from a copy of this project, you can build a binary package with:
 
 ~~~sh
-$ cargo build --release
+cargo build --release
 ~~~
 
 The binary will be built in the `target/release` directory.
@@ -28,9 +28,9 @@ See <https://polyglot.korny.info> for the main documentation for this project.
 
 You can get up-to-date command-line help by running
 
-```sh
+~~~sh
 polyglot_code_scanner -h
-```
+~~~
 
 ## Ignoring files
 
@@ -74,17 +74,49 @@ ARGS:
     <root>    Root directory, current dir if not present
 ~~~
 
-## Why rust?
+## Development hints
 
-1. I wanted to play with rust - I havent used a compiled language since the '90s, and I haven't used a strongly typed language I liked for a long time
-2. [Tokei](https://github.com/XAMPPRocky/tokei) is awesome - and removes a key dependenency on `cloc` of my old code
-3. It's nice to ditch the JVM dependency for building a generally useful tool
+### Running tests
 
-## Why did you fork tokei?
+To run a single named test from the command-line:
 
-I want to generate indentation ignoring comments. Comments distort metrics. Tokei will recognise comments but it just gives stats, not code with the comments removed. So for now, I've forked tokei
-to let me do this. I'm not sure if this will remain a fork, or if
-it is something that could be merged back into tokei.
+~~~sh
+cargo test -- --nocapture renames_and_deletes_applied_across_history
+~~~
+
+The `--nocapture` tells rust not to capture stdout/stderr - so you can add `println!` and `eprintln!` statements to help you.
+
+To remove some extra noise and blank lines, pipe the output through grep:
+
+~~~sh
+cargo test -- --nocapture renames_and_deletes_applied_across_history | grep -v "running 0 tests" | grep -v "0 passed" | grep -v -e '^\s*$'
+~~~
+
+### showing logs
+
+Rust tests don't install a logger - normally you explicitly install loggers in your `main` which tests don't use.
+
+To install a logger using the `fern` crate, add the following to tests:
+
+~~~rust
+use test_shared::*;
+~~~
+
+then
+
+~~~rust
+install_test_logger();
+~~~
+
+This sets up a simple logger which sends logs to stdout - make sure you also use the `--nocapture` parameter mentioned earlier.
+
+### Pretty test output
+
+If you want better assertions, your tests need to explicitly use the `pretty_assertions` crate:
+
+~~~rust
+use pretty_assertions::assert_eq;
+~~~
 
 ## License
 

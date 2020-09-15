@@ -47,17 +47,17 @@ impl GitFileFutureRegistry {
         let entry = self.rev_changes.entry(*id).or_insert_with(RevChange::new);
         (*entry).files.extend(file_changes.iter().cloned());
         for parent_id in parent_ids {
-            let entry = self
+            let pentry = self
                 .rev_changes
                 .entry(*parent_id)
                 .or_insert_with(RevChange::new);
-            (*entry).children.push(*parent_id);
+            (*pentry).children.push(*id);
         }
     }
 
     /// what is this called in the final revision?
     /// returns None if it is deleted, or Some(final name)
-    pub fn final_name(self, ref_id: &Oid, file: PathBuf) -> Option<PathBuf> {
+    pub fn final_name(&self, ref_id: &Oid, file: PathBuf) -> Option<PathBuf> {
         let mut current_name: &PathBuf = &file;
         let mut current_ref: Oid = *ref_id;
         loop {
@@ -116,6 +116,77 @@ mod test {
             registry.final_name(&my_id, pb("foo.txt")),
             Some(pb("bar.txt"))
         );
+        Ok(())
+    }
+
+    #[test]
+    fn renames_and_deletes_applied_across_history() -> Result<(), Error> {
+        // my bad - this should be a few isolated tests not one big test-all test.
+        // classic how my standards slip for side projects!
+        let mut registry = GitFileFutureRegistry::new();
+        /*
+                   +-----+
+                   |01   |
+                   |add a|
+                   |add z|
+                   +--+--+
+                      |
+               +------v------+
+               |02           |
+               |rename a to b|
+               |delete z     |
+               +-------------+
+               |             |
+        +------v------+ +----v--------+
+        |04           | |05           |
+        |rename b to c| |rename b to d|
+        +--------------+--------------+
+                       |
+              +--------v---------+
+              |06 merge          |
+              |rename c to afinal|
+              |create new z      |
+              +------------------+
+                */
+        let id_1 = Oid::from_str("01")?;
+        let id_2 = Oid::from_str("02")?;
+        let id_4 = Oid::from_str("04")?;
+        let id_5 = Oid::from_str("05")?;
+        let id_6 = Oid::from_str("06")?;
+
+        registry.register(
+            &id_6,
+            &[id_4, id_5],
+            &[(pb("c"), FileNameChange::Renamed(pb("afinal")))],
+        );
+        // NOTE: topological order should (I think?) register rev 4 before rev 5 as it's first
+        registry.register(
+            &id_4,
+            &[id_2],
+            &[(pb("b"), FileNameChange::Renamed(pb("c")))],
+        );
+        registry.register(
+            &id_5,
+            &[id_2],
+            &[(pb("b"), FileNameChange::Renamed(pb("d")))],
+        );
+        registry.register(
+            &id_2,
+            &[id_1],
+            &[
+                (pb("a"), FileNameChange::Renamed(pb("b"))),
+                (pb("z"), FileNameChange::Deleted()),
+            ],
+        );
+        registry.register(&id_1, &[], &[]);
+
+        // original a is afinal
+        // original z is gone
+        assert_eq!(registry.final_name(&id_1, pb("a")), Some(pb("afinal")));
+        assert_eq!(registry.final_name(&id_1, pb("z")), None);
+        // from the perspective of the filesystem after node 2, we know nothing of a any more, only b
+        assert_eq!(registry.final_name(&id_2, pb("b")), Some(pb("afinal")));
+
         Ok(())
     }
 }

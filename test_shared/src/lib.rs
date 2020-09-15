@@ -1,6 +1,5 @@
 #![warn(clippy::all)]
 use failure::Error;
-
 use pretty_assertions::assert_eq;
 use serde::Serialize;
 use serde_json::Value;
@@ -74,4 +73,14 @@ pub fn assert_eq_json(left: &str, right: &str) {
     let left: Value = serde_json::from_str(left).unwrap();
     let right: Value = serde_json::from_str(right).unwrap();
     assert_eq!(left, right);
+}
+
+/// install a test logger - call this in tests where you want to see log output!
+pub fn install_test_logger() {
+    // This'll fail if called twice; don't worry.
+    let _ = fern::Dispatch::new()
+        // ...
+        .level(log::LevelFilter::Debug)
+        .chain(fern::Output::call(|record| println!("{}", record.args())))
+        .apply();
 }

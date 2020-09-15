@@ -51,6 +51,13 @@ a
 a
 EOF
 
+cat <<EOF >z.txt
+z
+z
+z
+z
+EOF
+
 git add .
 git commit -am "initial commit"
 
@@ -75,8 +82,10 @@ b
 b
 EOF
 
+git rm z.txt
+
 git add .
-git commit -am "rename a1 to a2, add bb"
+git commit -am "rename a1 to a2, add bb, kill z"
 
 git_dates "05"
 
@@ -148,3 +157,25 @@ fixed
 EOF
 
 git commit -am "merging dave work with fixes"
+
+git_dates "10"
+
+cat <<EOF >z.txt
+z
+z
+z
+z
+fixed
+EOF
+
+git add z.txt
+
+git commit -m "restoring deleted z"
+
+cd ..
+
+if [[ -f "rename_complex.zip" ]]; then
+    rm rename_complex.zip
+fi
+
+zip -r rename_complex.zip rename_complex

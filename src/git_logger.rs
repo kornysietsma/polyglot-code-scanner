@@ -137,7 +137,7 @@ impl GitLog {
     pub fn iterator(&self) -> Result<GitLogIterator, Error> {
         let odb = self.repo.odb()?;
         let mut revwalk = self.repo.revwalk()?;
-        revwalk.set_sorting(git2::Sort::TIME & git2::Sort::TOPOLOGICAL);
+        revwalk.set_sorting(git2::Sort::TOPOLOGICAL);
         revwalk.push_head()?;
         Ok(GitLogIterator {
             git_log: &self,
