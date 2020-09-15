@@ -24,6 +24,7 @@ pub mod coupling;
 mod file_walker;
 mod flare;
 mod git;
+mod git_file_future;
 mod git_user_dictionary;
 mod indentation;
 mod loc;
@@ -68,7 +69,9 @@ pub fn named_toxicity_indicator_calculator(
     match name {
         "loc" => Some(Box::new(LocCalculator {})),
         "git" => Some(Box::new(GitCalculator::new(
-            GitLogConfig::default().since_years(config.git_years),
+            GitLogConfig::default()
+                .include_merges(true)
+                .since_years(config.git_years),
             config.detailed,
         ))),
         "indentation" => Some(Box::new(IndentationCalculator {})),

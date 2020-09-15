@@ -1,11 +1,11 @@
 #![warn(clippy::all)]
+use crate::git_file_future::GitFileFutureRegistry;
 use failure::Error;
 use git2::Revwalk;
 use git2::{Commit, Delta, DiffDelta, ObjectType, Odb, Oid, Patch, Repository, Tree};
 use regex::Regex;
 use serde::Serialize;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 #[derive(Debug, Clone, Copy)]
@@ -102,13 +102,14 @@ pub enum CommitChange {
 }
 
 /// Stats for file changes
+/// TODO: this is public as I use it in tests in git_file_future, which is ugly. Find a better way once the tests are working.
 #[derive(Debug, Serialize, Clone, Getters)]
 pub struct FileChange {
-    file: PathBuf,
-    old_file: Option<PathBuf>,
-    change: CommitChange,
-    lines_added: u64,
-    lines_deleted: u64,
+    pub file: PathBuf,
+    pub old_file: Option<PathBuf>,
+    pub change: CommitChange,
+    pub lines_added: u64,
+    pub lines_deleted: u64,
 }
 
 impl GitLog {
@@ -136,7 +137,7 @@ impl GitLog {
     pub fn iterator(&self) -> Result<GitLogIterator, Error> {
         let odb = self.repo.odb()?;
         let mut revwalk = self.repo.revwalk()?;
-        revwalk.set_sorting(git2::Sort::TIME); // might need topological sorting if/when I implement rename following
+        revwalk.set_sorting(git2::Sort::TIME & git2::Sort::TOPOLOGICAL);
         revwalk.push_head()?;
         Ok(GitLogIterator {
             git_log: &self,
@@ -537,32 +538,32 @@ mod test {
         assert_eq_json_value(
             &file_changes,
             &json!([
-                    [{"change":"Add",
-                      "file":"a.txt",
-                      "lines_added": 4,
-                      "lines_deleted": 0,
-                      "old_file": null}
-                    ],
-                    [{"change":"Add",
-                      "file":"b.txt",
-                      "lines_added": 1,
-                      "lines_deleted": 0,
-                      "old_file": null}
-                    ],
-                    [{"change":"Rename",
-                      "file":"c.txt",
-                      "lines_added": 0,
-                      "lines_deleted": 0,
-                      "old_file": "a.txt"}
-                    ],
-                    [{"change":"Rename",
-                      "file":"d.txt",
-                      "lines_added": 1,
-                      "lines_deleted": 0,
-                      "old_file": "c.txt"}
-                    ]
-                   ]
-                ),
+                [{"change":"Add",
+                  "file":"a.txt",
+                  "lines_added": 4,
+                  "lines_deleted": 0,
+                  "old_file": null}
+                ],
+                [{"change":"Add",
+                  "file":"b.txt",
+                  "lines_added": 1,
+                  "lines_deleted": 0,
+                  "old_file": null}
+                ],
+                [{"change":"Rename",
+                  "file":"c.txt",
+                  "lines_added": 0,
+                  "lines_deleted": 0,
+                  "old_file": "a.txt"}
+                ],
+                [{"change":"Rename",
+                  "file":"d.txt",
+                  "lines_added": 1,
+                  "lines_deleted": 0,
+                  "old_file": "c.txt"}
+                ]
+               ]
+            ),
         );
 
         Ok(())
