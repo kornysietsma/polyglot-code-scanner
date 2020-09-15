@@ -42,9 +42,9 @@
               "details": [
                 {
                   "commit_day": 1558483200,
-                  "commits": 3,
-                  "lines_added": 8,
-                  "lines_deleted": 1,
+                  "commits": 4,
+                  "lines_added": 11,
+                  "lines_deleted": 2,
                   "users": [0, 1]
                 }
               ]
