@@ -57,8 +57,8 @@ impl GitFileFutureRegistry {
 
     /// what is this called in the final revision?
     /// returns None if it is deleted, or Some(final name)
-    pub fn final_name(&self, ref_id: &Oid, file: PathBuf) -> Option<PathBuf> {
-        let mut current_name: &PathBuf = &file;
+    pub fn final_name(&self, ref_id: &Oid, file: &Path) -> Option<PathBuf> {
+        let mut current_name: &PathBuf = &file.to_path_buf();
         let mut current_ref: Oid = *ref_id;
         loop {
             let current_change = self.rev_changes.get(&current_ref).unwrap();
@@ -96,7 +96,7 @@ mod test {
         let my_id = Oid::from_str("01")?;
         registry.register(&my_id, &[], &[]);
         assert_eq!(
-            registry.final_name(&my_id, pb("foo.txt")),
+            registry.final_name(&my_id, &pb("foo.txt")),
             Some(pb("foo.txt"))
         );
         Ok(())
@@ -113,7 +113,7 @@ mod test {
             &[(pb("foo.txt"), FileNameChange::Renamed(pb("bar.txt")))],
         );
         assert_eq!(
-            registry.final_name(&my_id, pb("foo.txt")),
+            registry.final_name(&my_id, &pb("foo.txt")),
             Some(pb("bar.txt"))
         );
         Ok(())
@@ -182,10 +182,10 @@ mod test {
 
         // original a is afinal
         // original z is gone
-        assert_eq!(registry.final_name(&id_1, pb("a")), Some(pb("afinal")));
-        assert_eq!(registry.final_name(&id_1, pb("z")), None);
+        assert_eq!(registry.final_name(&id_1, &pb("a")), Some(pb("afinal")));
+        assert_eq!(registry.final_name(&id_1, &pb("z")), None);
         // from the perspective of the filesystem after node 2, we know nothing of a any more, only b
-        assert_eq!(registry.final_name(&id_2, pb("b")), Some(pb("afinal")));
+        assert_eq!(registry.final_name(&id_2, &pb("b")), Some(pb("afinal")));
 
         Ok(())
     }

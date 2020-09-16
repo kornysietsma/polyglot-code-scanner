@@ -118,6 +118,28 @@ If you want better assertions, your tests need to explicitly use the `pretty_ass
 use pretty_assertions::assert_eq;
 ~~~
 
+## Releasing new versions
+
+Releasing uses [cargo-release](https://crates.io/crates/cargo-release)
+
+The basic process is:
+
+* update the top CHANGELOG.md entry (under 'unreleased')
+* commit and push changes
+* release
+
+~~~sh
+cargo release --dry-run
+~~~
+
+or for a minor change 0.1.3 to 0.2.0 :
+
+~~~sh
+cargo release minor --dry-run
+~~~
+
+
+
 ## License
 
 Copyright © 2019 Kornelis Sietsma

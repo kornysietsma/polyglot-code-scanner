@@ -12,17 +12,17 @@
               "data": {
                 "git": {
                   "age_in_days": 0,
-                  "creation_date": null,
+                  "creation_date": 1558521386,
                   "last_update": 1558533240,
-                  "user_count": 1,
-                  "users": [0],
+                  "user_count": 2,
+                  "users": [0, 1],
                   "details": [
                     {
                       "commit_day": 1558483200,
-                      "commits": 1,
-                      "lines_added": 0,
-                      "lines_deleted": 0,
-                      "users": [0]
+                      "commits": 6,
+                      "lines_added": 8,
+                      "lines_deleted": 4,
+                      "users": [0, 1]
                     }
                   ]
                 }

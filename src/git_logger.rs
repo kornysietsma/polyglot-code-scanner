@@ -1,11 +1,13 @@
 #![warn(clippy::all)]
-use crate::git_file_future::GitFileFutureRegistry;
+use crate::git_file_future::{FileNameChange, GitFileFutureRegistry};
 use failure::Error;
 use git2::Revwalk;
 use git2::{Commit, Delta, DiffDelta, ObjectType, Odb, Oid, Patch, Repository, Tree};
 use regex::Regex;
 use serde::Serialize;
+use std::cell::RefCell;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::time::{Duration, SystemTime};
 
 #[derive(Debug, Clone, Copy)]
@@ -58,6 +60,8 @@ pub struct GitLogIterator<'a> {
     git_log: &'a GitLog,
     odb: Odb<'a>,
     revwalk: Revwalk<'a>,
+    // this is an RC as we need to use it after the iterator has been consumed
+    git_file_future_registry: Rc<RefCell<GitFileFutureRegistry>>,
 }
 
 /// simplified user info - based on git2::Signature
@@ -102,7 +106,6 @@ pub enum CommitChange {
 }
 
 /// Stats for file changes
-/// TODO: this is public as I use it in tests in git_file_future, which is ugly. Find a better way once the tests are working.
 #[derive(Debug, Serialize, Clone, Getters)]
 pub struct FileChange {
     file: PathBuf,
@@ -143,6 +146,7 @@ impl GitLog {
             git_log: &self,
             odb,
             revwalk,
+            git_file_future_registry: Rc::new(RefCell::new(GitFileFutureRegistry::new())),
         })
     }
 }
@@ -157,6 +161,7 @@ impl<'a> Iterator for GitLogIterator<'a> {
             match c {
                 Ok(Some(c)) => {
                     if c.commit_time >= self.git_log.config.earliest_time {
+                        self.register_file_futures(&c);
                         return Some(Ok(c));
                     } else {
                         return None; // short circuit!
@@ -172,6 +177,40 @@ impl<'a> Iterator for GitLogIterator<'a> {
 }
 
 impl<'a> GitLogIterator<'a> {
+    pub fn git_file_future_registry(&self) -> Rc<RefCell<GitFileFutureRegistry>> {
+        self.git_file_future_registry.clone()
+    }
+
+    /// registers renames and deletes
+    fn register_file_futures(&mut self, entry: &GitLogEntry) {
+        // TODO: probably should be using Oid not String globally, then this would be simpler:
+        let parents: Vec<Oid> = entry
+            .parents
+            .iter()
+            .map(|id| Oid::from_str(&id).unwrap())
+            .collect();
+        let mut file_changes: Vec<(PathBuf, FileNameChange)> = Vec::new();
+        for file_change in &entry.file_changes {
+            match file_change.change {
+                CommitChange::Rename => {
+                    let old_name = file_change.old_file.as_ref().unwrap().clone();
+                    let new_name = file_change.file.clone();
+                    file_changes.push((old_name, FileNameChange::Renamed(new_name)))
+                }
+                CommitChange::Delete => {
+                    let name = file_change.file.clone();
+                    file_changes.push((name, FileNameChange::Deleted()))
+                }
+                _ => (),
+            }
+        }
+        self.git_file_future_registry.borrow_mut().register(
+            &Oid::from_str(&entry.id).unwrap(),
+            &parents,
+            &file_changes,
+        );
+    }
+
     /// Summarises a git commit
     /// returns Error if error, Result<None> if the id was not actually a commit, or Result<Some<GitLogEntry>> if valid
     fn summarise_commit(
@@ -201,11 +240,6 @@ impl<'a> GitLogIterator<'a> {
                     Vec::new()
                 };
 
-                warn!(
-                    "Commit id {}: {}",
-                    oid.to_string(),
-                    commit.summary().unwrap_or("[no message]").to_string()
-                );
                 let commit_tree = commit.tree()?;
                 let file_changes = commit_file_changes(
                     &self.git_log.repo,
@@ -213,13 +247,6 @@ impl<'a> GitLogIterator<'a> {
                     &commit_tree,
                     self.git_log.config,
                 );
-                for fc in file_changes.iter() {
-                    if let Some(old) = &fc.old_file {
-                        warn!("    {:?} - {:?} to {:?} ", fc.change, old, fc.file);
-                    } else {
-                        warn!("    {:?} - {:?}", fc.change, fc.file)
-                    }
-                }
                 Ok(Some(GitLogEntry {
                     id: oid.to_string(),
                     summary: commit.summary().unwrap_or("[no message]").to_string(),
@@ -287,7 +314,6 @@ fn commit_file_changes(
     commit_tree: &Tree,
     config: GitLogConfig,
 ) -> Vec<FileChange> {
-    warn!("parents {:?}", commit.parent_ids().collect::<Vec<Oid>>());
     if commit.parent_count() == 0 {
         info!("Commit {} has no parent", commit.id());
 

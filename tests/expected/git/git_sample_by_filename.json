@@ -57,7 +57,24 @@
       "lines_deleted": 0
     }
   ],
-  "simple/child/a.txt": [
+  "simple/child/a_renamed.txt": [
+    {
+      "id": "93ae0c7c7cd93b3c4ea1bf103bde4deafef798ad",
+      "committer": {
+        "name": "Korny Sietsma",
+        "email": "korny@sietsma.com"
+      },
+      "commit_time": 1558533240,
+      "author": {
+        "name": "Korny Sietsma",
+        "email": "korny@sietsma.com"
+      },
+      "author_time": 1558533240,
+      "co_authors": [],
+      "change": "Rename",
+      "lines_added": 0,
+      "lines_deleted": 0
+    },
     {
       "id": "a0ae9997cfdf49fd0cbf54dacc72c778af337519",
       "committer": {
@@ -112,25 +129,6 @@
       "co_authors": [],
       "change": "Add",
       "lines_added": 2,
-      "lines_deleted": 0
-    }
-  ],
-  "simple/child/a_renamed.txt": [
-    {
-      "id": "93ae0c7c7cd93b3c4ea1bf103bde4deafef798ad",
-      "committer": {
-        "name": "Korny Sietsma",
-        "email": "korny@sietsma.com"
-      },
-      "commit_time": 1558533240,
-      "author": {
-        "name": "Korny Sietsma",
-        "email": "korny@sietsma.com"
-      },
-      "author_time": 1558533240,
-      "co_authors": [],
-      "change": "Rename",
-      "lines_added": 0,
       "lines_deleted": 0
     }
   ]
