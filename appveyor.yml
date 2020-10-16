@@ -16,15 +16,14 @@ install:
   - rustc -V
   - cargo -V
 
-build:
-  - ps: |
-      cargo build --release --locked --features vendored-openssl
+build: false
 
 test_script:
   - cargo test --release --tests --locked
 
 before_deploy:
   - ps: |
+      cargo build --release --locked --features vendored-openssl
       $NAME = "polyglot-code-scanner-${env:APPVEYOR_REPO_TAG_NAME}-x86_64-pc-windows-msvc"
       New-Item -Path $NAME -ItemType directory
       Copy-Item target/release/polyglot-code-scanner.exe "${NAME}/"
