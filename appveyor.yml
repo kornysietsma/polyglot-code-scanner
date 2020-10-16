@@ -23,7 +23,7 @@ test_script:
 
 before_deploy:
   - ps: |
-      cargo build --release --locked --features vendored-openssl
+      cargo build --release --locked
       $NAME = "polyglot-code-scanner-${env:APPVEYOR_REPO_TAG_NAME}-x86_64-pc-windows-msvc"
       New-Item -Path $NAME -ItemType directory
       Copy-Item target/release/polyglot-code-scanner.exe "${NAME}/"
