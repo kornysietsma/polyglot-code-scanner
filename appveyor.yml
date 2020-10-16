@@ -16,7 +16,9 @@ install:
   - rustc -V
   - cargo -V
 
-build: false
+build:
+  - ps: |
+      cargo build --release --locked --features vendored-openssl
 
 test_script:
   - cargo test --release --tests --locked
