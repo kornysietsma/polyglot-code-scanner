@@ -26,14 +26,12 @@ before_deploy:
   - ps: |
       $NAME = "polyglot-code-scanner-${env:APPVEYOR_REPO_TAG_NAME}-x86_64-pc-windows-msvc"
       New-Item -Path $NAME -ItemType directory
-      Copy-Item target/release/polyglot-code-scanner*.exe "${NAME}/"
-      Copy-Item target/release/polyglot-code-scanner*.exe polyglot-code-scanner-init.exe
+      Copy-Item -Path "target\release\*" -Destination "${NAME}" -Recurse
       Copy-Item LICENSE.txt "${NAME}/"
       Copy-Item README.md "${NAME}/"
       7z a -ttar "${NAME}.tar" "${NAME}"
       7z a "${NAME}.tar.gz" "${NAME}.tar"
       Push-AppveyorArtifact "${NAME}.tar.gz"
-      Push-AppveyorArtifact polyglot-code-scanner-init.exe
 
 deploy:
   artifact: /.*\.tar.gz/, /.*\.exe/
