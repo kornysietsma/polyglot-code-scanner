@@ -8,8 +8,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased] - ReleaseDate
 ## [0.2.1] - 2020-10-16
 
-## [0.2.1] - 2020-10-16
-
 ### Changed
 
 * fixing build on Windows
