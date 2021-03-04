@@ -10,7 +10,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
-use tokei::{Config, LanguageType, Stats};
+use tokei::{Config, LanguageType};
 
 /// a struct representing tokei language data - based on tokei::Stats and tokei::Languages::name
 #[derive(Debug, PartialEq, Serialize)]
@@ -81,15 +81,15 @@ fn parse_file(filename: &Path) -> Result<LanguageLocData, Error> {
         }
     };
     let language_name = language_name.unwrap_or_else(|| language.name().to_string());
-    let stats = language.parse::<Stats>(PathBuf::from(filename), &config);
+    let report = language.parse(PathBuf::from(filename), &config);
 
-    match stats {
-        Ok(stats) => Ok(LanguageLocData {
+    match report {
+        Ok(report) => Ok(LanguageLocData {
             binary: false,
-            blanks: stats.blanks,
-            code: stats.code,
-            comments: stats.comments,
-            lines: stats.lines,
+            blanks: report.stats.blanks,
+            code: report.stats.code,
+            comments: report.stats.comments,
+            lines: report.stats.lines(),
             language: language_name,
             bytes: file_size(filename)?,
         }),

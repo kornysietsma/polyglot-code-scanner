@@ -1,7 +1,4 @@
-use grep_searcher::LineIter;
-use std::path::PathBuf;
-
-use tokei::LanguageSummary;
+use tokei::CodeStats;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CodeLineData {
@@ -42,26 +39,19 @@ impl CodeLineData {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CodeLines {
-    pub name: PathBuf,
     pub lines: Vec<CodeLineData>,
 }
 
-impl LanguageSummary for CodeLines {
-    fn new(name: PathBuf) -> Self {
+impl CodeLines {
+    pub fn new(stats: CodeStats) -> Self {
         CodeLines {
-            name,
-            lines: vec![],
+            lines: stats
+                .code_lines
+                .iter()
+                .map(|line| CodeLineData::new(line))
+                .collect(),
         }
     }
-    fn unprocessed_lines(&mut self, lines: LineIter) {
-        self.lines.extend(lines.map(|line| CodeLineData::new(line)));
-    }
-    fn code_line(&mut self, line: &[u8]) {
-        self.lines.push(CodeLineData::new(line));
-    }
-    fn comment_line(&mut self, _line: &[u8]) {}
-    fn blank_line(&mut self, _line: &[u8]) {}
-    fn postprocess(&mut self) {}
 }
 
 #[cfg(test)]
@@ -109,11 +99,11 @@ with blanks
 yow
 */
 foo();"#;
-        let result: CodeLines = LanguageType::JavaScript.parse_from_str(
-            PathBuf::from("the_path"),
-            code,
-            &Config::default(),
-        );
+        let stats: CodeStats = LanguageType::JavaScript.parse_from_str(code, &Config::default());
+
+        eprintln!("Stats: {:?}", stats);
+
+        let mut result: CodeLines = CodeLines::new(stats);
 
         let expected = vec![
             CodeLineData {
@@ -136,8 +126,12 @@ foo();"#;
                 tabs: 0,
                 text: 6,
             },
-        ];
+        ]
+        .sort_by(|a, b| a.text.partial_cmp(&b.text).unwrap());
 
-        assert_eq!(result.lines, expected);
+        let actual = result
+            .lines
+            .sort_by(|a, b| a.text.partial_cmp(&b.text).unwrap());
+        assert_eq!(actual, expected);
     }
 }

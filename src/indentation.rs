@@ -91,12 +91,12 @@ fn parse_file(filename: &Path) -> Result<Option<IndentationData>, Error> {
         }
     };
 
-    let code_lines = language.parse::<CodeLines>(PathBuf::from(filename), &config);
+    let report = language
+        .parse(PathBuf::from(filename), &config)
+        .map_err(|(error, _pathbuf)| error);
+    let code_lines = CodeLines::new(report?.stats);
 
-    match code_lines {
-        Ok(code_lines) => Ok(IndentationData::new(code_lines)),
-        Err((error, _pathbuf)) => Err(Error::from(error)),
-    }
+    Ok(IndentationData::new(code_lines))
 }
 
 #[derive(Debug)]
