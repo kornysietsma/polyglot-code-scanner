@@ -16,7 +16,7 @@ pub fn unzip_to_dir(dest: &Path, zipname: &str) -> Result<(), Error> {
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
-        let outpath = PathBuf::from(dest).join(file.sanitized_name());
+        let outpath = PathBuf::from(dest).join(file.mangled_name());
 
         if (&*file.name()).ends_with('/') {
             std::fs::create_dir_all(&outpath)?;

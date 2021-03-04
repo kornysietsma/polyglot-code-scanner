@@ -1,7 +1,5 @@
 use failure::Error;
 use serde_json::Value;
-use std::fs::File;
-use std::io::prelude::*;
 use std::io::Cursor;
 use std::path::PathBuf;
 use tempfile::tempdir;

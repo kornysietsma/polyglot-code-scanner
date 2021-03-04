@@ -6,12 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+
+### Changed
+
+* updating tokei to latest code - this was ugly as tokei is now multithreaded and more complex. Modified tokei fork at <https://github.com/kornysietsma/tokei/tree/accumulate-lines> to accumulate lines of code - but note they aren't ordered so this works for stats but not much else
+* Updated all other dependencies to latest stable bits
+
 ## [0.2.1] - 2020-10-16
 
 ### Changed
 
 * fixing build on Windows
-* updating tokei to latest code - this was ugly as tokei is now multithreaded and more complex. Modified tokei fork at <https://github.com/kornysietsma/tokei/tree/accumulate-lines> to accumulate lines of code - but note they aren't ordered so this works for stats but not much else
 
 ## [0.2.0] - 2020-09-16
 
