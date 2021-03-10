@@ -31,7 +31,7 @@ pub struct GitData {
     creation_date: Option<u64>,
     user_count: usize,
     users: Vec<usize>, // dictionary IDs
-    details: Option<Vec<GitDetails>>,
+    details: Vec<GitDetails>,
 }
 
 /// Git information for a given day, summarized
@@ -84,7 +84,6 @@ pub struct GitHistories {
 #[derive(Debug)]
 pub struct GitCalculator {
     histories: GitHistories,
-    detailed: bool,
     dictionary: GitUserDictionary,
 }
 
@@ -172,8 +171,7 @@ impl GitHistories {
         &self,
         dictionary: &mut GitUserDictionary,
         last_commit: u64,
-        history: &[FileHistoryEntry],
-        detailed: bool,
+        history: &[FileHistoryEntry]
     ) -> Option<GitData> {
         // for now, just get latest change - maybe non-trivial change? (i.e. ignore rename/copy) - or this could be configurable
         // and get set of all authors - maybe deduplicate by email.
@@ -244,23 +242,18 @@ impl GitHistories {
             creation_date,
             user_count: changer_list.len(),
             users: changer_list,
-            details: if detailed {
-                Some(details_vec)
-            } else {
-                None // TODO: don't waste time processing details if we don't want them!
-            },
+            details: details_vec
         })
     }
 }
 
 impl GitCalculator {
-    pub fn new(config: GitLogConfig, detailed: bool) -> Self {
+    pub fn new(config: GitLogConfig) -> Self {
         GitCalculator {
             histories: GitHistories {
                 git_file_histories: Vec::new(),
                 git_log_config: config,
             },
-            detailed,
             dictionary: GitUserDictionary::new(),
         }
     }
@@ -290,7 +283,6 @@ impl ToxicityIndicatorCalculator for GitCalculator {
                     &mut self.dictionary,
                     last_commit,
                     file_history,
-                    self.detailed,
                 );
                 Ok(Some(serde_json::value::to_value(stats).expect(
                     "Serializable object couldn't be serialized to JSON",
@@ -369,19 +361,14 @@ mod test {
 
         let today = first_day + 5 * one_day_in_secs;
 
-        let stats = histories.stats_from_history(&mut dictionary, today, &events, false);
+        let stats = histories.stats_from_history(&mut dictionary, today, &events).unwrap();
 
-        assert_eq!(
-            stats,
-            Some(GitData {
-                last_update: first_day + 3 * one_day_in_secs,
-                age_in_days: 2,
-                creation_date: Some(86400),
-                user_count: 3,
-                users: vec![0, 1, 2],
-                details: None
-            })
-        );
+        assert_eq!(stats.last_update, first_day + 3 * one_day_in_secs);
+        assert_eq!(stats.age_in_days, 2);
+        assert_eq!(stats.creation_date, Some(86400));
+        assert_eq!(stats.user_count, 3);
+        assert_eq!(stats.users, vec![0, 1, 2]);
+        // don't assert details - details used to be optional, so it is tested in next test.
 
         assert_eq!(dictionary.user_count(), 3);
         assert_eq!(dictionary.user_id(&USER_JO), Some(&0));
@@ -420,12 +407,12 @@ mod test {
 
         let today = first_day + 5 * one_day_in_secs;
 
-        let stats = histories.stats_from_history(&mut dictionary, today, &events, true);
+        let stats = histories.stats_from_history(&mut dictionary, today, &events);
 
         let jo_set: HashSet<usize> = vec![0].into_iter().collect();
         let xy_set: HashSet<usize> = vec![1, 2].into_iter().collect();
 
-        let expected_details: Option<Vec<GitDetails>> = Some(vec![
+        let expected_details: Vec<GitDetails> = vec![
             GitDetails {
                 commit_day: 86400,
                 users: jo_set,
@@ -440,7 +427,7 @@ mod test {
                 lines_added: 0,
                 lines_deleted: 0,
             },
-        ]);
+        ];
 
         assert_eq!(
             stats,

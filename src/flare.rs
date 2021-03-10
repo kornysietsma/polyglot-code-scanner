@@ -3,7 +3,7 @@
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 use std::ffi::{OsStr, OsString};
 
 pub static ROOT_NAME: &str = "<root>";
@@ -86,8 +86,18 @@ impl FlareTreeNode {
         self.data.get(key)
     }
 
+    // used only for postprocessing - could refactor - move functionality here
+    pub fn get_data_entry(&mut self, key: String) -> Entry<String, Value> {
+        self.data.entry(key)
+    }
+
     pub fn get_children(&self) -> &Vec<FlareTreeNode> {
         &self.children
+    }
+
+    // used only for postprocessing - could refactor - move functionality here
+    pub fn get_children_mut(&mut self) -> &mut Vec<FlareTreeNode> {
+        &mut self.children
     }
 }
 

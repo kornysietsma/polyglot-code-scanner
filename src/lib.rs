@@ -16,6 +16,7 @@ extern crate derive_getters;
 extern crate serde;
 
 use failure::Error;
+use postprocessing::postprocess_tree;
 use std::io;
 use std::path::PathBuf;
 
@@ -28,6 +29,7 @@ mod git_file_future;
 mod git_user_dictionary;
 mod indentation;
 mod loc;
+mod postprocessing;
 mod toxicity_indicator_calculator;
 
 #[cfg(test)]
@@ -72,7 +74,6 @@ pub fn named_toxicity_indicator_calculator(
             GitLogConfig::default()
                 .include_merges(true)
                 .since_years(config.git_years),
-            config.detailed,
         ))),
         "indentation" => Some(Box::new(IndentationCalculator {})),
         _ => None,
@@ -107,6 +108,8 @@ where
     if let Some(cc) = coupling_config {
         coupling::gather_coupling(&mut tree, cc)?;
     }
+
+    postprocess_tree(&mut tree, config)?;
 
     serde_json::to_writer(out, &tree)?;
     Ok(())
