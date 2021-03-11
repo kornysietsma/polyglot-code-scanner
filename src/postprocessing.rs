@@ -2,14 +2,14 @@ use crate::{flare::FlareTreeNode, CalculatorConfig};
 use failure::Error;
 use std::collections::hash_map::Entry;
 
-fn remove_details(node: &mut FlareTreeNode) -> Result<(), Error> {
-    if let Entry::Occupied(mut entry) = node.get_data_entry("git".to_string()) {
+fn remove_details(node: &mut FlareTreeNode, key: &str, value: &str) -> Result<(), Error> {
+    if let Entry::Occupied(mut entry) = node.get_data_entry(key.to_string()) {
         if let Some(map) = entry.get_mut().as_object_mut() {
-            map.remove_entry("details");
+            map.remove_entry(value);
         }
     }
     for child in node.get_children_mut() {
-        remove_details(child)?;
+        remove_details(child, key, value)?;
     }
     Ok(())
 }
@@ -17,7 +17,9 @@ fn remove_details(node: &mut FlareTreeNode) -> Result<(), Error> {
 pub fn postprocess_tree(tree: &mut FlareTreeNode, config: CalculatorConfig) -> Result<(), Error> {
     info!("Postprocessing tree before persisting");
     if !config.detailed {
-        remove_details(tree)?;
+        remove_details(tree, "git", "details")?;
     }
+    // TODO: remove per node, this is traversing the tree twice!
+    remove_details(tree, "git", "activity")?;
     Ok(())
 }

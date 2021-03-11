@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use crate::git_file_history::{FileHistoryEntry, FileHistoryEntryBuilder, GitFileHistory};
+use crate::git_file_history::{FileHistoryEntry, GitFileHistory};
 use crate::git_logger::{CommitChange, GitLog, GitLogConfig, User};
 use crate::git_user_dictionary::GitUserDictionary;
 use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
@@ -32,6 +32,7 @@ pub struct GitData {
     user_count: usize,
     users: Vec<usize>, // dictionary IDs
     details: Vec<GitDetails>,
+    activity: Vec<GitActivity>,
 }
 
 /// Git information for a given day, summarized
@@ -40,6 +41,7 @@ pub struct GitData {
 /// This could be revisited if needed, but I'm trying to keep the log size sane
 /// Also dates are summarized by "author date" - had to pick author or commit date, and
 /// author dates seem more reliable.  But it's named "commit_day" as that's more understandable
+/// WIP: for better coupling data, I want individual commits, rather than summarizing per day.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GitDetails {
     /// Note this is based on "author date" - commit dates can be all over the place with PRs, rebasing and the like.
@@ -70,6 +72,30 @@ where
     let mut ordered: Vec<&usize> = value.iter().collect();
     ordered.sort();
     ordered.serialize(serializer)
+}
+
+/// Fine-grained git activity, for the fine-grained coupling calculations
+/// this is very verbose so probably shouldn't be kept in final JSON
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GitActivity {
+    pub author_time: u64,
+    pub commit_time: u64,
+    #[serde(serialize_with = "ordered_set")]
+    pub users: HashSet<usize>, // dictionary IDs
+    pub change: CommitChange,
+    pub lines_added: u64,
+    pub lines_deleted: u64,
+}
+impl Ord for GitActivity {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.commit_time.cmp(&other.commit_time)
+    }
+}
+
+impl PartialOrd for GitActivity {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 /// History of any git roots discovered by the calculator
@@ -171,7 +197,7 @@ impl GitHistories {
         &self,
         dictionary: &mut GitUserDictionary,
         last_commit: u64,
-        history: &[FileHistoryEntry]
+        history: &[FileHistoryEntry],
     ) -> Option<GitData> {
         // for now, just get latest change - maybe non-trivial change? (i.e. ignore rename/copy) - or this could be configurable
         // and get set of all authors - maybe deduplicate by email.
@@ -209,6 +235,8 @@ impl GitHistories {
             .flat_map(|h| GitHistories::unique_changers(h, dictionary))
             .collect();
 
+        let mut activity_vec: Vec<GitActivity> = Vec::new();
+
         for entry in history {
             let author_day = start_of_day(entry.author_time);
 
@@ -220,11 +248,22 @@ impl GitHistories {
                 lines_deleted: 0,
             });
             daily_details.commits += 1;
+            let unique_changers = GitHistories::unique_changers(entry, dictionary);
             daily_details
                 .users
-                .extend(GitHistories::unique_changers(entry, dictionary).into_iter());
+                .extend(unique_changers.clone().into_iter());
             daily_details.lines_added += entry.lines_added;
             daily_details.lines_deleted += entry.lines_deleted;
+
+            let activity: GitActivity = GitActivity {
+                commit_time: entry.commit_time,
+                author_time: entry.author_time,
+                users: unique_changers,
+                change: entry.change,
+                lines_added: entry.lines_added,
+                lines_deleted: entry.lines_deleted,
+            };
+            activity_vec.push(activity);
         }
 
         let mut changer_list: Vec<usize> = changers.into_iter().collect();
@@ -242,7 +281,8 @@ impl GitHistories {
             creation_date,
             user_count: changer_list.len(),
             users: changer_list,
-            details: details_vec
+            details: details_vec,
+            activity: activity_vec,
         })
     }
 }
@@ -323,6 +363,7 @@ impl ToxicityIndicatorCalculator for GitCalculator {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::git_file_history::FileHistoryEntryBuilder;
     use crate::git_logger::{CommitChange, User};
     use pretty_assertions::assert_eq;
 
@@ -361,7 +402,9 @@ mod test {
 
         let today = first_day + 5 * one_day_in_secs;
 
-        let stats = histories.stats_from_history(&mut dictionary, today, &events).unwrap();
+        let stats = histories
+            .stats_from_history(&mut dictionary, today, &events)
+            .unwrap();
 
         assert_eq!(stats.last_update, first_day + 3 * one_day_in_secs);
         assert_eq!(stats.age_in_days, 2);
@@ -415,15 +458,34 @@ mod test {
         let expected_details: Vec<GitDetails> = vec![
             GitDetails {
                 commit_day: 86400,
-                users: jo_set,
+                users: jo_set.clone(),
                 commits: 1,
                 lines_added: 0,
                 lines_deleted: 0,
             },
             GitDetails {
                 commit_day: 345600,
-                users: xy_set,
+                users: xy_set.clone(),
                 commits: 1,
+                lines_added: 0,
+                lines_deleted: 0,
+            },
+        ];
+
+        let expected_activity: Vec<GitActivity> = vec![
+            GitActivity {
+                author_time: 86400,
+                commit_time: 86400,
+                users: jo_set,
+                change: CommitChange::Add,
+                lines_added: 0,
+                lines_deleted: 0,
+            },
+            GitActivity {
+                author_time: 345600,
+                commit_time: 345600,
+                users: xy_set,
+                change: CommitChange::Add,
                 lines_added: 0,
                 lines_deleted: 0,
             },
@@ -437,7 +499,8 @@ mod test {
                 creation_date: Some(86400),
                 user_count: 3,
                 users: vec![0, 1, 2],
-                details: expected_details
+                details: expected_details,
+                activity: expected_activity,
             })
         );
 

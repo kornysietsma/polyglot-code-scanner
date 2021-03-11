@@ -4,7 +4,7 @@ use failure::Error;
 use git2::Revwalk;
 use git2::{Commit, Delta, DiffDelta, ObjectType, Odb, Oid, Patch, Repository, Tree};
 use regex::Regex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -96,7 +96,7 @@ pub struct GitLogEntry {
 }
 
 /// the various kinds of git change we care about - a serializable subset of git2::Delta
-#[derive(Debug, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Copy)]
 pub enum CommitChange {
     Add,
     Rename,
