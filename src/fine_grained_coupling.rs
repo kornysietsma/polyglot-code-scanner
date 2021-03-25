@@ -68,7 +68,7 @@ impl FileChangeTimestamps {
             if let Some(Value::Object(value)) = node.get_data("git") {
                 if let Some(Value::Array(activity)) = value.get("activity") {
                     for activity_value in activity {
-                        let activity: GitActivity = serde_json::from_value(activity_value.clone())?; // TODO: can we avoid clone?
+                        let activity: GitActivity = serde_json::from_value(activity_value.clone())?;
                         if activity.lines_deleted > 0 || activity.lines_added > 0 {
                             let ts_entry = timestamps
                                 .entry(activity.commit_time)
@@ -110,7 +110,6 @@ struct ActivityBurst {
     pub end: u64,
     // how many events we met in this burst - 1 or more
     pub event_count: u64,
-    // anything else we want here?
 }
 
 impl ActivityBurst {
@@ -155,20 +154,19 @@ impl ActivityBurst {
 }
 
 /// The basic coupling data - for each file in some time period, how often did it change and how often did
-/// another file change at roughly the same time?
+/// another file change at roughly the same time
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct FileStats {
-    // TODO rename maybe CoupledFiles
+struct Coupling {
     name: Rc<Path>,
-    commits: u64, // TODO: rename, this is 'activity bursts' not commits really
+    activity_bursts: u64,
     coupled_files: HashMap<Rc<Path>, u64>,
 }
 
-impl FileStats {
+impl Coupling {
     fn new(name: Rc<Path>) -> Self {
-        FileStats {
+        Coupling {
             name,
-            commits: 0,
+            activity_bursts: 0,
             coupled_files: HashMap::new(),
         }
     }
@@ -185,18 +183,20 @@ impl FileStats {
         for file in files {
             self.add_file(file)
         }
-        self.commits += 1;
+        self.activity_bursts += 1;
     }
-    fn filter_by_ratio(&self, min_coupling_ratio: f64) -> FileStats {
-        let commits = self.commits as f64;
-        FileStats {
+    fn filter_by_ratio(&self, min_coupling_ratio: f64) -> Coupling {
+        let bursts = self.activity_bursts as f64;
+        Coupling {
             name: self.name.clone(),
-            commits: self.commits,
+            activity_bursts: self.activity_bursts,
             coupled_files: self
                 .coupled_files
                 .iter()
-                .filter(|(_file, days)| **days as f64 / commits >= min_coupling_ratio)
-                .map(|(file, days)| (file.clone(), *days))
+                .filter(|(_file, other_bursts)| {
+                    **other_bursts as f64 / bursts >= min_coupling_ratio
+                })
+                .map(|(file, other_bursts)| (file.clone(), *other_bursts))
                 .collect(),
         }
     }
@@ -206,7 +206,7 @@ impl FileStats {
 struct CouplingBucket {
     bucket_start: u64,
     bucket_size: u64,
-    file_stats: HashMap<Rc<Path>, FileStats>,
+    couplings: HashMap<Rc<Path>, Coupling>,
 }
 
 impl CouplingBucket {
@@ -214,7 +214,7 @@ impl CouplingBucket {
         CouplingBucket {
             bucket_start,
             bucket_size,
-            file_stats: HashMap::new(),
+            couplings: HashMap::new(),
         }
     }
 
@@ -223,20 +223,20 @@ impl CouplingBucket {
         T: IntoIterator<Item = Rc<Path>>,
     {
         let stats = self
-            .file_stats
+            .couplings
             .entry(from.clone())
-            .or_insert_with(|| FileStats::new(from));
+            .or_insert_with(|| Coupling::new(from));
         (*stats).add_files(to);
     }
 
     /// filter the bucket to remove noise
     /// min_source_days is the minimum number of days a file should have existed for it to be included
     /// min_coupling_ratio is the overall ratio of dest days / source days for the destination to be included.
-    fn filter_by(&mut self, min_source_days: u64, min_coupling_ratio: f64) {
-        self.file_stats = self
-            .file_stats
+    fn filter_by(&mut self, min_bursts: u64, min_coupling_ratio: f64) {
+        self.couplings = self
+            .couplings
             .drain()
-            .filter(|(_file, file_stats)| file_stats.commits >= min_source_days)
+            .filter(|(_file, file_stats)| file_stats.activity_bursts >= min_bursts)
             .map(|(file, file_stats)| (file, file_stats.filter_by_ratio(min_coupling_ratio)))
             .collect();
     }
@@ -260,15 +260,6 @@ impl CouplingBuckets {
                 CouplingBucket::new(bucket_start, bucket_size)
             })
             .collect();
-        // let mut buckets = CouplingBuckets {
-        //     config: bucketing_config,
-        //     buckets: (0..bucketing_config.bucket_count)
-        //         .map(|bucket| {
-        //             let bucket_start: u64 = bucketing_config.bucket_start(bucket);
-        //             CouplingBucket::new(bucket_start, bucket_size)
-        //         })
-        //         .collect(),
-        // };
         for (file, timestamps) in file_change_timestamps.file_changes.iter() {
             for burst in ActivityBurst::from_events(timestamps, config.min_activity_gap) {
                 let window_start = burst.start - config.coupling_time_distance;
@@ -285,7 +276,7 @@ impl CouplingBuckets {
             }
         }
         for bucket in &mut buckets {
-            bucket.filter_by(config.min_source_days, config.min_coupling_ratio);
+            bucket.filter_by(config.min_bursts, config.min_coupling_ratio);
         }
         CouplingBuckets {
             config: bucketing_config,
@@ -297,10 +288,10 @@ impl CouplingBuckets {
         SerializableCouplingData::new(
             self.buckets
                 .iter()
-                .filter(|coupling_bucket| coupling_bucket.file_stats.contains_key(&file.clone()))
+                .filter(|coupling_bucket| coupling_bucket.couplings.contains_key(&file.clone()))
                 .map(|coupling_bucket| {
-                    let stats = coupling_bucket.file_stats.get(&file.to_owned()).unwrap();
-                    let commit_days = stats.commits;
+                    let stats = coupling_bucket.couplings.get(&file.to_owned()).unwrap();
+                    let activity_bursts = stats.activity_bursts;
                     let mut coupled_files: Vec<_> = stats
                         .coupled_files
                         .iter()
@@ -312,7 +303,7 @@ impl CouplingBuckets {
                     SerializableCouplingBucketData {
                         bucket_start: coupling_bucket.bucket_start,
                         bucket_end: coupling_bucket.bucket_start + coupling_bucket.bucket_size - 1,
-                        commit_days,
+                        activity_bursts,
                         coupled_files,
                     }
                 })
@@ -326,7 +317,7 @@ impl CouplingBuckets {
 struct SerializableCouplingBucketData {
     pub bucket_start: u64,
     pub bucket_end: u64,
-    pub commit_days: u64, // TODO rename to bursts, maybe add stats about burst durations?
+    pub activity_bursts: u64,
     pub coupled_files: Vec<(Rc<Path>, u64)>,
 }
 
@@ -347,8 +338,7 @@ pub struct CouplingConfig {
     // number of days in a bucket
     bucket_days: u64,
     // ignore if a "from" file isn't changed this often in a bucket - avoid coincidental change noise
-    // TODO: remove this? Seems strange logic - at best, should be client-side logic
-    min_source_days: u64,
+    min_bursts: u64,
     // ignore if commits(to) / commits(from) is less than this - so if A is committed 100 days in a bucket, and B is on 20 of the same days, it would pass with a 0.2 ratio or higher
     min_coupling_ratio: f64,
     /// how many seconds gap before we start a new activity
@@ -360,14 +350,14 @@ pub struct CouplingConfig {
 impl CouplingConfig {
     pub fn new(
         bucket_days: u64,
-        min_source_days: u64,
+        min_bursts: u64,
         min_coupling_ratio: f64,
         min_activity_gap: u64,
         coupling_time_distance: u64,
     ) -> Self {
         CouplingConfig {
             bucket_days,
-            min_source_days,
+            min_bursts,
             min_coupling_ratio,
             min_activity_gap,
             coupling_time_distance,
@@ -388,7 +378,7 @@ impl Default for CouplingConfig {
     fn default() -> Self {
         CouplingConfig {
             bucket_days: 91, // roughly 1/4 of a year
-            min_source_days: 10,
+            min_bursts: 10,  // 10 bursts of activity in a quarter or be considered inactive
             min_coupling_ratio: 0.25,
             min_activity_gap: 60 * 60 * 2,       // 2 hours
             coupling_time_distance: 60 * 60 * 1, // 1 hour
@@ -475,7 +465,6 @@ mod test {
     use super::*;
     use pretty_assertions::assert_eq;
     use serde_json::json;
-    use std::ffi::OsString;
     use std::iter::FromIterator;
     use std::path::Path;
     #[allow(unused_imports)] // boilerplate for getting shared test logic
@@ -491,8 +480,6 @@ mod test {
     const DAY21: u64 = TEST_START + 21 * DAY_SIZE;
     const DAY22: u64 = TEST_START + 22 * DAY_SIZE;
     const DAY23: u64 = TEST_START + 23 * DAY_SIZE;
-    const DAY24: u64 = TEST_START + 24 * DAY_SIZE;
-    const DAY27: u64 = TEST_START + 27 * DAY_SIZE;
     const DAY29: u64 = TEST_START + 29 * DAY_SIZE;
 
     #[derive(Debug, PartialEq, Serialize)]
@@ -585,7 +572,7 @@ mod test {
 
     #[test]
     fn single_event_creates_a_single_activity_burst() {
-        let events = BTreeSet::from_iter([DAY1].iter().cloned());
+        let events = [DAY1].iter().cloned().collect();
         let results = ActivityBurst::from_events(&events, 60);
         assert_eq!(results.len(), 1);
         let res1 = results.first().unwrap();
@@ -659,7 +646,7 @@ mod test {
     fn can_get_bucket_sizes_from_config() {
         let config = CouplingConfig {
             bucket_days: 20,
-            min_source_days: 1,
+            min_bursts: 1,
             min_coupling_ratio: 0.001,
             min_activity_gap: 60,
             coupling_time_distance: 100,
@@ -683,7 +670,7 @@ mod test {
     fn can_find_bucket_for_timestamp() {
         let coupling_config = CouplingConfig {
             bucket_days: 20,
-            min_source_days: 1,
+            min_bursts: 1,
             min_coupling_ratio: 0.001,
             min_activity_gap: 60,
             coupling_time_distance: 100,
@@ -735,7 +722,7 @@ mod test {
         // config is effectively not filtering anything
         let config = CouplingConfig {
             bucket_days: 20,
-            min_source_days: 1,
+            min_bursts: 1,
             min_coupling_ratio: 0.001,
             min_activity_gap: 60 * 60,
             coupling_time_distance: 60 * 60,
@@ -750,29 +737,29 @@ mod test {
         assert_eq!(first_bucket.bucket_start, DAY1 - (20 * DAY_SIZE) + 1);
         assert_eq!(first_bucket.bucket_size, 20 * DAY_SIZE);
 
-        let mut expected_stats: HashMap<Rc<Path>, FileStats> = HashMap::new();
+        let mut expected_stats: HashMap<Rc<Path>, Coupling> = HashMap::new();
         let mut foo_coupling: HashMap<Rc<Path>, u64> = HashMap::new();
         foo_coupling.insert(rc_pb("foo"), 1);
         let mut bar_coupling: HashMap<Rc<Path>, u64> = HashMap::new();
         bar_coupling.insert(rc_pb("bar"), 1);
         expected_stats.insert(
             rc_pb("foo"),
-            FileStats {
+            Coupling {
                 name: rc_pb("foo"),
-                commits: 1,
+                activity_bursts: 1,
                 coupled_files: bar_coupling,
             },
         );
         expected_stats.insert(
             rc_pb("bar"),
-            FileStats {
+            Coupling {
                 name: rc_pb("bar"),
-                commits: 1,
+                activity_bursts: 1,
                 coupled_files: foo_coupling,
             },
         );
 
-        assert_eq!(first_bucket.file_stats, expected_stats);
+        assert_eq!(first_bucket.couplings, expected_stats);
     }
 
     #[test]
@@ -791,7 +778,7 @@ mod test {
         // config is effectively not filtering anything
         let config = CouplingConfig {
             bucket_days: 20,
-            min_source_days: 1,
+            min_bursts: 1,
             min_coupling_ratio: 0.001,
             min_activity_gap: 60 * 60,
             coupling_time_distance: 60 * 60,
@@ -807,9 +794,9 @@ mod test {
 
         // first bucket should have file_stats for foo, bar and baz
         //  easier to dig out specific test cases than build the whole structure for equality testing
-        let foo_stats = first_bucket.file_stats.get(&rc_pb("foo")).unwrap();
+        let foo_stats = first_bucket.couplings.get(&rc_pb("foo")).unwrap();
         assert_eq!(foo_stats.name, rc_pb("foo")); // redundant!
-        assert_eq!(foo_stats.commits, 1); // actually activity bursts not commits - and there is only one
+        assert_eq!(foo_stats.activity_bursts, 1); // actually activity bursts not commits - and there is only one
         let foo_coupling: HashMap<Rc<Path>, u64> = [(rc_pb("bar"), 1), (rc_pb("baz"), 1)]
             .iter()
             .cloned()
@@ -817,8 +804,8 @@ mod test {
         assert_eq!(foo_stats.coupled_files, foo_coupling);
 
         // second bucket, foo has two bursts, one coupled with baz, one with bat
-        let foo_stats_b2 = second_bucket.file_stats.get(&rc_pb("foo")).unwrap();
-        assert_eq!(foo_stats_b2.commits, 2);
+        let foo_stats_b2 = second_bucket.couplings.get(&rc_pb("foo")).unwrap();
+        assert_eq!(foo_stats_b2.activity_bursts, 2);
         let foo_coupling_b2: HashMap<Rc<Path>, u64> = [(rc_pb("baz"), 1), (rc_pb("bat"), 2)]
             .iter()
             .cloned()
@@ -842,7 +829,7 @@ mod test {
         // config is effectively not filtering anything
         let config = CouplingConfig {
             bucket_days: 20,
-            min_source_days: 1,
+            min_bursts: 1,
             min_coupling_ratio: 0.001,
             min_activity_gap: 60 * 60,
             coupling_time_distance: 60 * 60,
@@ -860,13 +847,13 @@ mod test {
           {
             "bucket_start": bucketing_config.bucket_start(0),
             "bucket_end": bucketing_config.bucket_start(0) + bucketing_config.bucket_size - 1,
-            "commit_days": 1,
+            "activity_bursts": 1,
             "coupled_files": [["bar", 1],["baz",1]]
           },
           {
             "bucket_start": bucketing_config.bucket_start(1),
             "bucket_end": bucketing_config.bucket_start(1) + bucketing_config.bucket_size - 1,
-            "commit_days": 2,
+            "activity_bursts": 2,
             "coupled_files": [["bat", 2],["baz",1]]
           }
 
@@ -881,7 +868,7 @@ mod test {
         // and coupling below 50%
         let config = CouplingConfig {
             bucket_days: 20,
-            min_source_days: 2,
+            min_bursts: 2,
             min_coupling_ratio: 0.5,
             min_activity_gap: 60 * 60,
             coupling_time_distance: 60 * 60,
@@ -905,7 +892,7 @@ mod test {
         let foo_coupling = coupling_buckets.file_coupling_data(rc_pb("foo"));
         assert_eq!(foo_coupling.buckets.len(), 1);
         let foo_coupling = &foo_coupling.buckets[0];
-        assert_eq!(foo_coupling.commit_days, 4);
+        assert_eq!(foo_coupling.activity_bursts, 4);
         assert_eq!(
             foo_coupling.coupled_files,
             vec![(rc_pb("bar"), 4), (rc_pb("baz"), 2)]
@@ -917,7 +904,7 @@ mod test {
         let baz_coupling = coupling_buckets.file_coupling_data(rc_pb("baz"));
         assert_eq!(baz_coupling.buckets.len(), 1);
         let baz_coupling = &baz_coupling.buckets[0];
-        assert_eq!(baz_coupling.commit_days, 2);
+        assert_eq!(baz_coupling.activity_bursts, 2);
         assert_eq!(
             baz_coupling.coupled_files,
             vec![(rc_pb("bar"), 2), (rc_pb("bat"), 1), (rc_pb("foo"), 2)]
