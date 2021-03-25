@@ -23,6 +23,7 @@ use std::path::PathBuf;
 mod code_line_data;
 pub mod coupling;
 mod file_walker;
+mod fine_grained_coupling;
 mod flare;
 mod git;
 mod git_file_future;

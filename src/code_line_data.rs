@@ -101,11 +101,17 @@ yow
 foo();"#;
         let stats: CodeStats = LanguageType::JavaScript.parse_from_str(code, &Config::default());
 
-        eprintln!("Stats: {:?}", stats);
+        // eprintln!("Stats: {:?}", stats);
+        // let printable_lines: Vec<_> = stats
+        //     .code_lines
+        //     .iter()
+        //     .map(|l| String::from_utf8_lossy(l))
+        //     .collect();
+        // eprintln!("Code lines: {:?}", printable_lines);
 
-        let mut result: CodeLines = CodeLines::new(stats);
+        let result: CodeLines = CodeLines::new(stats);
 
-        let expected = vec![
+        let mut expected = vec![
             CodeLineData {
                 spaces: 0,
                 tabs: 0,
@@ -126,12 +132,22 @@ foo();"#;
                 tabs: 0,
                 text: 6,
             },
-        ]
-        .sort_by(|a, b| a.text.partial_cmp(&b.text).unwrap());
+            CodeLineData {
+                spaces: 0,
+                tabs: 0,
+                text: 0,
+            },
+            CodeLineData {
+                spaces: 0,
+                tabs: 0,
+                text: 0,
+            },
+        ];
+        expected.sort_by(|a, b| a.text.partial_cmp(&b.text).unwrap());
 
-        let actual = result
-            .lines
-            .sort_by(|a, b| a.text.partial_cmp(&b.text).unwrap());
+        let mut actual = result.lines;
+
+        actual.sort_by(|a, b| a.text.partial_cmp(&b.text).unwrap());
         assert_eq!(actual, expected);
     }
 }
