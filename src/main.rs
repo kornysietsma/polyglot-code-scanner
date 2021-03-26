@@ -10,7 +10,7 @@ extern crate log;
 extern crate structopt;
 
 use failure::Error;
-use polyglot_code_scanner::fine_grained_coupling::CouplingConfig;
+use polyglot_code_scanner::coupling::CouplingConfig;
 use polyglot_code_scanner::CalculatorConfig;
 use std::fs::File;
 use std::io;

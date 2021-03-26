@@ -97,13 +97,8 @@ fn it_calculates_detailed_git_stats_with_coupling() -> Result<(), Error> {
 
     let mut config = polyglot_code_scanner::CalculatorConfig::default();
     config.detailed = true;
-    let coupling_config = polyglot_code_scanner::fine_grained_coupling::CouplingConfig::new(
-        3,
-        1,
-        0.1,
-        120 * 60,
-        60 * 60,
-    );
+    let coupling_config =
+        polyglot_code_scanner::coupling::CouplingConfig::new(3, 1, 0.1, 120 * 60, 60 * 60);
 
     let result =
         polyglot_code_scanner::run(git_root, config, Some(coupling_config), vec!["git"], out);

@@ -24,7 +24,7 @@ mod code_line_data;
 // pub mod coupling;
 mod file_walker;
 // public so main.rs can access structures TODO: can this be done better? expose here just what main needs?
-pub mod fine_grained_coupling;
+pub mod coupling;
 mod flare;
 mod git;
 mod git_file_future;
@@ -44,7 +44,7 @@ extern crate zip;
 mod git_file_history;
 mod git_logger;
 
-use crate::fine_grained_coupling::CouplingConfig;
+use crate::coupling::CouplingConfig;
 use git::GitCalculator;
 use git_logger::GitLogConfig;
 use indentation::IndentationCalculator;
@@ -108,7 +108,7 @@ where
     }
 
     if let Some(cc) = coupling_config {
-        fine_grained_coupling::gather_coupling(&mut tree, cc)?;
+        coupling::gather_coupling(&mut tree, cc)?;
     }
 
     postprocess_tree(&mut tree, config)?;
