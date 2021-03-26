@@ -54,17 +54,22 @@ FLAGS:
     -v, --verbose            Logging verbosity, v = error, vv = warn, vvv = info (default), vvvv = debug, vvvvv = trace
 
 OPTIONS:
-        --coupling-bucket-days <bucket_days>
-            how many days are reviewed for one "bucket" of temporal coupling [default: 91]
-
         --years <git_years>
             how many years of git history to parse - default only scan the last 3 years (from now, not git head)
             [default: 3]
-        --coupling-min-ratio <min_coupling_ratio>
-            what is the minimum ratio of (other file changes)/(this file changes) to include a file in coupling stats
-            [default: 0.25]
-        --coupling-source-days <min_source_days>
-            how many days should a file change in a bucket for it to generate coupling stats [default: 10]
+        --coupling-bucket-days <bucket-days>
+            Number of days in a single "bucket" of coupling activity [default: 91]
+        --coupling-min-bursts <min-activity-bursts>
+            If a file has fewer bursts of change than this in a bucket, don't measure coupling from it [default: 10]
+        --coupling-min-activity-gap-minutes <min-activity-gap-minutes>
+            what is the minimum gap between activities in a burst? a sequence of commits with no gaps this long is
+            treated as one burst [default: 120]
+        --coupling-min-ratio <min-coupling-ratio>
+            The minimum ratio of (other file changes)/(this file changes) to include a file in coupling stats [default:
+            0.25]
+        --coupling-time-overlap-minutes <min-overlap-minutes>
+            how far before/after an activity burst is included for coupling? e.g. if I commit Foo.c at 1am, and Bar.c at
+            2am, they are coupled if an overlap of 60 minutes or longer is specified [default: 60]
 
     -o, --output <output>
             Output file, stdout if not present, or not used if sending to web server
