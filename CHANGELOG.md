@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+* Major change - new coupling logic, fine-grained based on timestamps instead of aggregating into daily buckets.  This will need a lot of documenting, which will probably be on the main website not here.
 * updating tokei to latest code - this was ugly as tokei is now multithreaded and more complex. Modified tokei fork at <https://github.com/kornysietsma/tokei/tree/accumulate-lines> to accumulate lines of code - but note they aren't ordered so this works for stats but not much else
 * Updated all other dependencies to latest stable bits
 
