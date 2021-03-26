@@ -284,6 +284,13 @@ impl CouplingBuckets {
         }
     }
 
+    fn all_files(&self) -> HashSet<Rc<Path>> {
+        self.buckets
+            .iter()
+            .flat_map(|coupling_bucket| coupling_bucket.couplings.keys().cloned())
+            .collect()
+    }
+
     fn file_coupling_data(&self, file: Rc<Path>) -> SerializableCouplingData {
         SerializableCouplingData::new(
             self.buckets
@@ -456,6 +463,39 @@ fn file_changes_to_coupling_buckets(
 
     let filtered_buckets = CouplingBuckets::new(config, &timestamps, bucketing_config);
     Ok(Some((bucketing_config, filtered_buckets)))
+}
+
+pub fn gather_coupling(tree: &mut FlareTreeNode, config: CouplingConfig) -> Result<(), Error> {
+    info!("Gathering coupling stats - accumulating daily counts");
+    let bucket_info = file_changes_to_coupling_buckets(tree, config)?;
+
+    let (bucketing_config, filtered_buckets) = match bucket_info {
+        Some(result) => result,
+        None => return Ok(()),
+    };
+
+    info!("Gathering coupling stats - applying buckets to JSON tree");
+
+    for file in filtered_buckets.all_files() {
+        if let Some(tree_node) = tree.get_in_mut(&mut file.components().clone()) {
+            let coupling_data = filtered_buckets.file_coupling_data(file);
+            tree_node.add_data(
+                "coupling",
+                serde_json::value::to_value(coupling_data)
+                    .expect("Serializable object couldn't be serialized to JSON"),
+            );
+        } else {
+            // TODO: return an error
+            error!("Can't find {:?} in tree!", &file);
+        };
+    }
+
+    tree.add_data(
+        "coupling_meta",
+        serde_json::value::to_value(bucketing_config).expect("Can't serialize bucketing config"),
+    );
+    info!("Gathering coupling stats - done");
+    Ok(())
 }
 
 #[cfg(test)]

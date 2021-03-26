@@ -10,7 +10,7 @@ extern crate log;
 extern crate structopt;
 
 use failure::Error;
-use polyglot_code_scanner::coupling::CouplingConfig;
+use polyglot_code_scanner::fine_grained_coupling::CouplingConfig;
 use polyglot_code_scanner::CalculatorConfig;
 use std::fs::File;
 use std::io;
@@ -49,14 +49,20 @@ struct Cli {
     /// include temporal coupling data
     coupling: bool,
     #[structopt(long = "coupling-bucket-days", default_value = "91")]
-    /// how many days are reviewed for one "bucket" of temporal coupling
+    /// Number of days in a single "bucket" of coupling activity
     bucket_days: u64,
-    #[structopt(long = "coupling-source-days", default_value = "10")]
-    /// how many days should a file change in a bucket for it to generate coupling stats
-    min_source_days: u64,
+    #[structopt(long = "coupling-min-bursts", default_value = "10")]
+    /// If a file has fewer bursts of change than this in a bucket, don't measure coupling from it
+    min_activity_bursts: u64,
     #[structopt(long = "coupling-min-ratio", default_value = "0.25")]
-    /// what is the minimum ratio of (other file changes)/(this file changes) to include a file in coupling stats
+    /// The minimum ratio of (other file changes)/(this file changes) to include a file in coupling stats
     min_coupling_ratio: f64,
+    #[structopt(long = "coupling-min-activity-gap-minutes", default_value = "120")]
+    /// what is the minimum gap between activities in a burst? a sequence of commits with no gaps this long is treated as one burst
+    min_activity_gap_minutes: u64,
+    #[structopt(long = "coupling-time-overlap-minutes", default_value = "60")]
+    /// how far before/after an activity burst is included for coupling? e.g. if I commit Foo.c at 1am, and Bar.c at 2am, they are coupled if an overlap of 60 minutes or longer is specified
+    min_overlap_minutes: u64,
 }
 
 // very basic logging - just so I can have a nice default, and hide verbose tokei logs
@@ -107,8 +113,10 @@ fn real_main() -> Result<(), Error> {
     let coupling_config = if args.coupling {
         Some(CouplingConfig::new(
             args.bucket_days,
-            args.min_source_days,
+            args.min_activity_bursts,
             args.min_coupling_ratio,
+            args.min_activity_gap_minutes * 60,
+            args.min_overlap_minutes * 60,
         ))
     } else {
         None
