@@ -348,6 +348,51 @@ pub struct CouplingConfig {
     coupling_time_distance: u64,
 }
 
+/// count roots in common.
+/// NOTE: this only nicely handles paths like I am using here,
+/// which never start with '/' and never have '.' or '..' in them!
+pub fn common_roots<T1, T2>(path1: T1, path2: T2) -> usize
+where
+    T1: AsRef<Path>,
+    T2: AsRef<Path>,
+{
+    let mut components1 = path1.as_ref().components();
+    let mut components2 = path2.as_ref().components();
+    let mut common = 0;
+    while let (Some(comp1), Some(comp2)) = (components1.next(), components2.next()) {
+        if comp1 == comp2 {
+            common += 1;
+        } else {
+            break;
+        }
+    }
+    common
+}
+
+/// relationship distance:
+/// equal, distance 0
+/// siblings, e.g. same parent, distance 1
+/// cousins, e.g. same grandparent, distance 2
+/// uncles/aunts/neices/nephews, e.g. same grandparent but different depths, still distance 2
+/// No relation returns None
+pub fn relationship_distance<T1, T2>(path1: T1, path2: T2) -> Option<usize>
+where
+    T1: AsRef<Path>,
+    T2: AsRef<Path>,
+{
+    let in_common = common_roots(&path1, &path2);
+    if in_common == 0 {
+        return None;
+    }
+    let depth1 = path1.as_ref().components().count();
+    let depth2 = path2.as_ref().components().count();
+    if depth2 > depth1 {
+        Some((depth2 - in_common) as usize)
+    } else {
+        Some((depth1 - in_common) as usize)
+    }
+}
+
 impl CouplingConfig {
     pub fn new(
         bucket_days: u64,
@@ -950,5 +995,33 @@ mod test {
             baz_coupling.coupled_files,
             vec![(rc_pb("bar"), 2), (rc_pb("bat"), 1), (rc_pb("foo"), 2)]
         );
+    }
+
+    #[test]
+    fn common_roots_calculates_common_parts_of_paths() {
+        assert_eq!(common_roots("foo", "bar"), 0);
+        assert_eq!(common_roots("foo", "foo"), 1);
+        assert_eq!(common_roots("foo", "foo/bar"), 1);
+        assert_eq!(common_roots("foo/baz", "foo/bar"), 1);
+        assert_eq!(common_roots("foo/baz", "foo/baz"), 2);
+        assert_eq!(common_roots("foo/baz/a", "foo/baz/b"), 2);
+    }
+
+    #[test]
+    fn unrelated_paths_have_no_relationship() {
+        assert_eq!(relationship_distance("foo", "bar"), None);
+        assert_eq!(relationship_distance("foo/baz", "bar/baz"), None);
+    }
+    #[test]
+    fn can_count_relationship_distance_for_simple_cases() {
+        assert_eq!(relationship_distance("foo/bar", "foo/bar"), Some(0));
+        assert_eq!(relationship_distance("foo/bar", "foo/baz"), Some(1));
+        assert_eq!(relationship_distance("foo/bar/baz", "foo/baz/bat"), Some(2));
+    }
+    #[test]
+    fn uncles_and_nieces_and_other_strange_relationships_work() {
+        assert_eq!(relationship_distance("foo/bam", "foo/bar/baz"), Some(2));
+        assert_eq!(relationship_distance("foo/bar", "foo/bar/baz"), Some(1));
+        assert_eq!(relationship_distance("foo/bag", "foo/bar/bat/baz"), Some(3));
     }
 }
