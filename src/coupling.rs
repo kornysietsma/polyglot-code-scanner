@@ -264,7 +264,19 @@ impl CouplingBuckets {
                     .timestamps
                     .range(window_start..window_end)
                 {
-                    unique_files.extend(coupled_files.iter().cloned());
+                    unique_files.extend(
+                        coupled_files
+                            .iter()
+                            .filter(|&dest_file| {
+                                filter_file(
+                                    config.min_distance,
+                                    config.max_common_roots,
+                                    &file,
+                                    &dest_file,
+                                )
+                            })
+                            .cloned(),
+                    );
                 }
                 buckets[bucket_number].add_files(file.clone(), unique_files);
             }
@@ -346,51 +358,12 @@ pub struct CouplingConfig {
     min_activity_gap: u64,
     /// how many seconds before or after an activity count for coupling?
     coupling_time_distance: u64,
-}
-
-/// count roots in common.
-/// NOTE: this only nicely handles paths like I am using here,
-/// which never start with '/' and never have '.' or '..' in them!
-pub fn common_roots<T1, T2>(path1: T1, path2: T2) -> usize
-where
-    T1: AsRef<Path>,
-    T2: AsRef<Path>,
-{
-    let mut components1 = path1.as_ref().components();
-    let mut components2 = path2.as_ref().components();
-    let mut common = 0;
-    while let (Some(comp1), Some(comp2)) = (components1.next(), components2.next()) {
-        if comp1 == comp2 {
-            common += 1;
-        } else {
-            break;
-        }
-    }
-    common
-}
-
-/// relationship distance:
-/// equal, distance 0
-/// siblings, e.g. same parent, distance 1
-/// cousins, e.g. same grandparent, distance 2
-/// uncles/aunts/neices/nephews, e.g. same grandparent but different depths, still distance 2
-/// No relation returns None
-pub fn relationship_distance<T1, T2>(path1: T1, path2: T2) -> Option<usize>
-where
-    T1: AsRef<Path>,
-    T2: AsRef<Path>,
-{
-    let in_common = common_roots(&path1, &path2);
-    if in_common == 0 {
-        return None;
-    }
-    let depth1 = path1.as_ref().components().count();
-    let depth2 = path2.as_ref().components().count();
-    if depth2 > depth1 {
-        Some((depth2 - in_common) as usize)
-    } else {
-        Some((depth1 - in_common) as usize)
-    }
+    /// distance between nodes must be at least this, where 1 is siblings, 2 cousins, etc
+    min_distance: usize,
+    /// nodes must have no more than this many roots in common
+    /// eg if 0, they must have different top-level folders.
+    /// This is combined with min_distance (and maybe I'll ditch one?)
+    max_common_roots: Option<usize>,
 }
 
 impl CouplingConfig {
@@ -400,6 +373,8 @@ impl CouplingConfig {
         min_coupling_ratio: f64,
         min_activity_gap: u64,
         coupling_time_distance: u64,
+        min_distance: usize,
+        max_common_roots: Option<usize>,
     ) -> Self {
         CouplingConfig {
             bucket_days,
@@ -407,6 +382,8 @@ impl CouplingConfig {
             min_coupling_ratio,
             min_activity_gap,
             coupling_time_distance,
+            min_distance,
+            max_common_roots,
         }
     }
     pub fn bucket_size(&self) -> u64 {
@@ -420,17 +397,6 @@ impl CouplingConfig {
         (bucket_count, first_bucket_start)
     }
 }
-// impl Default for CouplingConfig {
-//     fn default() -> Self {
-//         CouplingConfig {
-//             bucket_days: 91, // roughly 1/4 of a year
-//             min_bursts: 10,  // 10 bursts of activity in a quarter or be considered inactive
-//             min_coupling_ratio: 0.75,
-//             min_activity_gap: 60 * 60 * 2,   // 2 hours
-//             coupling_time_distance: 60 * 60, // 1 hour
-//         }
-//     }
-// }
 
 #[derive(Debug, Clone, Copy)]
 pub struct BucketingConfig {
@@ -480,6 +446,75 @@ impl Serialize for BucketingConfig {
         state.serialize_field("first_bucket_start", &self.first_bucket_start)?;
         state.end()
     }
+}
+
+/// count roots in common.
+/// NOTE: this only nicely handles paths like I am using here,
+/// which never start with '/' and never have '.' or '..' in them!
+pub fn common_roots<T1, T2>(path1: T1, path2: T2) -> usize
+where
+    T1: AsRef<Path>,
+    T2: AsRef<Path>,
+{
+    let mut components1 = path1.as_ref().components();
+    let mut components2 = path2.as_ref().components();
+    let mut common = 0;
+    while let (Some(comp1), Some(comp2)) = (components1.next(), components2.next()) {
+        if comp1 == comp2 {
+            common += 1;
+        } else {
+            break;
+        }
+    }
+    common
+}
+
+/// relationship distance:
+/// equal, distance 0
+/// siblings, e.g. same parent, distance 1
+/// cousins, e.g. same grandparent, distance 2
+/// uncles/aunts/neices/nephews, e.g. same grandparent but different depths, still distance 2
+/// No relation returns None
+pub fn relationship_distance<T1, T2>(path1: T1, path2: T2) -> Option<usize>
+where
+    T1: AsRef<Path>,
+    T2: AsRef<Path>,
+{
+    let in_common = common_roots(&path1, &path2);
+    if in_common == 0 {
+        return None;
+    }
+    let depth1 = path1.as_ref().components().count();
+    let depth2 = path2.as_ref().components().count();
+    if depth2 > depth1 {
+        Some((depth2 - in_common) as usize)
+    } else {
+        Some((depth1 - in_common) as usize)
+    }
+}
+
+fn filter_file<T1, T2>(
+    min_distance: usize,
+    max_common_roots: Option<usize>,
+    path1: T1,
+    path2: T2,
+) -> bool
+where
+    T1: AsRef<Path>,
+    T2: AsRef<Path>,
+{
+    // return false if file is filtered by either criterion
+    if let Some(max_common_roots) = max_common_roots {
+        let in_common = common_roots(&path1, &path2);
+        if in_common > max_common_roots {
+            return false;
+        }
+    }
+    let distance = relationship_distance(&path1, &path2);
+    if let Some(distance) = distance {
+        return distance >= min_distance;
+    }
+    true
 }
 
 fn file_changes_to_coupling_buckets(
@@ -567,6 +602,18 @@ mod test {
     const DAY22: u64 = TEST_START + 22 * DAY_SIZE;
     const DAY23: u64 = TEST_START + 23 * DAY_SIZE;
     const DAY29: u64 = TEST_START + 29 * DAY_SIZE;
+
+    fn simple_coupling_config() -> CouplingConfig {
+        CouplingConfig {
+            bucket_days: 20,
+            min_bursts: 1,
+            min_coupling_ratio: 0.001,
+            min_activity_gap: 60 * 60,
+            coupling_time_distance: 60 * 60,
+            min_distance: 0,
+            max_common_roots: None,
+        }
+    }
 
     #[derive(Debug, PartialEq, Serialize)]
     struct FakeGitDetails {
@@ -730,13 +777,7 @@ mod test {
 
     #[test]
     fn can_get_bucket_sizes_from_config() {
-        let config = CouplingConfig {
-            bucket_days: 20,
-            min_bursts: 1,
-            min_coupling_ratio: 0.001,
-            min_activity_gap: 60,
-            coupling_time_distance: 100,
-        };
+        let config = simple_coupling_config();
         let (bucket_count, first_bucket_start) = config.buckets_for(DAY1, DAY22);
         assert_eq!(bucket_count, 2);
 
@@ -754,13 +795,7 @@ mod test {
 
     #[test]
     fn can_find_bucket_for_timestamp() {
-        let coupling_config = CouplingConfig {
-            bucket_days: 20,
-            min_bursts: 1,
-            min_coupling_ratio: 0.001,
-            min_activity_gap: 60,
-            coupling_time_distance: 100,
-        };
+        let coupling_config = simple_coupling_config();
         let config = BucketingConfig::new(coupling_config, DAY1, DAY29);
         assert_eq!(config.first_bucket_start, DAY29 - (40 * DAY_SIZE) + 1);
         assert_eq!(config.bucket_count, 2);
@@ -806,13 +841,7 @@ mod test {
         //  'foo' changes with 'bar' only
         let timestamps = make_test_timestamps(vec![(DAY1, vec!["foo", "bar"])]);
         // config is effectively not filtering anything
-        let config = CouplingConfig {
-            bucket_days: 20,
-            min_bursts: 1,
-            min_coupling_ratio: 0.001,
-            min_activity_gap: 60 * 60,
-            coupling_time_distance: 60 * 60,
-        };
+        let config = simple_coupling_config();
         let bucketing_config = BucketingConfig::new(config, DAY1, DAY1);
 
         let coupling_buckets = CouplingBuckets::new(config, &timestamps, bucketing_config);
@@ -862,13 +891,7 @@ mod test {
             (DAY22 + 500, vec!["bat"]),
         ]);
         // config is effectively not filtering anything
-        let config = CouplingConfig {
-            bucket_days: 20,
-            min_bursts: 1,
-            min_coupling_ratio: 0.001,
-            min_activity_gap: 60 * 60,
-            coupling_time_distance: 60 * 60,
-        };
+        let config = simple_coupling_config();
         let bucketing_config = BucketingConfig::new(config, DAY1, DAY22 + 500);
 
         let coupling_buckets = CouplingBuckets::new(config, &timestamps, bucketing_config);
@@ -913,13 +936,7 @@ mod test {
             (DAY22 + 500, vec!["bat"]),
         ]);
         // config is effectively not filtering anything
-        let config = CouplingConfig {
-            bucket_days: 20,
-            min_bursts: 1,
-            min_coupling_ratio: 0.001,
-            min_activity_gap: 60 * 60,
-            coupling_time_distance: 60 * 60,
-        };
+        let config = simple_coupling_config();
         let bucketing_config = BucketingConfig::new(config, DAY1, DAY22 + 500);
 
         let coupling_buckets = CouplingBuckets::new(config, &timestamps, bucketing_config);
@@ -958,6 +975,8 @@ mod test {
             min_coupling_ratio: 0.5,
             min_activity_gap: 60 * 60,
             coupling_time_distance: 60 * 60,
+            min_distance: 0,
+            max_common_roots: None,
         };
         // test times should check these:
         // foo -> bar is in as it's 100%
@@ -995,6 +1014,53 @@ mod test {
             baz_coupling.coupled_files,
             vec![(rc_pb("bar"), 2), (rc_pb("bat"), 1), (rc_pb("foo"), 2)]
         );
+    }
+
+    #[test]
+    fn coupling_is_filtered_by_file_distance() {
+        // test setup - filter out files with 1 burst per bucket,
+        // and coupling below 50%
+        let config = CouplingConfig {
+            bucket_days: 20,
+            min_bursts: 1,
+            min_coupling_ratio: 0.01,
+            min_activity_gap: 60 * 60,
+            coupling_time_distance: 60 * 60,
+            min_distance: 2,
+            max_common_roots: Some(1),
+        };
+        // filtering here means:
+        //  siblings are not included
+        //  'foo/bar/*' won't match anything else under 'foo/bar' as that's two common roots.
+
+        let timestamps = make_test_timestamps(vec![
+            (DAY1, vec!["foo/bar.c", "foo/baz.c"]),         // siblings
+            (DAY2, vec!["foo/bat/bar.c", "foo/baz/bar.c"]), // cousins
+            (DAY3, vec!["foo/bar/baz/bat.c", "foo/bar/bat/bum.c"]), // two common roots
+            (DAY4, vec!["foo/bum.c", "bar/foo.c"]),         // unrelated
+        ]);
+        let bucketing_config = BucketingConfig::new(config, DAY1, DAY29);
+
+        let coupling_buckets = CouplingBuckets::new(config, &timestamps, bucketing_config);
+
+        let day1_coupling = coupling_buckets.file_coupling_data(rc_pb("foo/bar.c"));
+        assert_eq!(day1_coupling.buckets.len(), 1);
+        assert_eq!(day1_coupling.buckets[0].coupled_files.len(), 0);
+        let day2_coupling = coupling_buckets.file_coupling_data(rc_pb("foo/bat/bar.c"));
+        assert_eq!(day2_coupling.buckets.len(), 1);
+        let day2_coupling = &day2_coupling.buckets[0];
+        assert_eq!(
+            day2_coupling.coupled_files,
+            vec![(rc_pb("foo/baz/bar.c"), 1)]
+        );
+        let day3_coupling = coupling_buckets.file_coupling_data(rc_pb("foo/bar/baz/bat.c"));
+        assert_eq!(day3_coupling.buckets.len(), 1);
+        assert_eq!(day3_coupling.buckets[0].coupled_files.len(), 0);
+
+        let day4_coupling = coupling_buckets.file_coupling_data(rc_pb("foo/bum.c"));
+        assert_eq!(day4_coupling.buckets.len(), 1);
+        let day4_coupling = &day4_coupling.buckets[0];
+        assert_eq!(day4_coupling.coupled_files, vec![(rc_pb("bar/foo.c"), 1)]);
     }
 
     #[test]

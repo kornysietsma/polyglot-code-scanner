@@ -117,6 +117,8 @@ fn real_main() -> Result<(), Error> {
             args.min_coupling_ratio,
             args.min_activity_gap_minutes * 60,
             args.min_overlap_minutes * 60,
+            0,
+            None,
         ))
     } else {
         None
