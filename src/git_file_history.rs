@@ -4,7 +4,7 @@ use chrono::offset::TimeZone;
 use chrono::Utc;
 use failure::Error;
 use git2::Oid;
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -74,8 +74,11 @@ impl GitFileHistory {
     pub fn new(log: &mut GitLog) -> Result<GitFileHistory, Error> {
         let mut last_commit: u64 = 0;
         let mut history_by_file = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
+        info!("Loading git log");
         let progress_bar = ProgressBar::new_spinner()
             .with_style(ProgressStyle::default_spinner().template("[{elapsed}] {msg}"));
+        progress_bar.tick();
+        progress_bar.set_draw_delta(100);
 
         // for handling renames, this needs to be a 2-pass process
 
@@ -86,18 +89,38 @@ impl GitFileHistory {
         let log_iterator = log.iterator()?;
         // I can't find a cleaner way for an iterator to have side effects
         let git_file_future_registry = log_iterator.git_file_future_registry();
-        let log_entries: Vec<Result<GitLogEntry, Error>> = log_iterator.collect();
+        let mut progress_last_updated: u64 = 0;
+        let log_entries: Vec<Result<GitLogEntry, Error>> = log_iterator
+            // .progress_with(progress_bar)
+            .inspect(|entry| {
+                if let Ok(entry) = entry {
+                    let commit_time = *entry.commit_time();
+                    // eprintln!("plu {} ct {}", progress_last_updated, commit_time);
+                    if progress_last_updated == 0 // never shown
+                        || (commit_time > progress_last_updated) // time gone backwards
+                        || (progress_last_updated - commit_time) > 60 * 60
+                    // more than an hour change
+                    {
+                        let fmt_time = Utc.timestamp(commit_time as i64, 0).to_string();
+                        progress_bar.set_message(&fmt_time);
+                        progress_last_updated = commit_time;
+                        progress_bar.inc(1);
+                    }
+                }
+            })
+            .collect();
+        progress_bar.finish();
 
         // safe to borrow this now as the iterator has gone and can't mutate any more
         let git_file_future_registry = git_file_future_registry.borrow();
 
+        info!("Processing git log");
         for entry in log_entries {
-            progress_bar.tick();
             match entry {
                 Ok(entry) => {
                     let commit_time = *entry.commit_time();
-                    let fmt_time = Utc.timestamp(commit_time as i64, 0).to_string();
-                    progress_bar.set_message(&fmt_time);
+                    // let fmt_time = Utc.timestamp(commit_time as i64, 0).to_string();
+                    // progress_bar.set_message(&fmt_time);
                     if commit_time > last_commit {
                         last_commit = commit_time;
                     }

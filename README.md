@@ -66,7 +66,7 @@ OPTIONS:
             treated as one burst [default: 120]
         --coupling-min-ratio <min-coupling-ratio>
             The minimum ratio of (other file changes)/(this file changes) to include a file in coupling stats [default:
-            0.25]
+            0.75]
         --coupling-time-overlap-minutes <min-overlap-minutes>
             how far before/after an activity burst is included for coupling? e.g. if I commit Foo.c at 1am, and Bar.c at
             2am, they are coupled if an overlap of 60 minutes or longer is specified [default: 60]

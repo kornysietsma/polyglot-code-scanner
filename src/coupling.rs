@@ -1,5 +1,6 @@
 use crate::{flare::FlareTreeNode, git::GitActivity};
 use failure::Error;
+use indicatif::{ProgressBar, ProgressStyle};
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 use serde_json::Value;
@@ -246,7 +247,14 @@ impl CouplingBuckets {
                 CouplingBucket::new(bucket_start, bucket_size)
             })
             .collect();
+        let bar = ProgressBar::new(file_change_timestamps.file_changes.len() as u64);
+        bar.set_style(
+            ProgressStyle::default_bar()
+                .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
+                .progress_chars("##-"),
+        );
         for (file, timestamps) in file_change_timestamps.file_changes.iter() {
+            bar.inc(1);
             for burst in ActivityBurst::from_events(timestamps, config.min_activity_gap) {
                 let window_start = burst.start - config.coupling_time_distance;
                 let window_end = burst.end + config.coupling_time_distance;
@@ -261,6 +269,9 @@ impl CouplingBuckets {
                 buckets[bucket_number].add_files(file.clone(), unique_files);
             }
         }
+        bar.finish();
+        info!("Gathering coupling stats - filtering buckets");
+
         for bucket in &mut buckets {
             bucket.filter_by(config.min_bursts, config.min_coupling_ratio);
         }
@@ -364,17 +375,17 @@ impl CouplingConfig {
         (bucket_count, first_bucket_start)
     }
 }
-impl Default for CouplingConfig {
-    fn default() -> Self {
-        CouplingConfig {
-            bucket_days: 91, // roughly 1/4 of a year
-            min_bursts: 10,  // 10 bursts of activity in a quarter or be considered inactive
-            min_coupling_ratio: 0.25,
-            min_activity_gap: 60 * 60 * 2,       // 2 hours
-            coupling_time_distance: 60 * 60 * 1, // 1 hour
-        }
-    }
-}
+// impl Default for CouplingConfig {
+//     fn default() -> Self {
+//         CouplingConfig {
+//             bucket_days: 91, // roughly 1/4 of a year
+//             min_bursts: 10,  // 10 bursts of activity in a quarter or be considered inactive
+//             min_coupling_ratio: 0.75,
+//             min_activity_gap: 60 * 60 * 2,   // 2 hours
+//             coupling_time_distance: 60 * 60, // 1 hour
+//         }
+//     }
+// }
 
 #[derive(Debug, Clone, Copy)]
 pub struct BucketingConfig {
@@ -430,12 +441,20 @@ fn file_changes_to_coupling_buckets(
     tree: &FlareTreeNode,
     config: CouplingConfig,
 ) -> Result<Option<(BucketingConfig, CouplingBuckets)>, Error> {
+    info!("Gathering coupling stats - collecting timestamps");
+
     let timestamps = FileChangeTimestamps::new(&tree)?;
 
     if timestamps.is_empty() {
         warn!("No timestamps found, no coupling data processed");
         return Ok(None);
     }
+
+    info!(
+        "Collected {} timestamps, touching {} files",
+        timestamps.timestamps.len(),
+        timestamps.file_changes.len()
+    );
 
     info!("Gathering coupling stats - building buckets");
 
@@ -449,7 +468,7 @@ fn file_changes_to_coupling_buckets(
 }
 
 pub fn gather_coupling(tree: &mut FlareTreeNode, config: CouplingConfig) -> Result<(), Error> {
-    info!("Gathering coupling stats - accumulating daily counts");
+    info!("Gathering coupling stats - accumulating timestamps");
     let bucket_info = file_changes_to_coupling_buckets(tree, config)?;
 
     let (bucketing_config, filtered_buckets) = match bucket_info {
