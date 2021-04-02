@@ -4,7 +4,7 @@ use chrono::offset::TimeZone;
 use chrono::Utc;
 use failure::Error;
 use git2::Oid;
-use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
+use indicatif::{ProgressBar, ProgressStyle};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;

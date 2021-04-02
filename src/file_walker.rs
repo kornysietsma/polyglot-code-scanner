@@ -43,6 +43,7 @@ fn walk_tree_walker(
     for result in walker.map(|r| r.expect("File error!")).skip(1) {
         let p = result.path();
         let relative = p.strip_prefix(prefix)?;
+
         let new_child = if p.is_dir() || p.is_file() {
             let mut f = FlareTreeNode::new(p.file_name().unwrap(), p.is_file());
             apply_calculators_to_node(&mut f, p, toxicity_indicator_calculators);

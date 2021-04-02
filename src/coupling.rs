@@ -3,7 +3,7 @@ use failure::Error;
 use indicatif::{ProgressBar, ProgressStyle};
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -346,7 +346,7 @@ impl SerializableCouplingData {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct CouplingConfig {
     // number of days in a bucket
     bucket_days: u64,
@@ -574,7 +574,8 @@ pub fn gather_coupling(tree: &mut FlareTreeNode, config: CouplingConfig) -> Resu
 
     tree.add_data(
         "coupling_meta",
-        serde_json::value::to_value(bucketing_config).expect("Can't serialize bucketing config"),
+        json!({"buckets": bucketing_config,
+    "config": config}),
     );
     info!("Gathering coupling stats - done");
     Ok(())

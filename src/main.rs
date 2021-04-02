@@ -63,6 +63,16 @@ struct Cli {
     #[structopt(long = "coupling-time-overlap-minutes", default_value = "60")]
     /// how far before/after an activity burst is included for coupling? e.g. if I commit Foo.c at 1am, and Bar.c at 2am, they are coupled if an overlap of 60 minutes or longer is specified
     min_overlap_minutes: u64,
+    #[structopt(long = "coupling-min-distance", default_value = "3")]
+    /// The minimum distance between nodes to count as coupled
+    /// 0 is all, 1 is siblings, 2 is cousins and so on.
+    /// so if you set this to 3, cousins "foo/src/a.rs" and "foo/test/a_test.rs" won't be counted as their distance is 3
+    coupling_min_distance: usize,
+    #[structopt(long = "coupling-max-common-roots")]
+    /// The maximum number of common ancestors to include in coupling
+    /// e.g. "foo/src/controller/a.c" and "foo/src/service/b.c" have two common ancestors, if you
+    /// set this value to 3 they won't show as coupled.
+    coupling_max_common_roots: Option<usize>,
 }
 
 // very basic logging - just so I can have a nice default, and hide verbose tokei logs
@@ -117,8 +127,8 @@ fn real_main() -> Result<(), Error> {
             args.min_coupling_ratio,
             args.min_activity_gap_minutes * 60,
             args.min_overlap_minutes * 60,
-            0,
-            None,
+            args.coupling_min_distance,
+            args.coupling_max_common_roots,
         ))
     } else {
         None
