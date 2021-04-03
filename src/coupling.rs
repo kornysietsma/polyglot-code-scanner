@@ -4,10 +4,69 @@ use indicatif::{ProgressBar, ProgressStyle};
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 use serde_json::{json, Value};
-use std::collections::{BTreeMap, BTreeSet};
-use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ffi::OsStr,
+};
+use std::{
+    collections::{HashMap, HashSet},
+    ffi::OsString,
+};
+
+/// a path-like owned structure, for efficient creation and tracking of relative paths
+/// (originally I just used Rc<Path> but needed to split them into Components over and over)
+#[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Clone)]
+struct PathVec {
+    components: Vec<OsString>,
+}
+
+impl PathVec {
+    fn new() -> Self {
+        PathVec {
+            components: Vec::new(),
+        }
+    }
+    fn to_path_buf(&self) -> PathBuf {
+        self.components.iter().collect()
+    }
+    fn push<T>(&mut self, path: T)
+    where
+        T: Into<OsString>,
+    {
+        self.components.push(path.into())
+    }
+}
+
+impl Serialize for PathVec {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.to_path_buf().to_string_lossy().as_ref())
+    }
+}
+
+impl<P> From<P> for PathVec
+where
+    P: Into<PathBuf>,
+{
+    fn from(source: P) -> Self {
+        let components: Vec<OsString> = source
+            .into()
+            .components()
+            .map(|component| {
+                if let Component::Normal(text) = component {
+                    text.to_owned()
+                } else {
+                    panic!("Unsupported path component '{:?}'", component);
+                }
+            })
+            .collect();
+        PathVec { components }
+    }
+}
 
 /// Every file change we've seen - only in source code, and only where actual lines of code changed
 /// Stored two ways redundantly for speed of lookup:
@@ -15,19 +74,19 @@ use std::rc::Rc;
 /// * by filename, with a BTreeSet of timestamps so again we can get ranges out easily
 struct FileChangeTimestamps {
     /// all files changed by timestamp - must actually have lines changed!
-    timestamps: BTreeMap<u64, HashSet<Rc<Path>>>,
-    file_changes: HashMap<Rc<Path>, BTreeSet<u64>>,
+    timestamps: BTreeMap<u64, HashSet<Rc<PathVec>>>,
+    file_changes: HashMap<Rc<PathVec>, BTreeSet<u64>>,
 }
 
 impl FileChangeTimestamps {
     pub fn new(root: &FlareTreeNode) -> Result<Self, Error> {
-        let mut timestamps: BTreeMap<u64, HashSet<Rc<Path>>> = BTreeMap::new();
-        let mut file_changes: HashMap<Rc<Path>, BTreeSet<u64>> = HashMap::new();
+        let mut timestamps: BTreeMap<u64, HashSet<Rc<PathVec>>> = BTreeMap::new();
+        let mut file_changes: HashMap<Rc<PathVec>, BTreeSet<u64>> = HashMap::new();
         FileChangeTimestamps::accumulate_files(
             &mut timestamps,
             &mut file_changes,
             root,
-            Rc::from(PathBuf::new()),
+            Rc::from(PathVec::new()),
         )?;
         Ok(FileChangeTimestamps {
             timestamps,
@@ -46,10 +105,10 @@ impl FileChangeTimestamps {
     }
 
     fn accumulate_files(
-        timestamps: &mut BTreeMap<u64, HashSet<Rc<Path>>>,
-        file_changes: &mut HashMap<Rc<Path>, BTreeSet<u64>>,
+        timestamps: &mut BTreeMap<u64, HashSet<Rc<PathVec>>>,
+        file_changes: &mut HashMap<Rc<PathVec>, BTreeSet<u64>>,
         node: &FlareTreeNode,
-        path: Rc<Path>,
+        path: Rc<PathVec>,
     ) -> Result<(), Error> {
         let lines = node
             .get_data("loc")
@@ -77,13 +136,13 @@ impl FileChangeTimestamps {
         };
 
         for child in node.get_children() {
-            let mut child_path = path.to_path_buf();
+            let mut child_path = (*path).clone();
             child_path.push(child.name());
             FileChangeTimestamps::accumulate_files(
                 timestamps,
                 file_changes,
                 &child,
-                child_path.into(),
+                Rc::new(child_path),
             )?;
         }
         Ok(())
@@ -145,20 +204,20 @@ impl ActivityBurst {
 /// another file change at roughly the same time
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Coupling {
-    name: Rc<Path>,
+    name: Rc<PathVec>,
     activity_bursts: u64,
-    coupled_files: HashMap<Rc<Path>, u64>,
+    coupled_files: HashMap<Rc<PathVec>, u64>,
 }
 
 impl Coupling {
-    fn new(name: Rc<Path>) -> Self {
+    fn new(name: Rc<PathVec>) -> Self {
         Coupling {
             name,
             activity_bursts: 0,
             coupled_files: HashMap::new(),
         }
     }
-    fn add_file(&mut self, file: Rc<Path>) {
+    fn add_file(&mut self, file: Rc<PathVec>) {
         if file != self.name {
             let count = self.coupled_files.entry(file).or_insert(0);
             *count += 1;
@@ -166,7 +225,7 @@ impl Coupling {
     }
     fn add_files<T>(&mut self, files: T)
     where
-        T: IntoIterator<Item = Rc<Path>>,
+        T: IntoIterator<Item = Rc<PathVec>>,
     {
         for file in files {
             self.add_file(file)
@@ -194,7 +253,7 @@ impl Coupling {
 struct CouplingBucket {
     bucket_start: u64,
     bucket_size: u64,
-    couplings: HashMap<Rc<Path>, Coupling>,
+    couplings: HashMap<Rc<PathVec>, Coupling>,
 }
 
 impl CouplingBucket {
@@ -206,9 +265,9 @@ impl CouplingBucket {
         }
     }
 
-    fn add_files<T>(&mut self, from: Rc<Path>, to: T)
+    fn add_files<T>(&mut self, from: Rc<PathVec>, to: T)
     where
-        T: IntoIterator<Item = Rc<Path>>,
+        T: IntoIterator<Item = Rc<PathVec>>,
     {
         let stats = self
             .couplings
@@ -259,7 +318,7 @@ impl CouplingBuckets {
                 let window_start = burst.start - config.coupling_time_distance;
                 let window_end = burst.end + config.coupling_time_distance;
                 let bucket_number = bucketing_config.bucket_for(burst.start).unwrap();
-                let mut unique_files: HashSet<Rc<Path>> = HashSet::new();
+                let mut unique_files: HashSet<Rc<PathVec>> = HashSet::new();
                 for (_coupled_time, coupled_files) in file_change_timestamps
                     .timestamps
                     .range(window_start..window_end)
@@ -290,14 +349,14 @@ impl CouplingBuckets {
         CouplingBuckets { buckets }
     }
 
-    fn all_files(&self) -> HashSet<Rc<Path>> {
+    fn all_files(&self) -> HashSet<Rc<PathVec>> {
         self.buckets
             .iter()
             .flat_map(|coupling_bucket| coupling_bucket.couplings.keys().cloned())
             .collect()
     }
 
-    fn file_coupling_data(&self, file: Rc<Path>) -> SerializableCouplingData {
+    fn file_coupling_data(&self, file: Rc<PathVec>) -> SerializableCouplingData {
         SerializableCouplingData::new(
             self.buckets
                 .iter()
@@ -331,7 +390,7 @@ struct SerializableCouplingBucketData {
     pub bucket_start: u64,
     pub bucket_end: u64,
     pub activity_bursts: u64,
-    pub coupled_files: Vec<(Rc<Path>, u64)>,
+    pub coupled_files: Vec<(Rc<PathVec>, u64)>,
 }
 
 /// Data to save in the Json tree for a file
@@ -451,13 +510,9 @@ impl Serialize for BucketingConfig {
 /// count roots in common.
 /// NOTE: this only nicely handles paths like I am using here,
 /// which never start with '/' and never have '.' or '..' in them!
-pub fn common_roots<T1, T2>(path1: T1, path2: T2) -> usize
-where
-    T1: AsRef<Path>,
-    T2: AsRef<Path>,
-{
-    let mut components1 = path1.as_ref().components();
-    let mut components2 = path2.as_ref().components();
+fn common_roots(path1: &PathVec, path2: &PathVec) -> usize {
+    let mut components1 = path1.components.iter();
+    let mut components2 = path2.components.iter();
     let mut common = 0;
     while let (Some(comp1), Some(comp2)) = (components1.next(), components2.next()) {
         if comp1 == comp2 {
@@ -475,17 +530,13 @@ where
 /// cousins, e.g. same grandparent, distance 2
 /// uncles/aunts/neices/nephews, e.g. same grandparent but different depths, still distance 2
 /// No relation returns None
-pub fn relationship_distance<T1, T2>(path1: T1, path2: T2) -> Option<usize>
-where
-    T1: AsRef<Path>,
-    T2: AsRef<Path>,
-{
+fn relationship_distance(path1: &PathVec, path2: &PathVec) -> Option<usize> {
     let in_common = common_roots(&path1, &path2);
     if in_common == 0 {
         return None;
     }
-    let depth1 = path1.as_ref().components().count();
-    let depth2 = path2.as_ref().components().count();
+    let depth1 = path1.components.len();
+    let depth2 = path2.components.len();
     if depth2 > depth1 {
         Some((depth2 - in_common) as usize)
     } else {
@@ -493,16 +544,12 @@ where
     }
 }
 
-fn filter_file<T1, T2>(
+fn filter_file(
     min_distance: usize,
     max_common_roots: Option<usize>,
-    path1: T1,
-    path2: T2,
-) -> bool
-where
-    T1: AsRef<Path>,
-    T2: AsRef<Path>,
-{
+    path1: &PathVec,
+    path2: &PathVec,
+) -> bool {
     // return false if file is filtered by either criterion
     if let Some(max_common_roots) = max_common_roots {
         let in_common = common_roots(&path1, &path2);
@@ -559,7 +606,9 @@ pub fn gather_coupling(tree: &mut FlareTreeNode, config: CouplingConfig) -> Resu
     info!("Gathering coupling stats - applying buckets to JSON tree");
 
     for file in filtered_buckets.all_files() {
-        if let Some(tree_node) = tree.get_in_mut(&mut file.components().clone()) {
+        // TODO: can we avoid converting to pathbuf?
+        let file_buf: PathBuf = file.to_path_buf();
+        if let Some(tree_node) = tree.get_in_mut(&mut file_buf.components()) {
             let coupling_data = filtered_buckets.file_coupling_data(file);
             tree_node.add_data(
                 "coupling",
@@ -666,15 +715,29 @@ mod test {
         root.append_child(child1);
         root
     }
+
+    #[test]
+    fn can_make_pathvec_from_paths() {
+        let path_vec: PathVec = PathVec::from("foo/bar/baz");
+        assert_eq!(path_vec.to_path_buf(), PathBuf::from("foo/bar/baz"));
+    }
+
+    #[test]
+    fn can_append_to_pathvecs() {
+        let mut path_vec: PathVec = PathVec::from("foo/bar");
+        path_vec.push("baz");
+        assert_eq!(path_vec.to_path_buf(), PathBuf::from("foo/bar/baz"));
+    }
+
     #[test]
     fn can_convert_tree_to_daily_stats() {
         let tree = build_test_tree();
         let stats = FileChangeTimestamps::new(&tree).unwrap();
         assert_eq!(stats.is_empty(), false);
 
-        let mut expected_timestamps: BTreeMap<u64, HashSet<Rc<Path>>> = BTreeMap::new();
-        let root_file_1: Rc<Path> = Rc::from(Path::new("root_file_1.txt").to_owned());
-        let child_file_1: Rc<Path> = Rc::from(Path::new("child1/child1_file_1.txt").to_owned());
+        let mut expected_timestamps: BTreeMap<u64, HashSet<Rc<PathVec>>> = BTreeMap::new();
+        let root_file_1: Rc<PathVec> = Rc::from(PathVec::from("root_file_1.txt"));
+        let child_file_1: Rc<PathVec> = Rc::from(PathVec::from("child1/child1_file_1.txt"));
         expected_timestamps.insert(DAY1, [root_file_1.clone()].iter().cloned().collect());
         expected_timestamps.insert(
             DAY21,
@@ -685,7 +748,7 @@ mod test {
         );
         expected_timestamps.insert(DAY22, [child_file_1.clone()].iter().cloned().collect());
 
-        let mut expected_file_changes: HashMap<Rc<Path>, BTreeSet<u64>> = HashMap::new();
+        let mut expected_file_changes: HashMap<Rc<PathVec>, BTreeSet<u64>> = HashMap::new();
         expected_file_changes.insert(root_file_1.clone(), [DAY1, DAY21].iter().cloned().collect());
         expected_file_changes.insert(
             child_file_1.clone(),
@@ -807,17 +870,17 @@ mod test {
     }
 
     fn make_test_timestamps(data: Vec<(u64, Vec<&str>)>) -> FileChangeTimestamps {
-        let timestamps: BTreeMap<u64, HashSet<Rc<Path>>> = data
+        let timestamps: BTreeMap<u64, HashSet<Rc<PathVec>>> = data
             .iter()
             .map(|(day, namelist)| {
-                let paths: HashSet<Rc<Path>> = namelist
+                let paths: HashSet<Rc<PathVec>> = namelist
                     .iter()
-                    .map(|name| Rc::from(Path::new(name).to_path_buf()))
+                    .map(|name| Rc::from(PathVec::from(name)))
                     .collect();
                 (*day, paths)
             })
             .collect();
-        let mut file_changes: HashMap<Rc<Path>, BTreeSet<u64>> = HashMap::new();
+        let mut file_changes: HashMap<Rc<PathVec>, BTreeSet<u64>> = HashMap::new();
         for (timestamp, files) in timestamps.clone() {
             for file in files {
                 let fs_entry = file_changes
@@ -832,8 +895,8 @@ mod test {
         }
     }
 
-    fn rc_pb(name: &str) -> Rc<Path> {
-        Rc::from(Path::new(name).to_path_buf())
+    fn rc_pb(name: &str) -> Rc<PathVec> {
+        Rc::from(PathVec::from(name))
     }
 
     #[test]
@@ -853,10 +916,10 @@ mod test {
         assert_eq!(first_bucket.bucket_start, DAY1 - (20 * DAY_SIZE) + 1);
         assert_eq!(first_bucket.bucket_size, 20 * DAY_SIZE);
 
-        let mut expected_stats: HashMap<Rc<Path>, Coupling> = HashMap::new();
-        let mut foo_coupling: HashMap<Rc<Path>, u64> = HashMap::new();
+        let mut expected_stats: HashMap<Rc<PathVec>, Coupling> = HashMap::new();
+        let mut foo_coupling: HashMap<Rc<PathVec>, u64> = HashMap::new();
         foo_coupling.insert(rc_pb("foo"), 1);
-        let mut bar_coupling: HashMap<Rc<Path>, u64> = HashMap::new();
+        let mut bar_coupling: HashMap<Rc<PathVec>, u64> = HashMap::new();
         bar_coupling.insert(rc_pb("bar"), 1);
         expected_stats.insert(
             rc_pb("foo"),
@@ -907,7 +970,7 @@ mod test {
         let foo_stats = first_bucket.couplings.get(&rc_pb("foo")).unwrap();
         assert_eq!(foo_stats.name, rc_pb("foo")); // redundant!
         assert_eq!(foo_stats.activity_bursts, 1); // actually activity bursts not commits - and there is only one
-        let foo_coupling: HashMap<Rc<Path>, u64> = [(rc_pb("bar"), 1), (rc_pb("baz"), 1)]
+        let foo_coupling: HashMap<Rc<PathVec>, u64> = [(rc_pb("bar"), 1), (rc_pb("baz"), 1)]
             .iter()
             .cloned()
             .collect();
@@ -916,7 +979,7 @@ mod test {
         // second bucket, foo has two bursts, one coupled with baz, one with bat
         let foo_stats_b2 = second_bucket.couplings.get(&rc_pb("foo")).unwrap();
         assert_eq!(foo_stats_b2.activity_bursts, 2);
-        let foo_coupling_b2: HashMap<Rc<Path>, u64> = [(rc_pb("baz"), 1), (rc_pb("bat"), 2)]
+        let foo_coupling_b2: HashMap<Rc<PathVec>, u64> = [(rc_pb("baz"), 1), (rc_pb("bat"), 2)]
             .iter()
             .cloned()
             .collect();
@@ -1066,29 +1129,50 @@ mod test {
 
     #[test]
     fn common_roots_calculates_common_parts_of_paths() {
-        assert_eq!(common_roots("foo", "bar"), 0);
-        assert_eq!(common_roots("foo", "foo"), 1);
-        assert_eq!(common_roots("foo", "foo/bar"), 1);
-        assert_eq!(common_roots("foo/baz", "foo/bar"), 1);
-        assert_eq!(common_roots("foo/baz", "foo/baz"), 2);
-        assert_eq!(common_roots("foo/baz/a", "foo/baz/b"), 2);
+        assert_eq!(common_roots(&"foo".into(), &"bar".into()), 0);
+        assert_eq!(common_roots(&"foo".into(), &"foo".into()), 1);
+        assert_eq!(common_roots(&"foo".into(), &"foo/bar".into()), 1);
+        assert_eq!(common_roots(&"foo/baz".into(), &"foo/bar".into()), 1);
+        assert_eq!(common_roots(&"foo/baz".into(), &"foo/baz".into()), 2);
+        assert_eq!(common_roots(&"foo/baz/a".into(), &"foo/baz/b".into()), 2);
     }
 
     #[test]
     fn unrelated_paths_have_no_relationship() {
-        assert_eq!(relationship_distance("foo", "bar"), None);
-        assert_eq!(relationship_distance("foo/baz", "bar/baz"), None);
+        assert_eq!(relationship_distance(&"foo".into(), &"bar".into()), None);
+        assert_eq!(
+            relationship_distance(&"foo/baz".into(), &"bar/baz".into()),
+            None
+        );
     }
     #[test]
     fn can_count_relationship_distance_for_simple_cases() {
-        assert_eq!(relationship_distance("foo/bar", "foo/bar"), Some(0));
-        assert_eq!(relationship_distance("foo/bar", "foo/baz"), Some(1));
-        assert_eq!(relationship_distance("foo/bar/baz", "foo/baz/bat"), Some(2));
+        assert_eq!(
+            relationship_distance(&"foo/bar".into(), &"foo/bar".into()),
+            Some(0)
+        );
+        assert_eq!(
+            relationship_distance(&"foo/bar".into(), &"foo/baz".into()),
+            Some(1)
+        );
+        assert_eq!(
+            relationship_distance(&"foo/bar/baz".into(), &"foo/baz/bat".into()),
+            Some(2)
+        );
     }
     #[test]
     fn uncles_and_nieces_and_other_strange_relationships_work() {
-        assert_eq!(relationship_distance("foo/bam", "foo/bar/baz"), Some(2));
-        assert_eq!(relationship_distance("foo/bar", "foo/bar/baz"), Some(1));
-        assert_eq!(relationship_distance("foo/bag", "foo/bar/bat/baz"), Some(3));
+        assert_eq!(
+            relationship_distance(&"foo/bam".into(), &"foo/bar/baz".into()),
+            Some(2)
+        );
+        assert_eq!(
+            relationship_distance(&"foo/bar".into(), &"foo/bar/baz".into()),
+            Some(1)
+        );
+        assert_eq!(
+            relationship_distance(&"foo/bag".into(), &"foo/bar/bat/baz".into()),
+            Some(3)
+        );
     }
 }
