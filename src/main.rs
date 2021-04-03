@@ -64,9 +64,9 @@ struct Cli {
     /// how far before/after an activity burst is included for coupling? e.g. if I commit Foo.c at 1am, and Bar.c at 2am, they are coupled if an overlap of 60 minutes or longer is specified
     min_overlap_minutes: u64,
     #[structopt(long = "coupling-min-distance", default_value = "3")]
-    /// The minimum distance between nodes to count as coupled
+    /// The minimum distance between nodes to include in coupling
     /// 0 is all, 1 is siblings, 2 is cousins and so on.
-    /// so if you set this to 3, cousins "foo/src/a.rs" and "foo/test/a_test.rs" won't be counted as their distance is 3
+    /// so if you set this to 3, cousins "foo/src/a.rs" and "foo/test/a_test.rs" won't be counted as their distance is 2
     coupling_min_distance: usize,
     #[structopt(long = "coupling-max-common-roots")]
     /// The maximum number of common ancestors to include in coupling

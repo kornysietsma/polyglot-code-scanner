@@ -4,12 +4,9 @@ use indicatif::{ProgressBar, ProgressStyle};
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 use serde_json::{json, Value};
-use std::path::{Component, Path, PathBuf};
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::{Component, PathBuf};
 use std::rc::Rc;
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    ffi::OsStr,
-};
 use std::{
     collections::{HashMap, HashSet},
     ffi::OsString,
@@ -531,16 +528,25 @@ fn common_roots(path1: &PathVec, path2: &PathVec) -> usize {
 /// uncles/aunts/neices/nephews, e.g. same grandparent but different depths, still distance 2
 /// No relation returns None
 fn relationship_distance(path1: &PathVec, path2: &PathVec) -> Option<usize> {
-    let in_common = common_roots(&path1, &path2);
-    if in_common == 0 {
+    let common_root_count = common_roots(&path1, &path2);
+    relationship_distance_with_common_precalculated(path1, path2, common_root_count)
+}
+
+/// as relationship_distance but avoids duplicate calculation of common_roots()
+fn relationship_distance_with_common_precalculated(
+    path1: &PathVec,
+    path2: &PathVec,
+    common_root_count: usize,
+) -> Option<usize> {
+    if common_root_count == 0 {
         return None;
     }
     let depth1 = path1.components.len();
     let depth2 = path2.components.len();
     if depth2 > depth1 {
-        Some((depth2 - in_common) as usize)
+        Some((depth2 - common_root_count) as usize)
     } else {
-        Some((depth1 - in_common) as usize)
+        Some((depth1 - common_root_count) as usize)
     }
 }
 
@@ -550,14 +556,15 @@ fn filter_file(
     path1: &PathVec,
     path2: &PathVec,
 ) -> bool {
+    let common_root_count = common_roots(&path1, &path2);
     // return false if file is filtered by either criterion
     if let Some(max_common_roots) = max_common_roots {
-        let in_common = common_roots(&path1, &path2);
-        if in_common > max_common_roots {
+        if common_root_count > max_common_roots {
             return false;
         }
     }
-    let distance = relationship_distance(&path1, &path2);
+    let distance =
+        relationship_distance_with_common_precalculated(&path1, &path2, common_root_count);
     if let Some(distance) = distance {
         return distance >= min_distance;
     }
@@ -637,7 +644,6 @@ mod test {
     use super::*;
     use pretty_assertions::assert_eq;
     use serde_json::json;
-    use std::path::Path;
     #[allow(unused_imports)] // boilerplate for getting shared test logic
     use test_shared::*;
 
