@@ -54,10 +54,10 @@ struct Cli {
     #[structopt(long = "coupling-min-bursts", default_value = "10")]
     /// If a file has fewer bursts of change than this in a bucket, don't measure coupling from it
     min_activity_bursts: u64,
-    #[structopt(long = "coupling-min-ratio", default_value = "0.75")]
+    #[structopt(long = "coupling-min-ratio", default_value = "0.8")]
     /// The minimum ratio of (other file changes)/(this file changes) to include a file in coupling stats
     min_coupling_ratio: f64,
-    #[structopt(long = "coupling-min-activity-gap-minutes", default_value = "120")]
+    #[structopt(long = "coupling-min-activity-gap-minutes", default_value = "60")]
     /// what is the minimum gap between activities in a burst? a sequence of commits with no gaps this long is treated as one burst
     min_activity_gap_minutes: u64,
     #[structopt(long = "coupling-time-overlap-minutes", default_value = "60")]
