@@ -1,4 +1,4 @@
-use crate::{flare::FlareTreeNode, CalculatorConfig};
+use crate::{flare::FlareTreeNode, ScannerConfig};
 use failure::Error;
 use std::collections::hash_map::Entry;
 
@@ -14,7 +14,7 @@ fn remove_details(node: &mut FlareTreeNode, key: &str, value: &str) -> Result<()
     Ok(())
 }
 
-pub fn postprocess_tree(tree: &mut FlareTreeNode, config: CalculatorConfig) -> Result<(), Error> {
+pub fn postprocess_tree(tree: &mut FlareTreeNode, config: ScannerConfig) -> Result<(), Error> {
     info!("Postprocessing tree before persisting");
     if !config.detailed {
         remove_details(tree, "git", "details")?;

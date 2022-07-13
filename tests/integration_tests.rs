@@ -14,7 +14,7 @@ fn it_calculates_lines_of_code() -> Result<(), Error> {
 
     let result = polyglot_code_scanner::run(
         root,
-        polyglot_code_scanner::CalculatorConfig::default(),
+        polyglot_code_scanner::ScannerConfig::default(),
         None,
         vec!["loc"],
         out,
@@ -42,7 +42,7 @@ fn it_calculates_git_stats() -> Result<(), Error> {
 
     let result = polyglot_code_scanner::run(
         git_root,
-        polyglot_code_scanner::CalculatorConfig::default(),
+        polyglot_code_scanner::ScannerConfig::default(),
         None,
         vec!["git"],
         out,
@@ -68,7 +68,7 @@ fn it_calculates_detailed_git_stats() -> Result<(), Error> {
     let mut buffer: Vec<u8> = Vec::new();
     let out = Cursor::new(&mut buffer);
 
-    let mut config = polyglot_code_scanner::CalculatorConfig::default();
+    let mut config = polyglot_code_scanner::ScannerConfig::default();
     config.detailed = true;
 
     let result = polyglot_code_scanner::run(git_root, config, None, vec!["git"], out);
@@ -95,7 +95,7 @@ fn it_calculates_detailed_git_stats_with_coupling() -> Result<(), Error> {
     let mut buffer: Vec<u8> = Vec::new();
     let out = Cursor::new(&mut buffer);
 
-    let mut config = polyglot_code_scanner::CalculatorConfig::default();
+    let mut config = polyglot_code_scanner::ScannerConfig::default();
     config.detailed = true;
     let coupling_config =
         polyglot_code_scanner::coupling::CouplingConfig::new(3, 1, 0.1, 120 * 60, 60 * 60, 0, None);

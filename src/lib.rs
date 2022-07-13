@@ -51,24 +51,26 @@ use indentation::IndentationCalculator;
 use loc::LocCalculator;
 use toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 
-// simple structure for config for any calculators -
-pub struct CalculatorConfig {
+// general config for the scanner and calculators - could be split if it grows too far
+pub struct ScannerConfig {
     pub git_years: Option<u64>,
     pub detailed: bool,
+    pub follow_symlinks: bool,
 }
 
-impl CalculatorConfig {
+impl ScannerConfig {
     pub fn default() -> Self {
-        CalculatorConfig {
+        ScannerConfig {
             git_years: None,
             detailed: false,
+            follow_symlinks: false,
         }
     }
 }
 
 pub fn named_toxicity_indicator_calculator(
     name: &str,
-    config: &CalculatorConfig,
+    config: &ScannerConfig,
 ) -> Option<Box<dyn ToxicityIndicatorCalculator>> {
     match name {
         "loc" => Some(Box::new(LocCalculator {})),
@@ -84,7 +86,7 @@ pub fn named_toxicity_indicator_calculator(
 
 pub fn run<W>(
     root: PathBuf,
-    config: CalculatorConfig,
+    config: ScannerConfig,
     coupling_config: Option<CouplingConfig>,
     toxicity_indicator_calculator_names: Vec<&str>,
     out: W,
@@ -99,7 +101,7 @@ where
 
     let mut tics = maybe_tics.expect("Some toxicity indicator calculator names don't exist!");
 
-    let mut tree = file_walker::walk_directory(&root, &mut tics)?;
+    let mut tree = file_walker::walk_directory(&root, config.follow_symlinks, &mut tics)?;
 
     for tic in tics {
         if let Some(metadata) = tic.metadata()? {

@@ -11,7 +11,7 @@ extern crate structopt;
 
 use failure::Error;
 use polyglot_code_scanner::coupling::CouplingConfig;
-use polyglot_code_scanner::CalculatorConfig;
+use polyglot_code_scanner::ScannerConfig;
 use std::fs::File;
 use std::io;
 use std::path::PathBuf;
@@ -45,6 +45,9 @@ struct Cli {
     #[structopt(long = "no-detailed-git")]
     /// Don't include detailed git information - output may be big!
     no_detailed_git: bool,
+    #[structopt(long = "follow-symlinks")]
+    /// Follow symbolic links when traversing directories
+    follow_symlinks: bool,
     #[structopt(short = "c", long = "coupling")]
     /// include temporal coupling data
     coupling: bool,
@@ -115,9 +118,10 @@ fn real_main() -> Result<(), Error> {
 
     let root = args.root.unwrap_or_else(|| PathBuf::from("."));
 
-    let calculator_config = CalculatorConfig {
+    let scanner_config = ScannerConfig {
         git_years: Some(args.git_years),
         detailed: !args.no_detailed_git,
+        follow_symlinks: args.follow_symlinks,
     };
 
     let coupling_config = if args.coupling {
@@ -142,7 +146,7 @@ fn real_main() -> Result<(), Error> {
 
     polyglot_code_scanner::run(
         root,
-        calculator_config,
+        scanner_config,
         coupling_config,
         vec!["loc", "git", "indentation"],
         &mut out,
