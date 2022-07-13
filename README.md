@@ -2,6 +2,12 @@
 
 This is part of my Polyglot Code tools - for the main documentation, see <https://polyglot.korny.info>
 
+## A note about releases
+
+In the (long-ish) gap since I last made a release, Travis has stopped supporting open-source so my builds no longer work.
+
+More recent releases you will need to build yourself, until I get an alternative CI setup going.
+
 ## Intro
 
 This application scans source code directories, identifying a range of code metrics and other data, and storing the results in a JSON file for later visualisation by the [Polyglot Code Explorer](https://polyglot.korny.info/tools/explorer/description/)
