@@ -21,7 +21,7 @@ impl FlareTreeNode {
         &self.name
     }
 
-    pub fn new<S: Into<OsString>>(name: S, is_file: bool) -> FlareTreeNode {
+    pub fn new(name: impl Into<OsString>, is_file: bool) -> FlareTreeNode {
         FlareTreeNode {
             name: name.into(),
             is_file,
@@ -31,7 +31,7 @@ impl FlareTreeNode {
     }
 
     #[cfg(test)]
-    pub fn file<S: Into<OsString>>(name: S) -> Self {
+    pub fn file(name: impl Into<OsString>) -> Self {
         Self::new(name, true)
     }
 

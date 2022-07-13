@@ -53,14 +53,14 @@ use toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 
 // simple structure for config for any calculators -
 pub struct CalculatorConfig {
-    pub git_years: u64,
+    pub git_years: Option<u64>,
     pub detailed: bool,
 }
 
 impl CalculatorConfig {
     pub fn default() -> Self {
         CalculatorConfig {
-            git_years: 3,
+            git_years: None,
             detailed: false,
         }
     }

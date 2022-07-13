@@ -14,15 +14,15 @@ use std::time::{Duration, SystemTime};
 pub struct GitLogConfig {
     /// include merge commits in file stats - usually excluded by `git log` - see https://stackoverflow.com/questions/37801342/using-git-log-to-display-files-changed-during-merge
     include_merges: bool,
-    /// earliest commmit for filtering - secs since the epoch - could use Option but this is pretty cheap to check
-    earliest_time: u64,
+    /// earliest commmit for filtering
+    earliest_time: Option<u64>,
 }
 
 impl GitLogConfig {
     pub fn default() -> GitLogConfig {
         GitLogConfig {
             include_merges: false,
-            earliest_time: 0,
+            earliest_time: None,
         }
     }
 
@@ -33,19 +33,23 @@ impl GitLogConfig {
         config
     }
     /// filter log by unix timestamp
-    pub fn since(self, earliest_time: u64) -> GitLogConfig {
+    pub fn since(self, earliest_time: Option<u64>) -> GitLogConfig {
         let mut config = self;
         config.earliest_time = earliest_time;
         config
     }
     /// filter log by number of years before now
-    pub fn since_years(self, years: u64) -> GitLogConfig {
-        let years_ago = SystemTime::now() - Duration::from_secs(60 * 60 * 24 * 365 * years);
-        let years_ago_secs = years_ago
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        self.since(years_ago_secs)
+    pub fn since_years(self, years: Option<u64>) -> GitLogConfig {
+        if let Some(years) = years {
+            let years_ago = SystemTime::now() - Duration::from_secs(60 * 60 * 24 * 365 * years);
+            let years_ago_secs = years_ago
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+            self.since(Some(years_ago_secs))
+        } else {
+            self.since(None)
+        }
     }
 }
 
@@ -160,7 +164,13 @@ impl<'a> Iterator for GitLogIterator<'a> {
             let c = self.summarise_commit(next_item.unwrap());
             match c {
                 Ok(Some(c)) => {
-                    if c.commit_time >= self.git_log.config.earliest_time {
+                    let commit_in_range = self
+                        .git_log
+                        .config
+                        .earliest_time
+                        .map_or(true, |earliest| c.commit_time >= earliest);
+
+                    if commit_in_range {
                         self.register_file_futures(&c);
                         return Some(Ok(c));
                     } else {
@@ -515,7 +525,7 @@ mod test {
         let gitdir = tempdir()?;
         let git_root = unzip_git_sample("git_sample", gitdir.path())?;
 
-        let git_log = GitLog::new(&git_root, GitLogConfig::default().since(1558521694))?;
+        let git_log = GitLog::new(&git_root, GitLogConfig::default().since(Some(1558521694)))?;
 
         let err_count = git_log.iterator()?.filter(Result::is_err).count();
         assert_eq!(err_count, 0);

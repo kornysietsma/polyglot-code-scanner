@@ -116,7 +116,7 @@ fn real_main() -> Result<(), Error> {
     let root = args.root.unwrap_or_else(|| PathBuf::from("."));
 
     let calculator_config = CalculatorConfig {
-        git_years: args.git_years,
+        git_years: Some(args.git_years),
         detailed: !args.no_detailed_git,
     };
 
