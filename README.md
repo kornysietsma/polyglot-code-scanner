@@ -2,6 +2,12 @@
 
 This is part of my Polyglot Code tools - for the main documentation, see <https://polyglot.korny.info>
 
+## WORK IN PROGRESS WARNING
+
+I'm doing a lot of changes right now - if you fetch the current code, things may break.
+
+Especially note, I'm changed the data file formats created by the explorer and used by the scanner - I've added version number checks, but data files from the Scanner must match expectations of the Explorer, so for now it's a bit of "make sure you pull changes often" or things will break.
+
 ## A note about releases
 
 In the (long-ish) gap since I last made a release, Travis has stopped supporting open-source so my builds no longer work.
