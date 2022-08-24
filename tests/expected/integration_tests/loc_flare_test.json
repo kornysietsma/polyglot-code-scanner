@@ -1,38 +1,44 @@
 {
-  "name": "<root>",
-  "children": [
-    {
-      "name": "child",
-      "children": [
-        {
-          "name": "a.txt",
-          "data": {
-            "loc": {
-              "language": "Plain Text",
-              "binary": false,
-              "blanks": 0,
-              "code": 0,
-              "comments": 2,
-              "lines": 2,
-              "bytes": 19
+  "name": "test",
+  "id": "test-id",
+  "version": "1.0.0",
+  "metadata": {},
+  "tree": {
+    "name": "<root>",
+    "children": [
+      {
+        "name": "child",
+        "children": [
+          {
+            "name": "a.txt",
+            "data": {
+              "loc": {
+                "language": "Plain Text",
+                "binary": false,
+                "blanks": 0,
+                "code": 0,
+                "comments": 2,
+                "lines": 2,
+                "bytes": 19
+              }
             }
           }
-        }
-      ]
-    },
-    {
-      "name": "parent.clj",
-      "data": {
-        "loc": {
-          "language": "Clojure",
-          "binary": false,
-          "blanks": 1,
-          "code": 3,
-          "comments": 0,
-          "lines": 4,
-          "bytes": 31
+        ]
+      },
+      {
+        "name": "parent.clj",
+        "data": {
+          "loc": {
+            "language": "Clojure",
+            "binary": false,
+            "blanks": 1,
+            "code": 3,
+            "comments": 0,
+            "lines": 4,
+            "bytes": 31
+          }
         }
       }
-    }
-  ]
+    ]
+  }
 }

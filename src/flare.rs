@@ -1,4 +1,9 @@
 #![warn(clippy::all)]
+//! This is named 'Flare' as historically, the D3 hierarchical data files
+//! were called 'flare.json' and there was an implied data format.
+//!
+//! As of version 1.0.0 (when I started versioning!) of the data format,
+//! the syntax differs from D3 flare files, but I haven't renamed the module (yet)
 
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
@@ -8,11 +13,12 @@ use std::ffi::{OsStr, OsString};
 
 pub static ROOT_NAME: &str = "<root>";
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct FlareTreeNode {
     name: OsString,
     is_file: bool,
     children: Vec<FlareTreeNode>,
+    // TODO: more strongly typed data!  Value is just JSON - we should have an enum of valid data.
     data: HashMap<String, Value>,
 }
 
@@ -21,7 +27,7 @@ impl FlareTreeNode {
         &self.name
     }
 
-    pub fn new(name: impl Into<OsString>, is_file: bool) -> FlareTreeNode {
+    pub fn new(name: impl Into<OsString>, is_file: bool) -> Self {
         FlareTreeNode {
             name: name.into(),
             is_file,
@@ -351,6 +357,29 @@ mod test {
                         "children":[]
                     }
                 ]
+            }),
+        )
+    }
+
+    #[test]
+    fn can_serialize_simple_polyglot_data_to_json() {
+        let mut root = FlareTreeNode::dir("root");
+        root.append_child(FlareTreeNode::file("child.txt"));
+        root.append_child(FlareTreeNode::dir("child2"));
+
+        assert_eq_json_value(
+            &root,
+            &json!({
+                    "name":"root",
+                    "children":[
+                        {
+                            "name": "child.txt"
+                        },
+                        {
+                            "name":"child2",
+                            "children":[]
+                        }
+                    ]
             }),
         )
     }

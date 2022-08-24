@@ -42,7 +42,8 @@ fn safe_extension(filename: &Path) -> String {
 fn file_size(filename: &Path) -> Result<u64, Error> {
     Ok(filename.metadata()?.len())
 }
-
+//TODO: should binary data have 'lines:0' or should it be
+// an explicit special case?
 impl LanguageLocData {
     fn from_binary(language_name: String, filename: &Path) -> Result<Self, Error> {
         Ok(LanguageLocData {

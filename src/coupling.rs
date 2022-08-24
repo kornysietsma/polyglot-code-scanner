@@ -1,3 +1,4 @@
+use crate::polyglot_data::PolyglotData;
 use crate::{flare::FlareTreeNode, git::GitActivity};
 use failure::Error;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -601,9 +602,12 @@ fn file_changes_to_coupling_buckets(
     Ok(Some((bucketing_config, filtered_buckets)))
 }
 
-pub fn gather_coupling(tree: &mut FlareTreeNode, config: CouplingConfig) -> Result<(), Error> {
+pub fn gather_coupling(
+    polyglot_data: &mut PolyglotData,
+    config: CouplingConfig,
+) -> Result<(), Error> {
     info!("Gathering coupling stats - accumulating timestamps");
-    let bucket_info = file_changes_to_coupling_buckets(tree, config)?;
+    let bucket_info = file_changes_to_coupling_buckets(polyglot_data.tree(), config)?;
 
     let (bucketing_config, filtered_buckets) = match bucket_info {
         Some(result) => result,
@@ -615,7 +619,10 @@ pub fn gather_coupling(tree: &mut FlareTreeNode, config: CouplingConfig) -> Resu
     for file in filtered_buckets.all_files() {
         // TODO: can we avoid converting to pathbuf?
         let file_buf: PathBuf = file.to_path_buf();
-        if let Some(tree_node) = tree.get_in_mut(&mut file_buf.components()) {
+        if let Some(tree_node) = polyglot_data
+            .tree_mut()
+            .get_in_mut(&mut file_buf.components())
+        {
             let coupling_data = filtered_buckets.file_coupling_data(file);
             tree_node.add_data(
                 "coupling",
@@ -628,8 +635,8 @@ pub fn gather_coupling(tree: &mut FlareTreeNode, config: CouplingConfig) -> Resu
         };
     }
 
-    tree.add_data(
-        "coupling_meta",
+    polyglot_data.add_metadata(
+        "coupling",
         json!({"buckets": bucketing_config,
     "config": config}),
     );

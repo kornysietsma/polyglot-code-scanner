@@ -1,24 +1,30 @@
 {
-  "name": "<root>",
-  "children": [
-    {
-      "name": "child",
-      "children": [
-        {
-          "name": "a.txt",
-          "data": {
-            "foo": "bar",
-            "filename": "./tests/data/simple/child/a.txt"
+  "name": "test",
+  "id": "test-id",
+  "version": "1.0.0",
+  "metadata": {},
+  "tree": {
+    "name": "<root>",
+    "children": [
+      {
+        "name": "child",
+        "children": [
+          {
+            "name": "a.txt",
+            "data": {
+              "foo": "bar",
+              "filename": "./tests/data/simple/child/a.txt"
+            }
           }
+        ]
+      },
+      {
+        "name": "parent.clj",
+        "data": {
+          "foo": "bar",
+          "filename": "./tests/data/simple/parent.clj"
         }
-      ]
-    },
-    {
-      "name": "parent.clj",
-      "data": {
-        "foo": "bar",
-        "filename": "./tests/data/simple/parent.clj"
       }
-    }
-  ]
+    ]
+  }
 }

@@ -36,6 +36,13 @@ struct Cli {
     /// Output file, stdout if not present, or not used if sending to web server
     #[structopt(short = "o", long = "output", parse(from_os_str))]
     output: Option<PathBuf>,
+    /// project name - identifies the selected data for display and state storage
+    #[structopt(short = "n", long = "name")]
+    name: String,
+
+    /// data file ID - used to identify unique data files for browser storage, generates a UUID if not specified
+    #[structopt(long = "id")]
+    id: Option<String>,
     /// Root directory, current dir if not present
     #[structopt(parse(from_os_str))]
     root: Option<PathBuf>,
@@ -120,7 +127,9 @@ fn real_main() -> Result<(), Error> {
 
     let scanner_config = ScannerConfig {
         git_years: Some(args.git_years),
+        data_id: args.id,
         detailed: !args.no_detailed_git,
+        name: args.name,
         follow_symlinks: args.follow_symlinks,
     };
 

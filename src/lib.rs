@@ -16,6 +16,7 @@ extern crate derive_getters;
 extern crate serde;
 
 use failure::Error;
+use polyglot_data::PolyglotData;
 use postprocessing::postprocess_tree;
 use std::io;
 use std::path::PathBuf;
@@ -31,6 +32,7 @@ mod git_file_future;
 mod git_user_dictionary;
 mod indentation;
 mod loc;
+mod polyglot_data;
 mod postprocessing;
 mod toxicity_indicator_calculator;
 
@@ -56,14 +58,18 @@ pub struct ScannerConfig {
     pub git_years: Option<u64>,
     pub detailed: bool,
     pub follow_symlinks: bool,
+    pub name: String,
+    pub data_id: Option<String>,
 }
 
 impl ScannerConfig {
-    pub fn default() -> Self {
+    pub fn default(name: &str) -> Self {
         ScannerConfig {
             git_years: None,
             detailed: false,
             follow_symlinks: false,
+            name: name.to_owned(),
+            data_id: None,
         }
     }
 }
@@ -101,20 +107,28 @@ where
 
     let mut tics = maybe_tics.expect("Some toxicity indicator calculator names don't exist!");
 
-    let mut tree = file_walker::walk_directory(&root, config.follow_symlinks, &mut tics)?;
+    let mut polyglot_data = file_walker::walk_directory(
+        &root,
+        &config.name,
+        config.data_id.as_deref(),
+        config.follow_symlinks,
+        &mut tics,
+    )?;
 
     for tic in tics {
         if let Some(metadata) = tic.metadata()? {
-            tree.add_data(tic.name() + "_meta", metadata);
+            polyglot_data.add_metadata(tic.name(), metadata);
         }
     }
 
     if let Some(cc) = coupling_config {
-        coupling::gather_coupling(&mut tree, cc)?;
+        // TODO: fix this to take the data
+        coupling::gather_coupling(&mut polyglot_data, cc)?;
     }
 
-    postprocess_tree(&mut tree, config)?;
+    // TODO: fix this to take the data
+    postprocess_tree(polyglot_data.tree_mut(), config)?;
 
-    serde_json::to_writer(out, &tree)?;
+    serde_json::to_writer(out, &polyglot_data)?;
     Ok(())
 }

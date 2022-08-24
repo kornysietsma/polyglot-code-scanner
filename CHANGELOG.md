@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+
+* Backward-incompatible release - changing output file format for a few reasons:
+* I want a unique ID that the front end can use by default for BrowserStorage - this can be specified or random
+  * actually now split into 'name' which is descriptive, and 'id' for storage etc.
+* I want a semantic version number in the data file, so the front-end can tell if it knows the data format
+* I'm moving the front-end to Typescript which means I'd like to keep types a bit cleaner, rather than just dumping data in the 'root' directory node
+* Really the old 'flare' file format hasn't been meaningful for a while, so I might as well dump irrelevant bits (like the 'value' on each node - redundant and confusing)
+
 ## [0.3.1] - 2022-07-13
 
 ### Changed

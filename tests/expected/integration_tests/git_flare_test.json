@@ -1,47 +1,54 @@
 {
-  "name": "<root>",
-  "children": [
-    {
-      "name": "simple",
-      "children": [
-        {
-          "name": "child",
-          "children": [
-            {
-              "name": "a_renamed.txt",
-              "data": {
-                "git": {
-                  "age_in_days": 0,
-                  "creation_date": 1558521386,
-                  "last_update": 1558533240,
-                  "user_count": 2,
-                  "users": [0, 1]
+  "name": "test",
+  "id": "test-id",
+  "version": "1.0.0",
+  "tree": {
+    "name": "<root>",
+    "children": [
+      {
+        "name": "simple",
+        "children": [
+          {
+            "name": "child",
+            "children": [
+              {
+                "name": "a_renamed.txt",
+                "data": {
+                  "git": {
+                    "age_in_days": 0,
+                    "creation_date": 1558521386,
+                    "last_update": 1558533240,
+                    "user_count": 2,
+                    "users": [0, 1]
+                  }
                 }
               }
-            }
-          ]
-        },
-        {
-          "name": "parent.clj",
-          "data": {
-            "git": {
-              "age_in_days": 0,
-              "creation_date": 1558521386,
-              "last_update": 1558524371,
-              "user_count": 2,
-              "users": [0, 1]
+            ]
+          },
+          {
+            "name": "parent.clj",
+            "data": {
+              "git": {
+                "age_in_days": 0,
+                "creation_date": 1558521386,
+                "last_update": 1558524371,
+                "user_count": 2,
+                "users": [0, 1]
+              }
             }
           }
-        }
-      ]
+        ]
+      }
+    ],
+    "data": {
+      "git": {
+        "head": "93ae0c7c7cd93b3c4ea1bf103bde4deafef798ad",
+        "remote_url": null
+      }
     }
-  ],
-  "data": {
+  },
+  "metadata": {
     "git": {
-      "head": "93ae0c7c7cd93b3c4ea1bf103bde4deafef798ad",
-      "remote_url": null
-    },
-    "git_meta": {
       "users": [
         {
           "id": 0,

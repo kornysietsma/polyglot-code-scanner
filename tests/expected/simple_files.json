@@ -1,16 +1,22 @@
 {
-  "name": "<root>",
-  "children": [
-    {
-      "name": "child",
-      "children": [
-        {
-          "name": "a.txt"
-        }
-      ]
-    },
-    {
-      "name": "parent.clj"
-    }
-  ]
+  "name": "test",
+  "id": "test-id",
+  "version": "1.0.0",
+  "metadata": {},
+  "tree": {
+    "name": "<root>",
+    "children": [
+      {
+        "name": "child",
+        "children": [
+          {
+            "name": "a.txt"
+          }
+        ]
+      },
+      {
+        "name": "parent.clj"
+      }
+    ]
+  }
 }
