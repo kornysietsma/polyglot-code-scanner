@@ -83,6 +83,13 @@ impl User {
             email: email.map(|x| x.to_owned()),
         }
     }
+
+    pub fn as_lower_case(&self) -> User {
+        User {
+            name: self.name.as_ref().map(|s| s.to_lowercase()),
+            email: self.email.as_ref().map(|s| s.to_lowercase()),
+        }
+    }
 }
 
 /// simplified commit log entry
@@ -305,7 +312,7 @@ fn find_coauthors(message: &str) -> Vec<User> {
             let co_author_text = &capture_group[1];
             if let Some(co_author_bits) = CO_AUTH_ANGLE_BRACKETS.captures(co_author_text) {
                 User::new(
-                    trim_string(&co_author_bits.get(1).unwrap().as_str()),
+                    trim_string(co_author_bits.get(1).unwrap().as_str()),
                     trim_string(co_author_bits.get(2).unwrap().as_str()),
                 )
             } else if co_author_text.contains('@') {
@@ -327,7 +334,7 @@ fn commit_file_changes(
     if commit.parent_count() == 0 {
         info!("Commit {} has no parent", commit.id());
 
-        scan_diffs(&repo, &commit_tree, None, &commit, None).expect("Can't scan for diffs")
+        scan_diffs(repo, commit_tree, None, commit, None).expect("Can't scan for diffs")
     } else if commit.parent_count() > 1 && !config.include_merges {
         debug!(
             "Not showing file changes for merge commit {:?}",
@@ -340,14 +347,8 @@ fn commit_file_changes(
             .flat_map(|parent| {
                 debug!("Getting changes for parent {:?}:", parent);
                 let parent_tree = parent.tree().expect("can't get parent tree");
-                scan_diffs(
-                    &repo,
-                    &commit_tree,
-                    Some(&parent_tree),
-                    &commit,
-                    Some(&parent),
-                )
-                .expect("Can't scan for diffs")
+                scan_diffs(repo, commit_tree, Some(&parent_tree), commit, Some(&parent))
+                    .expect("Can't scan for diffs")
             })
             .collect()
     }
@@ -451,6 +452,23 @@ mod test {
     use serde_json::json;
     use tempfile::tempdir;
     use test_shared::*;
+
+    #[test]
+    fn users_can_be_lowercased() {
+        assert_eq!(
+            User::new(Some("Fred"), Some("Fred@Gmail.com")).as_lower_case(),
+            User::new(Some("fred"), Some("fred@gmail.com"))
+        );
+        assert_eq!(
+            User::new(None, Some("Fred@Gmail.com")).as_lower_case(),
+            User::new(None, Some("fred@gmail.com"))
+        );
+        assert_eq!(
+            User::new(Some("Fred"), None).as_lower_case(),
+            User::new(Some("fred"), None)
+        );
+        assert_eq!(User::new(None, None).as_lower_case(), User::new(None, None));
+    }
 
     #[test]
     fn authorless_message_has_no_coauthors() {

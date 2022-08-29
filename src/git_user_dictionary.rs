@@ -7,34 +7,45 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub struct GitUserDictionary {
     next_id: usize,
-    users: HashMap<User, usize>,
+    lower_users: HashMap<User, usize>,
+    users: Vec<User>,
 }
 
 impl GitUserDictionary {
     pub fn new() -> Self {
         GitUserDictionary {
             next_id: 0,
-            users: HashMap::new(),
+            lower_users: HashMap::new(),
+            users: Vec::new(),
         }
     }
     pub fn register(&mut self, user: &User) -> usize {
-        match self.users.get(user) {
+        let lower_user = user.as_lower_case();
+        match self.lower_users.get(&lower_user) {
             Some(id) => *id,
             None => {
                 let result = self.next_id;
-                self.users.insert(user.clone(), result);
+                self.lower_users.insert(lower_user, result);
+                self.users.push(user.clone());
                 self.next_id += 1;
                 result
             }
         }
     }
-    #[allow(dead_code)]
+    #[cfg(test)]
+    pub fn user_by_id(&self, user_id: usize) -> User {
+        self.users
+            .get(user_id)
+            .expect("No user found matching ID!")
+            .clone()
+    }
+    #[cfg(test)]
     pub fn user_count(&self) -> usize {
         self.next_id
     }
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn user_id(&self, user: &User) -> Option<&usize> {
-        self.users.get(user)
+        self.lower_users.get(&user.as_lower_case())
     }
 }
 
@@ -52,15 +63,49 @@ impl Serialize for GitUserDictionary {
     where
         S: Serializer,
     {
-        let mut reverse_index: HashMap<usize, &User> = HashMap::new();
-        for (user, id) in self.users.iter() {
-            reverse_index.insert(*id, user);
-        }
-        let mut seq = serializer.serialize_seq(Some(self.next_id))?;
-        for id in 0..self.next_id {
-            let user = reverse_index.get(&id).unwrap();
+        let mut seq = serializer.serialize_seq(Some(self.users.len()))?;
+        for (id, user) in self.users.iter().enumerate() {
             seq.serialize_element(&UserKey { id, user })?;
         }
         seq.end()
+    }
+}
+
+mod test {
+    use super::*;
+    #[cfg(test)]
+    use pretty_assertions::assert_eq;
+
+    // use test_shared::*;
+
+    #[test]
+    fn users_receive_sequential_ids() {
+        let mut dict = GitUserDictionary::new();
+
+        let jane = User::new(Some("Jane"), Some("JaneDoe@gmail.com"));
+        let user0 = dict.register(&jane);
+        assert_eq!(user0, 0);
+        assert_eq!(dict.user_by_id(user0), jane);
+
+        let user1 = dict.register(&User::new(Some("Jane"), None));
+        assert_eq!(user1, 1);
+        let user0again = dict.register(&User::new(Some("Jane"), Some("JaneDoe@gmail.com")));
+        assert_eq!(user0again, 0);
+    }
+
+    #[test]
+    fn user_checks_are_case_insensitive_and_return_first_seen_user() {
+        let mut dict = GitUserDictionary::new();
+
+        let jane = User::new(Some("Jane"), Some("JaneDoe@gmail.com"));
+        let lower_jane = User::new(Some("jane"), Some("janeDoe@gmail.com"));
+        let user0 = dict.register(&jane);
+        assert_eq!(user0, 0);
+        // there is only one user!
+        assert_eq!(dict.user_count(), 1);
+
+        let user1 = dict.register(&lower_jane);
+        assert_eq!(user1, 0);
+        assert_eq!(dict.user_by_id(0), jane)
     }
 }
