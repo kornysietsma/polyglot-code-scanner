@@ -107,6 +107,7 @@ where
 
     let mut tics = maybe_tics.expect("Some toxicity indicator calculator names don't exist!");
 
+    info!("Walking directory tree");
     let mut polyglot_data = file_walker::walk_directory(
         &root,
         &config.name,
@@ -115,6 +116,7 @@ where
         &mut tics,
     )?;
 
+    info!("adding metadata");
     for tic in tics {
         if let Some(metadata) = tic.metadata()? {
             polyglot_data.add_metadata(tic.name(), metadata);
@@ -123,12 +125,15 @@ where
 
     if let Some(cc) = coupling_config {
         // TODO: fix this to take the data
+        info!("gathering coupling");
         coupling::gather_coupling(&mut polyglot_data, cc)?;
     }
 
+    info!("postprocessing tree");
     // TODO: fix this to take the data
     postprocess_tree(polyglot_data.tree_mut(), config)?;
 
+    info!("saving as JSON");
     serde_json::to_writer(out, &polyglot_data)?;
     Ok(())
 }

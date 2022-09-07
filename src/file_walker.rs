@@ -9,7 +9,7 @@ use failure::Error;
 use ignore::{Walk, WalkBuilder};
 #[allow(unused_imports)]
 use path_slash::PathExt;
-use std::path::Path;
+use std::{f32::consts::E, path::Path, time::Instant};
 
 fn apply_calculators_to_node(
     node: &mut FlareTreeNode,
@@ -33,6 +33,8 @@ fn apply_calculators_to_node(
     });
 }
 
+const LOG_INTERVAL_SECS: u64 = 60 * 5;
+
 fn walk_tree_walker(
     walker: Walk,
     prefix: &Path,
@@ -44,9 +46,17 @@ fn walk_tree_walker(
 
     apply_calculators_to_node(&mut tree, prefix, toxicity_indicator_calculators);
 
+    let mut last_log = Instant::now();
+    info!("Walking file tree");
+
     for result in walker.map(|r| r.expect("File error!")).skip(1) {
         let p = result.path();
         let relative = p.strip_prefix(prefix)?;
+        let elapsed_since_log = last_log.elapsed();
+        if elapsed_since_log.as_secs() > LOG_INTERVAL_SECS {
+            info!("Walking progress: {:?}", relative);
+            last_log = Instant::now();
+        }
 
         let new_child = if p.is_dir() || p.is_file() {
             let mut f = FlareTreeNode::new(p.file_name().unwrap(), p.is_file());
@@ -71,6 +81,7 @@ fn walk_tree_walker(
             }
         }
     }
+    info!("finished walking file tree");
     Ok(PolyglotData::new(name, id, tree))
 }
 

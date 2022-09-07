@@ -7,6 +7,7 @@ use git2::Oid;
 use indicatif::{ProgressBar, ProgressStyle};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -36,7 +37,7 @@ impl FileHistoryEntry {
             author: entry.author().clone(),
             author_time: *entry.author_time(),
             co_authors: entry.co_authors().clone(),
-            change: file_change.change().clone(),
+            change: *file_change.change(),
             lines_added: *file_change.lines_added(),
             lines_deleted: *file_change.lines_deleted(),
         }
@@ -114,8 +115,10 @@ impl GitFileHistory {
         // safe to borrow this now as the iterator has gone and can't mutate any more
         let git_file_future_registry = git_file_future_registry.borrow();
 
-        info!("Processing git log");
+        info!("Processing git log with {} entries", log_entries.len());
+        let entrybar = ProgressBar::new(log_entries.len().try_into()?);
         for entry in log_entries {
+            entrybar.tick();
             match entry {
                 Ok(entry) => {
                     let commit_time = *entry.commit_time();
@@ -131,7 +134,7 @@ impl GitFileHistory {
                         if let Some(filename) = final_filename {
                             let hash_entry =
                                 history_by_file.entry(filename).or_insert_with(Vec::new);
-                            let new_entry = FileHistoryEntry::from(&entry, &file_change);
+                            let new_entry = FileHistoryEntry::from(&entry, file_change);
                             hash_entry.push(new_entry);
                         } else {
                             debug!(
@@ -146,6 +149,7 @@ impl GitFileHistory {
                 }
             }
         }
+        entrybar.finish();
 
         Ok(GitFileHistory {
             workdir: log.workdir().to_owned(),
@@ -209,10 +213,7 @@ mod test {
 
         let history = GitFileHistory::new(&mut git_log)?;
 
-        assert_eq!(
-            history.is_repo_for(&git_root.join("simple/parent.clj"))?,
-            true
-        );
+        assert!(history.is_repo_for(&git_root.join("simple/parent.clj"))?);
 
         Ok(())
     }
@@ -228,7 +229,7 @@ mod test {
 
         let file_history = history.history_for(&git_root.join("simple/parent.clj"))?;
 
-        assert_eq!(file_history.is_some(), true);
+        assert!(file_history.is_some());
 
         let ids: Vec<_> = file_history.unwrap().iter().map(|h| &h.id).collect();
         assert_eq!(
@@ -259,7 +260,7 @@ mod test {
 
         let file_history = history.history_for(&new_file)?;
 
-        assert_eq!(file_history.is_none(), true);
+        assert!(file_history.is_none());
 
         Ok(())
     }
