@@ -16,7 +16,6 @@ extern crate derive_getters;
 extern crate serde;
 
 use failure::Error;
-use polyglot_data::PolyglotData;
 use postprocessing::postprocess_tree;
 use std::io;
 use std::path::PathBuf;

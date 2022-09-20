@@ -129,7 +129,7 @@ mod test {
 
     #[test]
     fn can_get_indentation_data_for_a_file() {
-        let indentation = parse_file(&Path::new("./tests/data/simple/parent.clj"))
+        let indentation = parse_file(Path::new("./tests/data/simple/parent.clj"))
             .unwrap()
             .unwrap();
         assert_eq!(indentation.lines, 3);

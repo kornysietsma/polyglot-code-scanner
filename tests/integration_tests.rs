@@ -21,7 +21,7 @@ fn it_calculates_lines_of_code() -> Result<(), Error> {
 
     let result = polyglot_code_scanner::run(root, test_scanner_config(), None, vec!["loc"], out);
 
-    assert!(!result.is_err());
+    assert!(result.is_ok());
 
     let parsed_result: Value = serde_json::from_reader(buffer.as_slice())?;
 
@@ -44,7 +44,7 @@ fn it_calculates_git_stats() -> Result<(), Error> {
     let result =
         polyglot_code_scanner::run(git_root, test_scanner_config(), None, vec!["git"], out);
 
-    assert!(!result.is_err());
+    assert!(result.is_ok());
 
     let parsed_result: Value = serde_json::from_reader(buffer.as_slice())?;
 
@@ -69,7 +69,7 @@ fn it_calculates_detailed_git_stats() -> Result<(), Error> {
 
     let result = polyglot_code_scanner::run(git_root, config, None, vec!["git"], out);
 
-    assert!(!result.is_err());
+    assert!(result.is_ok());
 
     let parsed_result: Value = serde_json::from_reader(buffer.as_slice())?;
 
@@ -99,7 +99,7 @@ fn it_calculates_detailed_git_stats_with_coupling() -> Result<(), Error> {
     let result =
         polyglot_code_scanner::run(git_root, config, Some(coupling_config), vec!["git"], out);
 
-    assert!(!result.is_err());
+    assert!(result.is_ok());
 
     let parsed_result: Value = serde_json::from_reader(buffer.as_slice())?;
 

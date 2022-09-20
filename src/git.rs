@@ -278,7 +278,7 @@ impl GitHistories {
         }
 
         let mut changer_list: Vec<usize> = changers.into_iter().collect();
-        changer_list.sort();
+        changer_list.sort_unstable();
 
         let mut details_vec: Vec<GitDetails> = details
             .into_iter()

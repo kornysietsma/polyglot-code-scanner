@@ -139,7 +139,7 @@ impl FileChangeTimestamps {
             FileChangeTimestamps::accumulate_files(
                 timestamps,
                 file_changes,
-                &child,
+                child,
                 Rc::new(child_path),
             )?;
         }
@@ -328,8 +328,8 @@ impl CouplingBuckets {
                                 filter_file(
                                     config.min_distance,
                                     config.max_common_roots,
-                                    &file,
-                                    &dest_file,
+                                    file,
+                                    dest_file,
                                 )
                             })
                             .cloned(),
@@ -457,8 +457,6 @@ impl CouplingConfig {
 
 #[derive(Debug, Clone, Copy)]
 pub struct BucketingConfig {
-    earliest: u64,
-    latest: u64,
     bucket_size: u64,
     bucket_count: u64,
     first_bucket_start: u64,
@@ -470,8 +468,6 @@ impl BucketingConfig {
         let bucket_count = ((latest - earliest) / bucket_size) + 1;
         let first_bucket_start = (latest - (bucket_size * bucket_count)) + 1;
         BucketingConfig {
-            earliest,
-            latest,
             bucket_size,
             bucket_count,
             first_bucket_start,
@@ -528,8 +524,9 @@ fn common_roots(path1: &PathVec, path2: &PathVec) -> usize {
 /// cousins, e.g. same grandparent, distance 2
 /// uncles/aunts/neices/nephews, e.g. same grandparent but different depths, still distance 2
 /// No relation returns None
+#[cfg(test)]
 fn relationship_distance(path1: &PathVec, path2: &PathVec) -> Option<usize> {
-    let common_root_count = common_roots(&path1, &path2);
+    let common_root_count = common_roots(path1, path2);
     relationship_distance_with_common_precalculated(path1, path2, common_root_count)
 }
 
@@ -557,15 +554,14 @@ fn filter_file(
     path1: &PathVec,
     path2: &PathVec,
 ) -> bool {
-    let common_root_count = common_roots(&path1, &path2);
+    let common_root_count = common_roots(path1, path2);
     // return false if file is filtered by either criterion
     if let Some(max_common_roots) = max_common_roots {
         if common_root_count > max_common_roots {
             return false;
         }
     }
-    let distance =
-        relationship_distance_with_common_precalculated(&path1, &path2, common_root_count);
+    let distance = relationship_distance_with_common_precalculated(path1, path2, common_root_count);
     if let Some(distance) = distance {
         return distance >= min_distance;
     }
@@ -578,7 +574,7 @@ fn file_changes_to_coupling_buckets(
 ) -> Result<Option<(BucketingConfig, CouplingBuckets)>, Error> {
     info!("Gathering coupling stats - collecting timestamps");
 
-    let timestamps = FileChangeTimestamps::new(&tree)?;
+    let timestamps = FileChangeTimestamps::new(tree)?;
 
     if timestamps.is_empty() {
         warn!("No timestamps found, no coupling data processed");
@@ -746,7 +742,7 @@ mod test {
     fn can_convert_tree_to_daily_stats() {
         let tree = build_test_tree();
         let stats = FileChangeTimestamps::new(&tree).unwrap();
-        assert_eq!(stats.is_empty(), false);
+        assert!(!stats.is_empty());
 
         let mut expected_timestamps: BTreeMap<u64, HashSet<Rc<PathVec>>> = BTreeMap::new();
         let root_file_1: Rc<PathVec> = Rc::from(PathVec::from("root_file_1.txt"));
@@ -762,11 +758,8 @@ mod test {
         expected_timestamps.insert(DAY22, [child_file_1.clone()].iter().cloned().collect());
 
         let mut expected_file_changes: HashMap<Rc<PathVec>, BTreeSet<u64>> = HashMap::new();
-        expected_file_changes.insert(root_file_1.clone(), [DAY1, DAY21].iter().cloned().collect());
-        expected_file_changes.insert(
-            child_file_1.clone(),
-            [DAY21, DAY22].iter().cloned().collect(),
-        );
+        expected_file_changes.insert(root_file_1, [DAY1, DAY21].iter().cloned().collect());
+        expected_file_changes.insert(child_file_1, [DAY21, DAY22].iter().cloned().collect());
 
         assert_eq!(expected_timestamps, stats.timestamps);
         assert_eq!(expected_file_changes, stats.file_changes);
@@ -859,10 +852,7 @@ mod test {
         assert_eq!(bucket_count, 2);
 
         // first day is in first bucket
-        assert_eq!(
-            DAY1 > first_bucket_start && DAY1 < (first_bucket_start + config.bucket_size()),
-            true
-        );
+        assert!(DAY1 > first_bucket_start && DAY1 < (first_bucket_start + config.bucket_size()));
         // last day is the last second of the last bucket (should it be midnight of the next day?)
         assert_eq!(
             DAY22,

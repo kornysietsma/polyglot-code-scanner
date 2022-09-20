@@ -325,7 +325,7 @@ mod test {
 
         let file_history = history.history_for(&git_root.join("z.txt"))?;
 
-        assert_eq!(file_history.is_some(), true);
+        assert!(file_history.is_some());
 
         let ids: Vec<_> = file_history.unwrap().iter().map(|h| &h.id).collect();
         assert_eq!(

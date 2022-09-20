@@ -128,7 +128,7 @@ mod test {
 
     #[test]
     fn can_get_loc_data_for_a_file() {
-        let stats = parse_file(&Path::new("./tests/data/simple/parent.clj")).unwrap();
+        let stats = parse_file(Path::new("./tests/data/simple/parent.clj")).unwrap();
         assert_eq!(stats.code, 3);
         assert_eq!(stats.language, "Clojure");
     }

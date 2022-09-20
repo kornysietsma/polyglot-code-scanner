@@ -154,7 +154,7 @@ impl GitLog {
         revwalk.set_sorting(git2::Sort::TOPOLOGICAL)?;
         revwalk.push_head()?;
         Ok(GitLogIterator {
-            git_log: &self,
+            git_log: self,
             odb,
             revwalk,
             git_file_future_registry: Rc::new(RefCell::new(GitFileFutureRegistry::new())),
@@ -204,7 +204,7 @@ impl<'a> GitLogIterator<'a> {
         let parents: Vec<Oid> = entry
             .parents
             .iter()
-            .map(|id| Oid::from_str(&id).unwrap())
+            .map(|id| Oid::from_str(id).unwrap())
             .collect();
         let mut file_changes: Vec<(PathBuf, FileNameChange)> = Vec::new();
         for file_change in &entry.file_changes {
@@ -296,7 +296,7 @@ fn trim_string(s: &str) -> Option<&str> {
     if trimmed.is_empty() {
         None
     } else {
-        Some(&trimmed)
+        Some(trimmed)
     }
 }
 
@@ -361,7 +361,7 @@ fn scan_diffs(
     commit: &Commit,
     parent: Option<&Commit>,
 ) -> Result<Vec<FileChange>, Error> {
-    let mut diff = repo.diff_tree_to_tree(parent_tree, Some(&commit_tree), None)?;
+    let mut diff = repo.diff_tree_to_tree(parent_tree, Some(commit_tree), None)?;
     // Identify renames, None means default settings - see https://libgit2.org/libgit2/#HEAD/group/diff/git_diff_find_similar
     diff.find_similar(None)?;
     let file_changes = diff

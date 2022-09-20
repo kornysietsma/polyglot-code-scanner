@@ -218,16 +218,16 @@ mod test {
         let tree = build_test_tree();
         let mut path = std::path::Path::new("child1/grandchild/nonesuch").components();
         let missing = tree.get_in(&mut path);
-        assert_eq!(missing.is_none(), true);
+        assert!(missing.is_none());
 
         let mut path2 =
             Path::new("child1/grandchild/grandchild_file.txt/files_have_no_kids").components();
         let missing2 = tree.get_in(&mut path2);
-        assert_eq!(missing2.is_none(), true);
+        assert!(missing2.is_none());
 
         let mut path3 = Path::new("no_file_at_root").components();
         let missing3 = tree.get_in(&mut path3);
-        assert_eq!(missing3.is_none(), true);
+        assert!(missing3.is_none());
     }
 
     #[test]

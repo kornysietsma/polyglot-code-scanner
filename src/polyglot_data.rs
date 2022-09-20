@@ -73,7 +73,7 @@ mod test {
 
     #[test]
     fn data_without_id_has_uuid() {
-        let mut root = FlareTreeNode::dir("root");
+        let root = FlareTreeNode::dir("root");
         let tree1: PolyglotData = PolyglotData::new("test", None, root.clone());
         let tree2: PolyglotData = PolyglotData::new("test", None, root);
         // really just asserting IDs are different!
