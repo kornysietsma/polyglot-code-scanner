@@ -1245,7 +1245,7 @@ checksum = "1df8c4ec4b0627e53bdf214615ad287367e482558cf84b109250b37464dc03ae"
 
 [[package]]
 name = "polyglot_code_scanner"
-version = "0.3.2-alpha.0"
+version = "0.3.2"
 dependencies = [
  "chrono",
  "clap",

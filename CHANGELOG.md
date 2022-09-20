@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.3.2] - 2022-09-20
 
 * Backward-incompatible release - changing output file format for a few reasons:
   * I want a unique ID that the front end can use by default for BrowserStorage - this can be specified or random
