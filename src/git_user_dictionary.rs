@@ -71,8 +71,8 @@ impl Serialize for GitUserDictionary {
     }
 }
 
+#[cfg(test)]
 mod test {
-    #[allow(unused)]
     use super::*;
     #[cfg(test)]
     use pretty_assertions::assert_eq;
