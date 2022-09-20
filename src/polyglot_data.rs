@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::flare::FlareTreeNode;
 
-pub static DATA_FILE_VERSION: &str = "1.0.0";
+pub static DATA_FILE_VERSION: &str = "1.0.1";
 
 #[derive(Debug, PartialEq, Serialize)]
 pub struct PolyglotData {
@@ -92,7 +92,7 @@ mod test {
             r#"{
                     "name":"test",
                     "id":"test-id",
-                    "version":"1.0.0",
+                    "version":"1.0.1",
                     "tree": {
                       "name":"foo.txt"
                     },

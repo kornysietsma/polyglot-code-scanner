@@ -692,7 +692,7 @@ mod test {
         GitActivity {
             author_time: timestamp,
             commit_time: timestamp,
-            users: HashSet::new(),
+            users: BTreeSet::new(),
             change: CommitChange::Add,
             lines_added: 1,
             lines_deleted: 0,

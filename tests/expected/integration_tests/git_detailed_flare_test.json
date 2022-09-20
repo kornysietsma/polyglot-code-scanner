@@ -1,7 +1,7 @@
 {
   "name": "test",
   "id": "test-id",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "tree": {
     "name": "<root>",
     "children": [
@@ -23,9 +23,16 @@
                     "details": [
                       {
                         "commit_day": 1558483200,
-                        "commits": 6,
-                        "lines_added": 8,
-                        "lines_deleted": 4,
+                        "commits": 5,
+                        "lines_added": 7,
+                        "lines_deleted": 3,
+                        "users": [0]
+                      },
+                      {
+                        "commit_day": 1558483200,
+                        "commits": 1,
+                        "lines_added": 1,
+                        "lines_deleted": 1,
                         "users": [0, 1]
                       }
                     ]
@@ -46,9 +53,16 @@
                 "details": [
                   {
                     "commit_day": 1558483200,
-                    "commits": 4,
-                    "lines_added": 11,
-                    "lines_deleted": 2,
+                    "commits": 3,
+                    "lines_added": 8,
+                    "lines_deleted": 1,
+                    "users": [0]
+                  },
+                  {
+                    "commit_day": 1558483200,
+                    "commits": 1,
+                    "lines_added": 3,
+                    "lines_deleted": 1,
                     "users": [0, 1]
                   }
                 ]

@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+
+* Somewhat breaking release - the output file schema won't change, but the logic is changing - so now data format is 1.0.1 as this is sort-of compatible:
+  * Previously all changes for a day were combined into a single GitDetails entry, now however I am generating a new GitDetails for each unique user set.
+  * This is because previously if Jane made 1 change and Joe made 100, they would both show up as changes by Jane and Joe
+  * This will make output files a bit more verbose, but hopefully not too much, but new user and team info was being distorted by this - now the UI shows you Jane and Joe separately, we need to track them separately, unless they are co-authors on a commit.
+
 ## [0.3.2] - 2022-09-20
 
 * Backward-incompatible release - changing output file format for a few reasons:

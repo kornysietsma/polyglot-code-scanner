@@ -12,8 +12,8 @@ use git2::Status;
 use serde::{Deserialize, Serialize, Serializer};
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::{BTreeSet, HashMap};
 use std::iter::once;
 use std::iter::FromIterator;
 use std::path::Path;
@@ -35,10 +35,9 @@ pub struct GitData {
     activity: Vec<GitActivity>,
 }
 
-/// Git information for a given day, summarized
-/// we don't distinguish multiple changes in a day currently, so if one person changed 1 line and another changed 100 you can't tell the difference.
-/// It is assumed that people work as teams to some degree!
-/// This could be revisited if needed, but I'm trying to keep the log size sane
+/// Git information for a given day _and_ unique set of users, summarized
+/// New as of 0.3.3 - we now generate new GitDetails per user set - the file format hasn't changed but
+/// instead of a single GitDetails per day, there might be multiple.
 /// Also dates are summarized by "author date" - had to pick author or commit date, and
 /// author dates seem more reliable.  But it's named "commit_day" as that's more understandable
 /// WIP: for better coupling data, I want individual commits, rather than summarizing per day.
@@ -46,8 +45,7 @@ pub struct GitData {
 pub struct GitDetails {
     /// Note this is based on "author date" - commit dates can be all over the place with PRs, rebasing and the like.
     pub commit_day: u64,
-    #[serde(serialize_with = "ordered_set")]
-    pub users: HashSet<usize>, // dictionary IDs
+    pub users: BTreeSet<usize>, // dictionary IDs, ordered
     pub commits: u64,
     pub lines_added: u64,
     pub lines_deleted: u64,
@@ -55,7 +53,11 @@ pub struct GitDetails {
 
 impl Ord for GitDetails {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.commit_day.cmp(&other.commit_day)
+        let day_ordering = self.commit_day.cmp(&other.commit_day);
+        if day_ordering != Ordering::Equal {
+            return day_ordering;
+        }
+        self.users.cmp(&other.users)
     }
 }
 
@@ -63,6 +65,13 @@ impl PartialOrd for GitDetails {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
+}
+
+/// this is the key to keep details stored uniquely
+#[derive(Debug, PartialEq, Eq, Hash)]
+struct GitDetailsKey {
+    pub commit_day: u64,
+    pub users: BTreeSet<usize>,
 }
 
 fn ordered_set<S>(value: &HashSet<usize>, serializer: S) -> Result<S::Ok, S::Error>
@@ -80,8 +89,7 @@ where
 pub struct GitActivity {
     pub author_time: u64,
     pub commit_time: u64,
-    #[serde(serialize_with = "ordered_set")]
-    pub users: HashSet<usize>, // dictionary IDs
+    pub users: BTreeSet<usize>, // dictionary IDs
     pub change: CommitChange,
     pub lines_added: u64,
     pub lines_deleted: u64,
@@ -180,7 +188,7 @@ impl GitHistories {
     fn unique_changers(
         history: &FileHistoryEntry,
         dictionary: &mut GitUserDictionary,
-    ) -> HashSet<usize> {
+    ) -> BTreeSet<usize> {
         let mut users: Vec<&User> = history
             .co_authors
             .iter()
@@ -204,7 +212,7 @@ impl GitHistories {
         if history.is_empty() {
             return None;
         }
-        let mut details: HashMap<u64, GitDetails> = HashMap::new();
+        let mut details: HashMap<GitDetailsKey, GitDetails> = HashMap::new();
 
         let first_date = history.iter().map(|h| h.author_time).min();
 
@@ -239,16 +247,19 @@ impl GitHistories {
 
         for entry in history {
             let author_day = start_of_day(entry.author_time);
-
-            let daily_details = details.entry(author_day).or_insert(GitDetails {
+            let unique_changers = GitHistories::unique_changers(entry, dictionary);
+            let key = GitDetailsKey {
                 commit_day: author_day,
-                users: HashSet::new(),
+                users: unique_changers.clone(),
+            };
+            let daily_details = details.entry(key).or_insert(GitDetails {
+                commit_day: author_day,
+                users: unique_changers.clone(),
                 commits: 0,
                 lines_added: 0,
                 lines_deleted: 0,
             });
             daily_details.commits += 1;
-            let unique_changers = GitHistories::unique_changers(entry, dictionary);
             daily_details
                 .users
                 .extend(unique_changers.clone().into_iter());
@@ -435,6 +446,13 @@ mod test {
                 .build()
                 .map_err(failure::err_msg)?,
             FileHistoryEntryBuilder::test_default()
+                .emails("jo@smith.com")
+                .times(first_day)
+                .author(User::new(Some("Why"), Some("y@smith.com"))) // second author so new stats
+                .id("1111")
+                .build()
+                .map_err(failure::err_msg)?,
+            FileHistoryEntryBuilder::test_default()
                 .emails("x@smith.com")
                 .times(first_day + 3 * one_day_in_secs)
                 .author(User::new(Some("Why"), Some("y@smith.com")))
@@ -452,13 +470,21 @@ mod test {
 
         let stats = histories.stats_from_history(&mut dictionary, today, &events);
 
-        let jo_set: HashSet<usize> = vec![0].into_iter().collect();
-        let xy_set: HashSet<usize> = vec![1, 2].into_iter().collect();
+        let jo_set: BTreeSet<usize> = vec![0].into_iter().collect();
+        let xy_set: BTreeSet<usize> = vec![1, 2].into_iter().collect();
+        let jo_y_set: BTreeSet<usize> = vec![0, 1].into_iter().collect();
 
         let expected_details: Vec<GitDetails> = vec![
             GitDetails {
                 commit_day: 86400,
                 users: jo_set.clone(),
+                commits: 1,
+                lines_added: 0,
+                lines_deleted: 0,
+            },
+            GitDetails {
+                commit_day: 86400,
+                users: jo_y_set.clone(),
                 commits: 1,
                 lines_added: 0,
                 lines_deleted: 0,
@@ -477,6 +503,14 @@ mod test {
                 author_time: 86400,
                 commit_time: 86400,
                 users: jo_set,
+                change: CommitChange::Add,
+                lines_added: 0,
+                lines_deleted: 0,
+            },
+            GitActivity {
+                author_time: 86400,
+                commit_time: 86400,
+                users: jo_y_set,
                 change: CommitChange::Add,
                 lines_added: 0,
                 lines_deleted: 0,
@@ -506,8 +540,8 @@ mod test {
 
         assert_eq!(dictionary.user_count(), 3);
         assert_eq!(dictionary.user_id(&USER_JO), Some(&0));
-        assert_eq!(dictionary.user_id(&USER_X), Some(&1));
-        assert_eq!(dictionary.user_id(&USER_Y), Some(&2));
+        assert_eq!(dictionary.user_id(&USER_Y), Some(&1));
+        assert_eq!(dictionary.user_id(&USER_X), Some(&2));
 
         Ok(())
     }
