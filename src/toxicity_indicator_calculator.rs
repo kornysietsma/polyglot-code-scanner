@@ -1,6 +1,6 @@
 #![warn(clippy::all)]
 
-use failure::Error;
+use anyhow::Error;
 use serde_json::Value;
 use std::path::Path;
 

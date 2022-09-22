@@ -1,5 +1,5 @@
 #![warn(clippy::all)]
-use failure::Error;
+use anyhow::Error;
 use pretty_assertions::assert_eq;
 use serde::Serialize;
 use serde_json::Value;

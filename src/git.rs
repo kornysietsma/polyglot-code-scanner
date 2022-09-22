@@ -6,8 +6,8 @@ use crate::git_file_history::{FileHistoryEntry, GitFileHistory};
 use crate::git_logger::{CommitChange, GitLog, GitLogConfig, User};
 use crate::git_user_dictionary::GitUserDictionary;
 use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
+use anyhow::Error;
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-use failure::Error;
 use git2::Status;
 use serde::{Deserialize, Serialize, Serializer};
 use std::cell::RefCell;
@@ -396,14 +396,14 @@ mod test {
                 .times(first_day)
                 .id("1111")
                 .build()
-                .map_err(failure::err_msg)?,
+                .map_err(Error::msg)?,
             FileHistoryEntryBuilder::test_default()
                 .emails("x@smith.com")
                 .times(first_day + 3 * one_day_in_secs)
                 .author(User::new(Some("Why"), Some("y@smith.com")))
                 .id("2222")
                 .build()
-                .map_err(failure::err_msg)?,
+                .map_err(Error::msg)?,
         ];
         let histories = GitHistories {
             git_file_histories: Vec::new(),
@@ -444,21 +444,21 @@ mod test {
                 .times(first_day)
                 .id("1111")
                 .build()
-                .map_err(failure::err_msg)?,
+                .map_err(Error::msg)?,
             FileHistoryEntryBuilder::test_default()
                 .emails("jo@smith.com")
                 .times(first_day)
                 .author(User::new(Some("Why"), Some("y@smith.com"))) // second author so new stats
                 .id("1111")
                 .build()
-                .map_err(failure::err_msg)?,
+                .map_err(Error::msg)?,
             FileHistoryEntryBuilder::test_default()
                 .emails("x@smith.com")
                 .times(first_day + 3 * one_day_in_secs)
                 .author(User::new(Some("Why"), Some("y@smith.com")))
                 .id("2222")
                 .build()
-                .map_err(failure::err_msg)?,
+                .map_err(Error::msg)?,
         ];
         let histories = GitHistories {
             git_file_histories: Vec::new(),

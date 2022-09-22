@@ -3,13 +3,12 @@
 extern crate chrono;
 extern crate clap;
 extern crate clap_verbosity_flag;
-extern crate failure_tools;
 extern crate fern;
 extern crate indicatif;
 extern crate log;
 extern crate structopt;
 
-use failure::Error;
+use anyhow::Error;
 use polyglot_code_scanner::coupling::CouplingConfig;
 use polyglot_code_scanner::ScannerConfig;
 use std::fs::File;
@@ -118,7 +117,7 @@ fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
     Ok(())
 }
 
-fn real_main() -> Result<(), Error> {
+fn main() -> Result<(), Error> {
     let args = Cli::from_args();
 
     setup_logging(args.verbose)?;
@@ -162,8 +161,4 @@ fn real_main() -> Result<(), Error> {
     )?;
 
     Ok(())
-}
-
-fn main() {
-    failure_tools::ok_or_exit(real_main());
 }

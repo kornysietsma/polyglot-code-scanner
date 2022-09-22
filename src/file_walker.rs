@@ -5,7 +5,7 @@ use crate::polyglot_data::PolyglotData;
 use super::flare;
 use super::flare::FlareTreeNode;
 use super::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
-use failure::Error;
+use anyhow::Error;
 use ignore::{Walk, WalkBuilder};
 #[allow(unused_imports)]
 use path_slash::PathExt;

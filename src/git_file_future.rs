@@ -83,7 +83,7 @@ impl GitFileFutureRegistry {
 #[cfg(test)]
 mod test {
     use super::*;
-    use failure::Error;
+    use anyhow::Error;
     use pretty_assertions::assert_eq;
 
     fn pb(name: &str) -> PathBuf {

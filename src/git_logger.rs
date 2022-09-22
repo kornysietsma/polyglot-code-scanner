@@ -1,6 +1,6 @@
 #![warn(clippy::all)]
 use crate::git_file_future::{FileNameChange, GitFileFutureRegistry};
-use failure::Error;
+use anyhow::Error;
 use git2::Revwalk;
 use git2::{Commit, Delta, DiffDelta, ObjectType, Odb, Oid, Patch, Repository, Tree};
 use regex::Regex;
@@ -136,7 +136,7 @@ impl GitLog {
 
         let workdir = repo
             .workdir()
-            .ok_or_else(|| format_err!("bare repository - no workdir"))?
+            .ok_or_else(|| anyhow!("bare repository - no workdir"))?
             .canonicalize()?;
 
         debug!("work dir: {:?}", workdir);

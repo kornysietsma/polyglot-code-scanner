@@ -1,5 +1,5 @@
 use crate::{flare::FlareTreeNode, ScannerConfig};
-use failure::Error;
+use anyhow::Error;
 use std::collections::hash_map::Entry;
 
 fn remove_details(node: &mut FlareTreeNode, key: &str, value: &str) -> Result<(), Error> {

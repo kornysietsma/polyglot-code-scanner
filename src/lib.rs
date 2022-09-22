@@ -3,10 +3,9 @@
 extern crate ignore;
 extern crate tokei;
 #[macro_use]
-extern crate failure;
+extern crate anyhow;
 #[macro_use]
 extern crate log;
-extern crate failure_tools;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -15,7 +14,7 @@ extern crate derive_builder;
 extern crate derive_getters;
 extern crate serde;
 
-use failure::Error;
+use anyhow::Error;
 use postprocessing::postprocess_tree;
 use std::io;
 use std::path::PathBuf;

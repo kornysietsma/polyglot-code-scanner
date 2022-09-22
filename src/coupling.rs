@@ -1,6 +1,6 @@
 use crate::polyglot_data::PolyglotData;
 use crate::{flare::FlareTreeNode, git::GitActivity};
-use failure::Error;
+use anyhow::Error;
 use indicatif::{ProgressBar, ProgressStyle};
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};

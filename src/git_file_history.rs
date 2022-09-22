@@ -1,8 +1,8 @@
 #![warn(clippy::all)]
 use crate::git_logger::{CommitChange, FileChange, GitLog, GitLogEntry, User};
+use anyhow::Error;
 use chrono::offset::TimeZone;
 use chrono::Utc;
-use failure::Error;
 use git2::Oid;
 use indicatif::{ProgressBar, ProgressStyle};
 use serde::Serialize;
