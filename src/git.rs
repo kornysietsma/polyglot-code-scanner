@@ -1,23 +1,18 @@
-#![warn(clippy::all)]
-#![allow(dead_code)]
-#![allow(unused_imports)]
-
 use crate::git_file_history::{FileHistoryEntry, GitFileHistory};
 use crate::git_logger::{CommitChange, GitLog, GitLogConfig, User};
 use crate::git_user_dictionary::GitUserDictionary;
 use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use anyhow::Error;
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-use git2::Status;
-use serde::{Deserialize, Serialize, Serializer};
-use std::cell::RefCell;
+use chrono::{NaiveDateTime, NaiveTime};
+
+use serde::{Deserialize, Serialize};
+
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::collections::{BTreeSet, HashMap};
 use std::iter::once;
-use std::iter::FromIterator;
+
 use std::path::Path;
-use std::path::PathBuf;
 
 use git2::Repository;
 use serde_json::{json, Value};
@@ -36,10 +31,10 @@ pub struct GitData {
 }
 
 /// Git information for a given day _and_ unique set of users, summarized
-/// New as of 0.3.3 - we now generate new GitDetails per user set - the file format hasn't changed but
-/// instead of a single GitDetails per day, there might be multiple.
+/// New as of 0.3.3 - we now generate new `GitDetails` per user set - the file format hasn't changed but
+/// instead of a single `GitDetails` per day, there might be multiple.
 /// Also dates are summarized by "author date" - had to pick author or commit date, and
-/// author dates seem more reliable.  But it's named "commit_day" as that's more understandable
+/// author dates seem more reliable.  But it's named "`commit_day`" as that's more understandable
 /// WIP: for better coupling data, I want individual commits, rather than summarizing per day.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GitDetails {
@@ -74,15 +69,6 @@ struct GitDetailsKey {
     pub users: BTreeSet<usize>,
 }
 
-fn ordered_set<S>(value: &HashSet<usize>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let mut ordered: Vec<&usize> = value.iter().collect();
-    ordered.sort();
-    ordered.serialize(serializer)
-}
-
 /// Fine-grained git activity, for the fine-grained coupling calculations
 /// this is very verbose so probably shouldn't be kept in final JSON
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -107,7 +93,7 @@ impl PartialOrd for GitActivity {
 }
 
 /// History of any git roots discovered by the calculator
-///  Split from GitCalculator as we need to mutate the dictionary while borrowing the history immutably
+///  Split from `GitCalculator` as we need to mutate the dictionary while borrowing the history immutably
 #[derive(Debug)]
 pub struct GitHistories {
     git_file_histories: Vec<GitFileHistory>,
@@ -134,7 +120,7 @@ fn repository_head(repository: &Repository) -> Result<String, Error> {
 }
 
 impl GitInfo {
-    pub fn new(path: &Path, repository: Repository) -> Self {
+    pub fn new(path: &Path, repository: &Repository) -> Self {
         let remote = repository.find_remote("origin");
         let remote_url = match remote {
             Err(e) => {
@@ -143,7 +129,7 @@ impl GitInfo {
             }
             Ok(remote) => remote.url().map(str::to_owned),
         };
-        let head = match repository_head(&repository) {
+        let head = match repository_head(repository) {
             Err(e) => {
                 warn!("Error fetching head for {:?}: {}", path, e);
                 None
@@ -154,13 +140,6 @@ impl GitInfo {
     }
 }
 
-fn append_unique_users(users: &mut Vec<User>, new_users: HashSet<&User>) {
-    let new_users_cloned = new_users.into_iter().cloned();
-    let old_users: HashSet<User> = users.drain(..).chain(new_users_cloned).collect();
-    let mut all_users: Vec<User> = old_users.into_iter().collect();
-
-    users.append(&mut all_users);
-}
 fn start_of_day(secs_since_epoch: u64) -> u64 {
     let date_time = NaiveDateTime::from_timestamp(secs_since_epoch as i64, 0);
     date_time
@@ -202,7 +181,6 @@ impl GitHistories {
     }
 
     fn stats_from_history(
-        &self,
         dictionary: &mut GitUserDictionary,
         last_commit: u64,
         history: &[FileHistoryEntry],
@@ -330,7 +308,7 @@ impl ToxicityIndicatorCalculator for GitCalculator {
             let file_history = history.history_for(path)?;
 
             if let Some(file_history) = file_history {
-                let stats = self.histories.stats_from_history(
+                let stats = GitHistories::stats_from_history(
                     &mut self.dictionary,
                     last_commit,
                     file_history,
@@ -348,7 +326,7 @@ impl ToxicityIndicatorCalculator for GitCalculator {
             if git_path.is_dir() {
                 match Repository::discover(path) {
                     Ok(repository) => {
-                        let info = GitInfo::new(path, repository);
+                        let info = GitInfo::new(path, &repository);
                         Ok(Some(serde_json::value::to_value(info).expect(
                             "Serializable object couldn't be serialized to JSON",
                         )))
@@ -405,17 +383,11 @@ mod test {
                 .build()
                 .map_err(Error::msg)?,
         ];
-        let histories = GitHistories {
-            git_file_histories: Vec::new(),
-            git_log_config: GitLogConfig::default(),
-        };
         let mut dictionary = GitUserDictionary::new();
 
         let today = first_day + 5 * one_day_in_secs;
 
-        let stats = histories
-            .stats_from_history(&mut dictionary, today, &events)
-            .unwrap();
+        let stats = GitHistories::stats_from_history(&mut dictionary, today, &events).unwrap();
 
         assert_eq!(stats.last_update, first_day + 3 * one_day_in_secs);
         assert_eq!(stats.age_in_days, 2);
@@ -460,15 +432,12 @@ mod test {
                 .build()
                 .map_err(Error::msg)?,
         ];
-        let histories = GitHistories {
-            git_file_histories: Vec::new(),
-            git_log_config: GitLogConfig::default(),
-        };
+
         let mut dictionary = GitUserDictionary::new();
 
         let today = first_day + 5 * one_day_in_secs;
 
-        let stats = histories.stats_from_history(&mut dictionary, today, &events);
+        let stats = GitHistories::stats_from_history(&mut dictionary, today, &events);
 
         let jo_set: BTreeSet<usize> = vec![0].into_iter().collect();
         let xy_set: BTreeSet<usize> = vec![1, 2].into_iter().collect();
@@ -490,7 +459,7 @@ mod test {
                 lines_deleted: 0,
             },
             GitDetails {
-                commit_day: 345600,
+                commit_day: 345_600,
                 users: xy_set.clone(),
                 commits: 1,
                 lines_added: 0,
@@ -516,8 +485,8 @@ mod test {
                 lines_deleted: 0,
             },
             GitActivity {
-                author_time: 345600,
-                commit_time: 345600,
+                author_time: 345_600,
+                commit_time: 345_600,
                 users: xy_set,
                 change: CommitChange::Add,
                 lines_added: 0,

@@ -1,5 +1,3 @@
-#![warn(clippy::all)]
-#![allow(clippy::cast_lossless)]
 use super::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use anyhow::Error;
 use serde::Serialize;
@@ -94,7 +92,7 @@ fn parse_file(filename: &Path) -> Result<Option<IndentationData>, Error> {
     let report = language
         .parse(PathBuf::from(filename), &config)
         .map_err(|(error, _pathbuf)| error);
-    let code_lines = CodeLines::new(report?.stats);
+    let code_lines = CodeLines::new(&report?.stats);
 
     Ok(IndentationData::new(code_lines))
 }

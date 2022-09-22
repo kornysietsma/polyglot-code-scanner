@@ -31,7 +31,7 @@ impl FileHistoryEntry {
         let entry = entry.clone();
         let file_change = file_change.clone();
         FileHistoryEntry {
-            id: entry.id().to_owned(),
+            id: entry.id().clone(),
             committer: entry.committer().clone(),
             commit_time: *entry.commit_time(),
             author: entry.author().clone(),
@@ -184,7 +184,7 @@ mod test {
     use crate::git_logger::GitLogConfig;
     use pretty_assertions::assert_eq;
     use tempfile::tempdir;
-    use test_shared::*;
+    use test_shared::{assert_eq_json_file, unzip_git_sample};
 
     #[test]
     fn can_get_log_by_filename() -> Result<(), Error> {

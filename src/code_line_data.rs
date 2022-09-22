@@ -43,7 +43,7 @@ pub struct CodeLines {
 }
 
 impl CodeLines {
-    pub fn new(stats: CodeStats) -> Self {
+    pub fn new(stats: &CodeStats) -> Self {
         CodeLines {
             lines: stats
                 .code_lines
@@ -109,7 +109,7 @@ foo();"#;
         //     .collect();
         // eprintln!("Code lines: {:?}", printable_lines);
 
-        let result: CodeLines = CodeLines::new(stats);
+        let result: CodeLines = CodeLines::new(&stats);
 
         let mut expected = vec![
             CodeLineData {

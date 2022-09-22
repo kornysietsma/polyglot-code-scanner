@@ -74,7 +74,7 @@ impl GitFileFutureRegistry {
             // and loop will continue
             } else {
                 // no children, so finished looking into the future
-                return Some(current_name.to_path_buf());
+                return Some(current_name.clone());
             }
         }
     }

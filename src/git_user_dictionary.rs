@@ -107,6 +107,6 @@ mod test {
 
         let user1 = dict.register(&lower_jane);
         assert_eq!(user1, 0);
-        assert_eq!(dict.user_by_id(0), jane)
+        assert_eq!(dict.user_by_id(0), jane);
     }
 }

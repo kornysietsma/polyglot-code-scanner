@@ -1,7 +1,19 @@
+#![forbid(unsafe_code)]
 #![warn(clippy::all)]
+#![warn(rust_2018_idioms)]
+#![warn(clippy::pedantic)]
+// pedantic is just a bit too keen for me! But still useful.
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_lossless)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::redundant_else)]
+#![allow(clippy::single_match_else)]
 
-extern crate ignore;
-extern crate tokei;
 #[macro_use]
 extern crate anyhow;
 #[macro_use]
@@ -12,12 +24,11 @@ extern crate lazy_static;
 extern crate derive_builder;
 #[macro_use]
 extern crate derive_getters;
-extern crate serde;
 
 use anyhow::Error;
 use postprocessing::postprocess_tree;
 use std::io;
-use std::path::PathBuf;
+use std::path::Path;
 
 mod code_line_data;
 // pub mod coupling;
@@ -33,13 +44,6 @@ mod loc;
 mod polyglot_data;
 mod postprocessing;
 mod toxicity_indicator_calculator;
-
-#[cfg(test)]
-extern crate tempfile;
-#[cfg(test)]
-extern crate test_shared;
-#[cfg(test)]
-extern crate zip;
 
 mod git_file_history;
 mod git_logger;
@@ -61,6 +65,7 @@ pub struct ScannerConfig {
 }
 
 impl ScannerConfig {
+    #[must_use]
     pub fn default(name: &str) -> Self {
         ScannerConfig {
             git_years: None,
@@ -72,6 +77,7 @@ impl ScannerConfig {
     }
 }
 
+#[must_use]
 pub fn named_toxicity_indicator_calculator(
     name: &str,
     config: &ScannerConfig,
@@ -89,10 +95,10 @@ pub fn named_toxicity_indicator_calculator(
 }
 
 pub fn run<W>(
-    root: PathBuf,
-    config: ScannerConfig,
+    root: &Path,
+    config: &ScannerConfig,
     coupling_config: Option<CouplingConfig>,
-    toxicity_indicator_calculator_names: Vec<&str>,
+    toxicity_indicator_calculator_names: &[&str],
     out: W,
 ) -> Result<(), Error>
 where
@@ -100,14 +106,14 @@ where
 {
     let maybe_tics: Option<Vec<_>> = toxicity_indicator_calculator_names
         .iter()
-        .map(|name| named_toxicity_indicator_calculator(name, &config))
+        .map(|name| named_toxicity_indicator_calculator(name, config))
         .collect();
 
     let mut tics = maybe_tics.expect("Some toxicity indicator calculator names don't exist!");
 
     info!("Walking directory tree");
     let mut polyglot_data = file_walker::walk_directory(
-        &root,
+        root,
         &config.name,
         config.data_id.as_deref(),
         config.follow_symlinks,

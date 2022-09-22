@@ -51,15 +51,13 @@ impl FlareTreeNode {
     }
 
     pub fn append_child(&mut self, child: FlareTreeNode) {
-        if self.is_file {
-            panic!("appending child to a directory: {:?}", self)
-        }
+        assert!(!self.is_file, "appending child to a directory: {:?}", self);
         self.children.push(child); // TODO - return self?
     }
 
     /// gets a tree entry by path, or None if something along the path doesn't exist
     #[allow(dead_code)] // used in tests
-    pub fn get_in(&self, path: &mut std::path::Components) -> Option<&FlareTreeNode> {
+    pub fn get_in(&self, path: &mut std::path::Components<'_>) -> Option<&FlareTreeNode> {
         match path.next() {
             Some(first_name) => {
                 let dir_name = first_name.as_os_str();
@@ -74,7 +72,10 @@ impl FlareTreeNode {
     }
 
     /// gets a mutable tree entry by path, or None if something along the path doesn't exist
-    pub fn get_in_mut(&mut self, path: &mut std::path::Components) -> Option<&mut FlareTreeNode> {
+    pub fn get_in_mut(
+        &mut self,
+        path: &mut std::path::Components<'_>,
+    ) -> Option<&mut FlareTreeNode> {
         match path.next() {
             Some(first_name) => {
                 let dir_name = first_name.as_os_str();
@@ -93,7 +94,7 @@ impl FlareTreeNode {
     }
 
     // used only for postprocessing - could refactor - move functionality here
-    pub fn get_data_entry(&mut self, key: String) -> Entry<String, Value> {
+    pub fn get_data_entry(&mut self, key: String) -> Entry<'_, String, Value> {
         self.data.entry(key)
     }
 
@@ -122,7 +123,7 @@ impl Serialize for FlareTreeNode {
         let name = name_as_str::<S>(&self.name)?;
         state.serialize_field("name", &name)?;
         if !self.data.is_empty() {
-            state.serialize_field("data", &self.data)?
+            state.serialize_field("data", &self.data)?;
         }
         if !self.is_file {
             state.serialize_field("children", &self.children)?;
@@ -138,7 +139,7 @@ mod test {
     use pretty_assertions::assert_eq;
     use serde_json::json;
     use std::path::Path;
-    use test_shared::*;
+    use test_shared::{assert_eq_json_str, assert_eq_json_value};
 
     #[test]
     fn can_build_tree() {
@@ -158,7 +159,7 @@ mod test {
                 }],
                 data: HashMap::new()
             }
-        )
+        );
     }
 
     fn build_test_tree() -> FlareTreeNode {
@@ -279,7 +280,7 @@ mod test {
                     "name":"root",
                     "children": []
                 }"#,
-        )
+        );
     }
 
     #[test]
@@ -294,7 +295,7 @@ mod test {
                 "data": {"wibble":"fnord"},
                 "children": []
                 }"#,
-        )
+        );
     }
 
     #[test]
@@ -306,7 +307,7 @@ mod test {
             r#"{
                     "name":"foo.txt"
                 }"#,
-        )
+        );
     }
 
     #[test]
@@ -320,7 +321,7 @@ mod test {
                     "name":"foo.txt",
                     "data": {"wibble":"fnord"}
                 }"#,
-        )
+        );
     }
 
     #[test]
@@ -335,7 +336,7 @@ mod test {
                     "name":"foo.txt",
                     "data": {"bat": {"foo": ["bar", "baz", 123]}}
                 }"#,
-        )
+        );
     }
 
     #[test]
@@ -358,7 +359,7 @@ mod test {
                     }
                 ]
             }),
-        )
+        );
     }
 
     #[test]
@@ -381,6 +382,6 @@ mod test {
                         }
                     ]
             }),
-        )
+        );
     }
 }

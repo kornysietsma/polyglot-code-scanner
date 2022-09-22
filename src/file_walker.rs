@@ -16,7 +16,7 @@ fn apply_calculators_to_node(
     path: &Path,
     toxicity_indicator_calculators: &mut [Box<dyn ToxicityIndicatorCalculator>],
 ) {
-    toxicity_indicator_calculators.iter_mut().for_each(|tic| {
+    for tic in toxicity_indicator_calculators.iter_mut() {
         let indicators = tic.calculate(path);
         match indicators {
             Ok(Some(indicators)) => node.add_data(tic.name(), indicators),
@@ -30,7 +30,7 @@ fn apply_calculators_to_node(
                 );
             }
         }
-    });
+    }
 }
 
 const LOG_INTERVAL_SECS: u64 = 60 * 5;
@@ -96,7 +96,7 @@ pub fn walk_directory(
         WalkBuilder::new(root)
             .add_custom_ignore_filename(".polyglot_code_scanner_ignore")
             .follow_links(follow_symlinks)
-            .sort_by_file_name(|name1, name2| name1.cmp(name2))
+            .sort_by_file_name(std::cmp::Ord::cmp)
             .build(),
         root,
         name,
@@ -109,14 +109,14 @@ pub fn walk_directory(
 mod test {
     use super::*;
     use serde_json::{json, Value};
-    use test_shared::*;
+    use test_shared::assert_eq_json_file;
 
     #[test]
     fn scanning_a_filesystem_builds_a_tree() {
         let root = Path::new("./tests/data/simple/");
         let tree = walk_directory(root, "test", Some("test-id"), false, &mut Vec::new()).unwrap();
 
-        assert_eq_json_file(&tree, "./tests/expected/simple_files.json")
+        assert_eq_json_file(&tree, "./tests/expected/simple_files.json");
     }
 
     #[test]
@@ -124,7 +124,7 @@ mod test {
         let root = Path::new("./tests/data/simple_linked/");
         let tree = walk_directory(root, "test", Some("test-id"), true, &mut Vec::new()).unwrap();
 
-        assert_eq_json_file(&tree, "./tests/expected/simple_files.json")
+        assert_eq_json_file(&tree, "./tests/expected/simple_files.json");
     }
 
     #[derive(Debug)]

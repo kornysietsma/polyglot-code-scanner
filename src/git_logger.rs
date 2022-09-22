@@ -68,7 +68,7 @@ pub struct GitLogIterator<'a> {
     git_file_future_registry: Rc<RefCell<GitFileFutureRegistry>>,
 }
 
-/// simplified user info - based on git2::Signature
+/// simplified user info - based on `git2::Signature`
 /// everything is derived, seems to work OK as the structure is so simple
 #[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord, Serialize)]
 pub struct User {
@@ -79,8 +79,8 @@ pub struct User {
 impl User {
     pub fn new(name: Option<&str>, email: Option<&str>) -> User {
         User {
-            name: name.map(|x| x.to_owned()),
-            email: email.map(|x| x.to_owned()),
+            name: name.map(std::borrow::ToOwned::to_owned),
+            email: email.map(std::borrow::ToOwned::to_owned),
         }
     }
 
@@ -106,7 +106,7 @@ pub struct GitLogEntry {
     file_changes: Vec<FileChange>,
 }
 
-/// the various kinds of git change we care about - a serializable subset of git2::Delta
+/// the various kinds of git change we care about - a serializable subset of `git2::Delta`
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Copy)]
 pub enum CommitChange {
     Add,
@@ -148,7 +148,7 @@ impl GitLog {
         })
     }
 
-    pub fn iterator(&self) -> Result<GitLogIterator, Error> {
+    pub fn iterator(&self) -> Result<GitLogIterator<'_>, Error> {
         let odb = self.repo.odb()?;
         let mut revwalk = self.repo.revwalk()?;
         revwalk.set_sorting(git2::Sort::TOPOLOGICAL)?;
@@ -212,11 +212,11 @@ impl<'a> GitLogIterator<'a> {
                 CommitChange::Rename => {
                     let old_name = file_change.old_file.as_ref().unwrap().clone();
                     let new_name = file_change.file.clone();
-                    file_changes.push((old_name, FileNameChange::Renamed(new_name)))
+                    file_changes.push((old_name, FileNameChange::Renamed(new_name)));
                 }
                 CommitChange::Delete => {
                     let name = file_change.file.clone();
-                    file_changes.push((name, FileNameChange::Deleted()))
+                    file_changes.push((name, FileNameChange::Deleted()));
                 }
                 _ => (),
             }
@@ -284,10 +284,10 @@ impl<'a> GitLogIterator<'a> {
     }
 }
 
-fn signature_to_user(signature: &git2::Signature) -> User {
+fn signature_to_user(signature: &git2::Signature<'_>) -> User {
     User {
-        name: signature.name().map(|x| x.to_owned()),
-        email: signature.email().map(|x| x.to_owned()),
+        name: signature.name().map(std::borrow::ToOwned::to_owned),
+        email: signature.email().map(std::borrow::ToOwned::to_owned),
     }
 }
 
@@ -327,8 +327,8 @@ fn find_coauthors(message: &str) -> Vec<User> {
 
 fn commit_file_changes(
     repo: &Repository,
-    commit: &Commit,
-    commit_tree: &Tree,
+    commit: &Commit<'_>,
+    commit_tree: &Tree<'_>,
     config: GitLogConfig,
 ) -> Vec<FileChange> {
     if commit.parent_count() == 0 {
@@ -356,10 +356,10 @@ fn commit_file_changes(
 
 fn scan_diffs(
     repo: &Repository,
-    commit_tree: &Tree,
-    parent_tree: Option<&Tree>,
-    commit: &Commit,
-    parent: Option<&Commit>,
+    commit_tree: &Tree<'_>,
+    parent_tree: Option<&Tree<'_>>,
+    commit: &Commit<'_>,
+    parent: Option<&Commit<'_>>,
 ) -> Result<Vec<FileChange>, Error> {
     let mut diff = repo.diff_tree_to_tree(parent_tree, Some(commit_tree), None)?;
     // Identify renames, None means default settings - see https://libgit2.org/libgit2/#HEAD/group/diff/git_diff_find_similar
@@ -379,12 +379,16 @@ fn scan_diffs(
                 warn!("No patch possible diffing {:?} -> {:?}", commit, parent);
                 (0, 0, 0)
             };
-            summarise_delta(delta, lines_added as u64, lines_deleted as u64)
+            summarise_delta(&delta, lines_added as u64, lines_deleted as u64)
         });
     Ok(file_changes.collect())
 }
 
-fn summarise_delta(delta: DiffDelta, lines_added: u64, lines_deleted: u64) -> Option<FileChange> {
+fn summarise_delta(
+    delta: &DiffDelta<'_>,
+    lines_added: u64,
+    lines_deleted: u64,
+) -> Option<FileChange> {
     match delta.status() {
         Delta::Added => {
             let name = delta.new_file().path().unwrap();
@@ -451,7 +455,7 @@ mod test {
     use pretty_assertions::assert_eq;
     use serde_json::json;
     use tempfile::tempdir;
-    use test_shared::*;
+    use test_shared::{assert_eq_json_file, assert_eq_json_value, unzip_git_sample};
 
     #[test]
     fn users_can_be_lowercased() {
@@ -578,10 +582,7 @@ mod test {
         let mut entries: Vec<_> = git_log.iterator()?.filter_map(Result::ok).collect();
         entries.sort_by(|a, b| a.author_time.cmp(&b.author_time));
 
-        let changes: Vec<String> = entries
-            .iter()
-            .map(|entry| entry.summary.to_owned())
-            .collect();
+        let changes: Vec<String> = entries.iter().map(|entry| entry.summary.clone()).collect();
 
         assert_eq!(
             changes,

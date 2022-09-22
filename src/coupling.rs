@@ -33,7 +33,7 @@ impl PathVec {
     where
         T: Into<OsString>,
     {
-        self.components.push(path.into())
+        self.components.push(path.into());
     }
 }
 
@@ -68,8 +68,8 @@ where
 
 /// Every file change we've seen - only in source code, and only where actual lines of code changed
 /// Stored two ways redundantly for speed of lookup:
-/// * by timestamp, in a BTreeMap so it's easy to access ranges
-/// * by filename, with a BTreeSet of timestamps so again we can get ranges out easily
+/// * by timestamp, in a `BTreeMap` so it's easy to access ranges
+/// * by filename, with a `BTreeSet` of timestamps so again we can get ranges out easily
 struct FileChangeTimestamps {
     /// all files changed by timestamp - must actually have lines changed!
     timestamps: BTreeMap<u64, HashSet<Rc<PathVec>>>,
@@ -84,7 +84,7 @@ impl FileChangeTimestamps {
             &mut timestamps,
             &mut file_changes,
             root,
-            Rc::from(PathVec::new()),
+            &Rc::from(PathVec::new()),
         )?;
         Ok(FileChangeTimestamps {
             timestamps,
@@ -106,12 +106,12 @@ impl FileChangeTimestamps {
         timestamps: &mut BTreeMap<u64, HashSet<Rc<PathVec>>>,
         file_changes: &mut HashMap<Rc<PathVec>, BTreeSet<u64>>,
         node: &FlareTreeNode,
-        path: Rc<PathVec>,
+        path: &Rc<PathVec>,
     ) -> Result<(), Error> {
         let lines = node
             .get_data("loc")
             .and_then(|loc| loc.get("code"))
-            .and_then(|x| x.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(0);
         if lines > 0 {
             if let Some(Value::Object(value)) = node.get_data("git") {
@@ -119,14 +119,14 @@ impl FileChangeTimestamps {
                     for activity_value in activity {
                         let activity: GitActivity = serde_json::from_value(activity_value.clone())?;
                         if activity.lines_deleted > 0 || activity.lines_added > 0 {
-                            let ts_entry = timestamps
+                            let timestamp_entry = timestamps
                                 .entry(activity.commit_time)
                                 .or_insert_with(HashSet::new);
-                            (*ts_entry).insert(path.clone());
-                            let fs_entry = file_changes
+                            (*timestamp_entry).insert(path.clone());
+                            let file_entry = file_changes
                                 .entry(path.clone())
                                 .or_insert_with(BTreeSet::new);
-                            (*fs_entry).insert(activity.commit_time);
+                            (*file_entry).insert(activity.commit_time);
                         }
                     }
                 }
@@ -134,13 +134,13 @@ impl FileChangeTimestamps {
         };
 
         for child in node.get_children() {
-            let mut child_path = (*path).clone();
+            let mut child_path = (**path).clone();
             child_path.push(child.name());
             FileChangeTimestamps::accumulate_files(
                 timestamps,
                 file_changes,
                 child,
-                Rc::new(child_path),
+                &Rc::new(child_path),
             )?;
         }
         Ok(())
@@ -226,10 +226,11 @@ impl Coupling {
         T: IntoIterator<Item = Rc<PathVec>>,
     {
         for file in files {
-            self.add_file(file)
+            self.add_file(file);
         }
         self.activity_bursts += 1;
     }
+    
     fn filter_by_ratio(&self, min_coupling_ratio: f64) -> Coupling {
         let bursts = self.activity_bursts as f64;
         Coupling {
@@ -275,8 +276,8 @@ impl CouplingBucket {
     }
 
     /// filter the bucket to remove noise
-    /// min_source_days is the minimum number of days a file should have existed for it to be included
-    /// min_coupling_ratio is the overall ratio of dest days / source days for the destination to be included.
+    /// `min_source_days` is the minimum number of days a file should have existed for it to be included
+    /// `min_coupling_ratio` is the overall ratio of dest days / source days for the destination to be included.
     fn filter_by(&mut self, min_bursts: u64, min_coupling_ratio: f64) {
         self.couplings = self
             .couplings
@@ -311,7 +312,7 @@ impl CouplingBuckets {
                 .expect("Invalid template in CouplingBuckets::new!")
                 .progress_chars("##-"),
         );
-        for (file, timestamps) in file_change_timestamps.file_changes.iter() {
+        for (file, timestamps) in &file_change_timestamps.file_changes {
             bar.inc(1);
             for burst in ActivityBurst::from_events(timestamps, config.min_activity_gap) {
                 let window_start = burst.start - config.coupling_time_distance;
@@ -355,13 +356,13 @@ impl CouplingBuckets {
             .collect()
     }
 
-    fn file_coupling_data(&self, file: Rc<PathVec>) -> SerializableCouplingData {
+    fn file_coupling_data(&self, file: &Rc<PathVec>) -> SerializableCouplingData {
         SerializableCouplingData::new(
             self.buckets
                 .iter()
                 .filter(|coupling_bucket| coupling_bucket.couplings.contains_key(&file.clone()))
                 .map(|coupling_bucket| {
-                    let stats = coupling_bucket.couplings.get(&file.to_owned()).unwrap();
+                    let stats = coupling_bucket.couplings.get(&file.clone()).unwrap();
                     let activity_bursts = stats.activity_bursts;
                     let mut coupled_files: Vec<_> = stats
                         .coupled_files
@@ -425,6 +426,7 @@ pub struct CouplingConfig {
 }
 
 impl CouplingConfig {
+    #[must_use]
     pub fn new(
         bucket_days: u64,
         min_bursts: u64,
@@ -444,9 +446,11 @@ impl CouplingConfig {
             max_common_roots,
         }
     }
+    #[must_use]
     pub fn bucket_size(&self) -> u64 {
         self.bucket_days * 24 * 60 * 60
     }
+    #[must_use]
     pub fn buckets_for(&self, earliest: u64, latest: u64) -> (u64, u64) {
         // want buckets that end with the last day of the last bucket the latest day
         let bucket_size = self.bucket_size();
@@ -531,7 +535,7 @@ fn relationship_distance(path1: &PathVec, path2: &PathVec) -> Option<usize> {
     relationship_distance_with_common_precalculated(path1, path2, common_root_count)
 }
 
-/// as relationship_distance but avoids duplicate calculation of common_roots()
+/// as `relationship_distance` but avoids duplicate calculation of `common_roots`()
 fn relationship_distance_with_common_precalculated(
     path1: &PathVec,
     path2: &PathVec,
@@ -620,7 +624,7 @@ pub fn gather_coupling(
             .tree_mut()
             .get_in_mut(&mut file_buf.components())
         {
-            let coupling_data = filtered_buckets.file_coupling_data(file);
+            let coupling_data = filtered_buckets.file_coupling_data(&file);
             tree_node.add_data(
                 "coupling",
                 serde_json::value::to_value(coupling_data)
@@ -759,8 +763,8 @@ mod test {
         expected_timestamps.insert(DAY22, [child_file_1.clone()].iter().cloned().collect());
 
         let mut expected_file_changes: HashMap<Rc<PathVec>, BTreeSet<u64>> = HashMap::new();
-        expected_file_changes.insert(root_file_1, [DAY1, DAY21].iter().cloned().collect());
-        expected_file_changes.insert(child_file_1, [DAY21, DAY22].iter().cloned().collect());
+        expected_file_changes.insert(root_file_1, [DAY1, DAY21].iter().copied().collect());
+        expected_file_changes.insert(child_file_1, [DAY21, DAY22].iter().copied().collect());
 
         assert_eq!(expected_timestamps, stats.timestamps);
         assert_eq!(expected_file_changes, stats.file_changes);
@@ -776,7 +780,7 @@ mod test {
 
     #[test]
     fn single_event_creates_a_single_activity_burst() {
-        let events = [DAY1].iter().cloned().collect();
+        let events = [DAY1].iter().copied().collect();
         let results = ActivityBurst::from_events(&events, 60);
         assert_eq!(results.len(), 1);
         let res1 = results.first().unwrap();
@@ -793,7 +797,7 @@ mod test {
 
     #[test]
     fn events_with_no_gap_return_a_single_activity_burst() {
-        let events = [DAY1, DAY1 + 10, DAY1 + 20].iter().cloned().collect();
+        let events = [DAY1, DAY1 + 10, DAY1 + 20].iter().copied().collect();
         let results = ActivityBurst::from_events(&events, 60);
         assert_eq!(results.len(), 1);
         let res1 = results.first().unwrap();
@@ -815,7 +819,7 @@ mod test {
             DAY3 + 20,
         ]
         .iter()
-        .cloned()
+        .copied()
         .collect();
 
         let results = ActivityBurst::from_events(&events, 59);
@@ -873,7 +877,7 @@ mod test {
         assert_eq!(config.bucket_for(config.first_bucket_start - 1), None);
     }
 
-    fn make_test_timestamps(data: Vec<(u64, Vec<&str>)>) -> FileChangeTimestamps {
+    fn make_test_timestamps(data: &[(u64, Vec<&str>)]) -> FileChangeTimestamps {
         let timestamps: BTreeMap<u64, HashSet<Rc<PathVec>>> = data
             .iter()
             .map(|(day, namelist)| {
@@ -907,7 +911,7 @@ mod test {
     fn single_file_change_produces_trivial_coupling_data() {
         // simple scenario:
         //  'foo' changes with 'bar' only
-        let timestamps = make_test_timestamps(vec![(DAY1, vec!["foo", "bar"])]);
+        let timestamps = make_test_timestamps(&[(DAY1, vec!["foo", "bar"])]);
         // config is effectively not filtering anything
         let config = simple_coupling_config();
         let bucketing_config = BucketingConfig::new(config, DAY1, DAY1);
@@ -948,7 +952,7 @@ mod test {
     #[test]
     fn can_build_coupling_data_from_timestamps() {
         // a more real scenario, with a few more detailed coupling stats
-        let timestamps = make_test_timestamps(vec![
+        let timestamps = make_test_timestamps(&[
             (DAY1, vec!["foo", "bar"]),
             (DAY1 + 60, vec!["foo"]),
             (DAY1 + 90, vec!["baz"]),
@@ -993,7 +997,7 @@ mod test {
     #[test]
     fn can_build_serializable_coupling_data_from_timestamps() {
         // same scenario as above, but testing the ability to turn it into serializable data
-        let timestamps = make_test_timestamps(vec![
+        let timestamps = make_test_timestamps(&[
             (DAY1, vec!["foo", "bar"]),
             (DAY1 + 60, vec!["foo"]),
             (DAY1 + 90, vec!["baz"]),
@@ -1009,7 +1013,7 @@ mod test {
 
         let coupling_buckets = CouplingBuckets::new(config, &timestamps, bucketing_config);
 
-        let foo_coupling = coupling_buckets.file_coupling_data(rc_pb("foo"));
+        let foo_coupling = coupling_buckets.file_coupling_data(&rc_pb("foo"));
 
         // cheat - as it's serializable, we can test by comparing JSON instead of constructing objects
         let foo_json = serde_json::value::to_value(foo_coupling).expect("Can't serialize!");
@@ -1052,7 +1056,7 @@ mod test {
         // foo -> bat is out as it's 25%
         // bat -> foo is out as there is only one bat
         // baz -> foo is in as there are two baz's
-        let timestamps = make_test_timestamps(vec![
+        let timestamps = make_test_timestamps(&[
             (DAY1, vec!["foo", "bar"]),
             (DAY2, vec!["foo", "bar"]),
             (DAY3, vec!["foo", "bar", "baz"]),
@@ -1062,7 +1066,7 @@ mod test {
 
         let coupling_buckets = CouplingBuckets::new(config, &timestamps, bucketing_config);
 
-        let foo_coupling = coupling_buckets.file_coupling_data(rc_pb("foo"));
+        let foo_coupling = coupling_buckets.file_coupling_data(&rc_pb("foo"));
         assert_eq!(foo_coupling.buckets.len(), 1);
         let foo_coupling = &foo_coupling.buckets[0];
         assert_eq!(foo_coupling.activity_bursts, 4);
@@ -1071,10 +1075,10 @@ mod test {
             vec![(rc_pb("bar"), 4), (rc_pb("baz"), 2)]
         );
 
-        let bat_coupling = coupling_buckets.file_coupling_data(rc_pb("bat"));
+        let bat_coupling = coupling_buckets.file_coupling_data(&rc_pb("bat"));
         assert_eq!(bat_coupling.buckets.len(), 0);
 
-        let baz_coupling = coupling_buckets.file_coupling_data(rc_pb("baz"));
+        let baz_coupling = coupling_buckets.file_coupling_data(&rc_pb("baz"));
         assert_eq!(baz_coupling.buckets.len(), 1);
         let baz_coupling = &baz_coupling.buckets[0];
         assert_eq!(baz_coupling.activity_bursts, 2);
@@ -1101,7 +1105,7 @@ mod test {
         //  siblings are not included
         //  'foo/bar/*' won't match anything else under 'foo/bar' as that's two common roots.
 
-        let timestamps = make_test_timestamps(vec![
+        let timestamps = make_test_timestamps(&[
             (DAY1, vec!["foo/bar.c", "foo/baz.c"]),         // siblings
             (DAY2, vec!["foo/bat/bar.c", "foo/baz/bar.c"]), // cousins
             (DAY3, vec!["foo/bar/baz/bat.c", "foo/bar/bat/bum.c"]), // two common roots
@@ -1111,21 +1115,21 @@ mod test {
 
         let coupling_buckets = CouplingBuckets::new(config, &timestamps, bucketing_config);
 
-        let day1_coupling = coupling_buckets.file_coupling_data(rc_pb("foo/bar.c"));
+        let day1_coupling = coupling_buckets.file_coupling_data(&rc_pb("foo/bar.c"));
         assert_eq!(day1_coupling.buckets.len(), 1);
         assert_eq!(day1_coupling.buckets[0].coupled_files.len(), 0);
-        let day2_coupling = coupling_buckets.file_coupling_data(rc_pb("foo/bat/bar.c"));
+        let day2_coupling = coupling_buckets.file_coupling_data(&rc_pb("foo/bat/bar.c"));
         assert_eq!(day2_coupling.buckets.len(), 1);
         let day2_coupling = &day2_coupling.buckets[0];
         assert_eq!(
             day2_coupling.coupled_files,
             vec![(rc_pb("foo/baz/bar.c"), 1)]
         );
-        let day3_coupling = coupling_buckets.file_coupling_data(rc_pb("foo/bar/baz/bat.c"));
+        let day3_coupling = coupling_buckets.file_coupling_data(&rc_pb("foo/bar/baz/bat.c"));
         assert_eq!(day3_coupling.buckets.len(), 1);
         assert_eq!(day3_coupling.buckets[0].coupled_files.len(), 0);
 
-        let day4_coupling = coupling_buckets.file_coupling_data(rc_pb("foo/bum.c"));
+        let day4_coupling = coupling_buckets.file_coupling_data(&rc_pb("foo/bum.c"));
         assert_eq!(day4_coupling.buckets.len(), 1);
         let day4_coupling = &day4_coupling.buckets[0];
         assert_eq!(day4_coupling.coupled_files, vec![(rc_pb("bar/foo.c"), 1)]);

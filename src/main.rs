@@ -1,12 +1,7 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
-
-extern crate chrono;
-extern crate clap;
-extern crate clap_verbosity_flag;
-extern crate fern;
-extern crate indicatif;
-extern crate log;
+#![warn(clippy::pedantic)]
+#![warn(rust_2018_idioms)]
 
 use anyhow::Error;
 use clap::Parser;
@@ -22,7 +17,7 @@ use std::path::PathBuf;
 ///
 /// Scans source code and generates indicators that may (or may not) show toxic code.
 /// Ignores files specified by `.gitignore` or `.polyglot_code_scanner_ignore` files
-/// See https://polyglot.korny.info for details
+/// See <https://polyglot.korny.info> for details
 struct Cli {
     #[clap(
         short = 'v',
@@ -97,10 +92,9 @@ fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
     let mut base_config = fern::Dispatch::new();
 
     base_config = match verbosity {
-        0 => base_config.level(log::LevelFilter::Info),
+        0 | 3 => base_config.level(log::LevelFilter::Info),
         1 => base_config.level(log::LevelFilter::Error),
         2 => base_config.level(log::LevelFilter::Warn),
-        3 => base_config.level(log::LevelFilter::Info),
         4 => base_config.level(log::LevelFilter::Debug),
         _5_or_more => base_config.level(log::LevelFilter::Trace),
     };
@@ -116,7 +110,7 @@ fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
                 record.target(),
                 record.level(),
                 message
-            ))
+            ));
         })
         .chain(io::stderr());
 
@@ -161,10 +155,10 @@ fn main() -> Result<(), Error> {
     };
 
     polyglot_code_scanner::run(
-        root,
-        scanner_config,
+        &root,
+        &scanner_config,
         coupling_config,
-        vec!["loc", "git", "indentation"],
+        &["loc", "git", "indentation"],
         &mut out,
     )?;
 

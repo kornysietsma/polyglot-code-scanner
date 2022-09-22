@@ -1,4 +1,8 @@
+#![forbid(unsafe_code)]
 #![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(rust_2018_idioms)]
+
 use anyhow::Error;
 use pretty_assertions::assert_eq;
 use serde::Serialize;

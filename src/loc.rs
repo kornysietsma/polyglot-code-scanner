@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 use tokei::{Config, LanguageType};
 
-/// a struct representing tokei language data - based on tokei::Stats and tokei::Languages::name
+/// a struct representing tokei language data - based on `tokei::Stats` and `tokei::Languages::name`
 #[derive(Debug, PartialEq, Serialize)]
 struct LanguageLocData {
     /// Canonical language name

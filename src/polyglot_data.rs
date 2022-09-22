@@ -25,9 +25,10 @@ pub struct PolyglotData {
 
 impl PolyglotData {
     pub fn new(name: &str, id: Option<&str>, tree: FlareTreeNode) -> Self {
-        let id = id
-            .map(|i| i.to_string())
-            .unwrap_or_else(|| Uuid::new_v4().as_hyphenated().to_string());
+        let id = id.map_or_else(
+            || Uuid::new_v4().as_hyphenated().to_string(),
+            std::string::ToString::to_string,
+        );
         PolyglotData {
             version: DATA_FILE_VERSION.to_string(),
             name: name.to_string(),
@@ -53,7 +54,7 @@ mod test {
     use super::*;
     use pretty_assertions::assert_eq;
     use serde_json::json;
-    use test_shared::*;
+    use test_shared::assert_eq_json_str;
     #[test]
     fn can_build_data_tree() {
         let root = FlareTreeNode::dir("root");
@@ -68,7 +69,7 @@ mod test {
                 tree: root,
                 metadata: HashMap::new()
             }
-        )
+        );
     }
 
     #[test]
@@ -98,6 +99,6 @@ mod test {
                     },
                     "metadata": {"bat": {"foo": ["bar", "baz", 123]}}
                 }"#,
-        )
+        );
     }
 }
