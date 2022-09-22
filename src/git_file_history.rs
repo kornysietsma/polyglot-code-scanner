@@ -77,9 +77,11 @@ impl GitFileHistory {
         let mut history_by_file = HashMap::<PathBuf, Vec<FileHistoryEntry>>::new();
         info!("Loading git log");
         let progress_bar = ProgressBar::new_spinner()
-            .with_style(ProgressStyle::default_spinner().template("[{elapsed}] {msg}"));
+            .with_style(ProgressStyle::default_spinner().template("[{elapsed}] {msg}")?);
         progress_bar.tick();
-        progress_bar.set_draw_delta(100);
+        // TODO: this was removed in indicatif 0.17 - do we need it?
+        // see https://github.com/console-rs/indicatif/issues/393
+        // progress_bar.set_draw_delta(100);
 
         // for handling renames, this needs to be a 2-pass process
 
@@ -103,7 +105,7 @@ impl GitFileHistory {
                     // more than an hour change
                     {
                         let fmt_time = Utc.timestamp(commit_time as i64, 0).to_string();
-                        progress_bar.set_message(&fmt_time);
+                        progress_bar.set_message(fmt_time);
                         progress_last_updated = commit_time;
                         progress_bar.inc(1);
                     }

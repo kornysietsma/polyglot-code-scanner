@@ -308,6 +308,7 @@ impl CouplingBuckets {
         bar.set_style(
             ProgressStyle::default_bar()
                 .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
+                .expect("Invalid template in CouplingBuckets::new!")
                 .progress_chars("##-"),
         );
         for (file, timestamps) in file_change_timestamps.file_changes.iter() {
