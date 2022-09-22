@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #![warn(clippy::all)]
 
 extern crate chrono;
@@ -6,26 +7,25 @@ extern crate clap_verbosity_flag;
 extern crate fern;
 extern crate indicatif;
 extern crate log;
-extern crate structopt;
 
 use anyhow::Error;
+use clap::Parser;
 use polyglot_code_scanner::coupling::CouplingConfig;
 use polyglot_code_scanner::ScannerConfig;
 use std::fs::File;
 use std::io;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-#[structopt()]
+#[derive(Debug, Parser)]
+#[clap(author, version)]
 /// Polyglot Code Scanner
 ///
 /// Scans source code and generates indicators that may (or may not) show toxic code.
 /// Ignores files specified by `.gitignore` or `.polyglot_code_scanner_ignore` files
 /// See https://polyglot.korny.info for details
 struct Cli {
-    #[structopt(
-        short = "v",
+    #[clap(
+        short = 'v',
         long = "verbose",
         parse(from_occurrences),
         multiple = true
@@ -33,51 +33,59 @@ struct Cli {
     /// Logging verbosity, v = error, vv = warn, vvv = info (default), vvvv = debug, vvvvv = trace
     verbose: u64,
     /// Output file, stdout if not present, or not used if sending to web server
-    #[structopt(short = "o", long = "output", parse(from_os_str))]
+    #[clap(short = 'o', long = "output", parse(from_os_str))]
     output: Option<PathBuf>,
     /// project name - identifies the selected data for display and state storage
-    #[structopt(short = "n", long = "name")]
+    #[clap(value_parser, short = 'n', long = "name")]
     name: String,
 
     /// data file ID - used to identify unique data files for browser storage, generates a UUID if not specified
-    #[structopt(long = "id")]
+    #[clap(value_parser, long = "id")]
     id: Option<String>,
     /// Root directory, current dir if not present
-    #[structopt(parse(from_os_str))]
+    #[clap(parse(from_os_str))]
     root: Option<PathBuf>,
-    #[structopt(long = "years", default_value = "3")]
+    #[clap(value_parser, long = "years", default_value = "3")]
     /// how many years of git history to parse - default only scan the last 3 years (from now, not git head)
     git_years: u64,
-    #[structopt(long = "no-detailed-git")]
+    #[clap(value_parser, long = "no-detailed-git")]
     /// Don't include detailed git information - output may be big!
     no_detailed_git: bool,
-    #[structopt(long = "follow-symlinks")]
+    #[clap(value_parser, long = "follow-symlinks")]
     /// Follow symbolic links when traversing directories
     follow_symlinks: bool,
-    #[structopt(short = "c", long = "coupling")]
+    #[clap(value_parser, short = 'c', long = "coupling")]
     /// include temporal coupling data
     coupling: bool,
-    #[structopt(long = "coupling-bucket-days", default_value = "91")]
+    #[clap(value_parser, long = "coupling-bucket-days", default_value = "91")]
     /// Number of days in a single "bucket" of coupling activity
     bucket_days: u64,
-    #[structopt(long = "coupling-min-bursts", default_value = "10")]
+    #[clap(value_parser, long = "coupling-min-bursts", default_value = "10")]
     /// If a file has fewer bursts of change than this in a bucket, don't measure coupling from it
     min_activity_bursts: u64,
-    #[structopt(long = "coupling-min-ratio", default_value = "0.8")]
+    #[clap(value_parser, long = "coupling-min-ratio", default_value = "0.8")]
     /// The minimum ratio of (other file changes)/(this file changes) to include a file in coupling stats
     min_coupling_ratio: f64,
-    #[structopt(long = "coupling-min-activity-gap-minutes", default_value = "60")]
+    #[clap(
+        value_parser,
+        long = "coupling-min-activity-gap-minutes",
+        default_value = "60"
+    )]
     /// what is the minimum gap between activities in a burst? a sequence of commits with no gaps this long is treated as one burst
     min_activity_gap_minutes: u64,
-    #[structopt(long = "coupling-time-overlap-minutes", default_value = "60")]
+    #[clap(
+        value_parser,
+        long = "coupling-time-overlap-minutes",
+        default_value = "60"
+    )]
     /// how far before/after an activity burst is included for coupling? e.g. if I commit Foo.c at 1am, and Bar.c at 2am, they are coupled if an overlap of 60 minutes or longer is specified
     min_overlap_minutes: u64,
-    #[structopt(long = "coupling-min-distance", default_value = "3")]
+    #[clap(value_parser, long = "coupling-min-distance", default_value = "3")]
     /// The minimum distance between nodes to include in coupling
     /// 0 is all, 1 is siblings, 2 is cousins and so on.
     /// so if you set this to 3, cousins "foo/src/a.rs" and "foo/test/a_test.rs" won't be counted as their distance is 2
     coupling_min_distance: usize,
-    #[structopt(long = "coupling-max-common-roots")]
+    #[clap(value_parser, long = "coupling-max-common-roots")]
     /// The maximum number of common ancestors to include in coupling
     /// e.g. "foo/src/controller/a.c" and "foo/src/service/b.c" have two common ancestors, if you
     /// set this value to 3 they won't show as coupled.
