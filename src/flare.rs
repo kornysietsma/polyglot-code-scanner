@@ -7,19 +7,42 @@
 
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
-use serde_json::Value;
-use std::collections::{hash_map::Entry, HashMap};
 use std::ffi::{OsStr, OsString};
 
+use crate::coupling::SerializableCouplingData;
+use crate::git::GitNodeData;
+use crate::indentation::IndentationData;
+use crate::loc::LanguageLocData;
+
 pub static ROOT_NAME: &str = "<root>";
+
+#[derive(Debug, PartialEq, Clone, Default, Serialize)]
+pub struct IndicatorData {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub git: Option<GitNodeData>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub indentation: Option<IndentationData>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub loc: Option<LanguageLocData>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coupling: Option<SerializableCouplingData>,
+}
+
+impl IndicatorData {
+    fn is_empty(&self) -> bool {
+        self.git.is_none()
+            && self.indentation.is_none()
+            && self.loc.is_none()
+            && self.coupling.is_none()
+    }
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FlareTreeNode {
     name: OsString,
     is_file: bool,
     children: Vec<FlareTreeNode>,
-    // TODO: more strongly typed data!  Value is just JSON - we should have an enum of valid data.
-    data: HashMap<String, Value>,
+    data: IndicatorData,
 }
 
 impl FlareTreeNode {
@@ -27,12 +50,18 @@ impl FlareTreeNode {
         &self.name
     }
 
+    #[cfg(test)]
+    pub fn set_name(&mut self, name: &OsStr) {
+        self.name = name.to_owned();
+    }
+
     pub fn new(name: impl Into<OsString>, is_file: bool) -> Self {
         FlareTreeNode {
             name: name.into(),
             is_file,
             children: Vec::new(),
-            data: HashMap::new(),
+
+            data: IndicatorData::default(),
         }
     }
 
@@ -46,8 +75,11 @@ impl FlareTreeNode {
         Self::new(name, false)
     }
 
-    pub fn add_data<S: Into<String>>(&mut self, key: S, value: Value) {
-        self.data.insert(key.into(), value); // TODO: should we return what insert returns? Or self?
+    pub fn indicators_mut(&mut self) -> &mut IndicatorData {
+        &mut self.data
+    }
+    pub fn indicators(&self) -> &IndicatorData {
+        &self.data
     }
 
     pub fn append_child(&mut self, child: FlareTreeNode) {
@@ -87,15 +119,6 @@ impl FlareTreeNode {
             }
             None => Some(self),
         }
-    }
-
-    pub fn get_data(&self, key: &str) -> Option<&Value> {
-        self.data.get(key)
-    }
-
-    // used only for postprocessing - could refactor - move functionality here
-    pub fn get_data_entry(&mut self, key: String) -> Entry<'_, String, Value> {
-        self.data.entry(key)
     }
 
     pub fn get_children(&self) -> &Vec<FlareTreeNode> {
@@ -154,10 +177,11 @@ mod test {
                 children: vec![FlareTreeNode {
                     name: OsString::from("child"),
                     is_file: true,
-                    data: HashMap::new(),
+                    data: IndicatorData::default(),
                     children: Vec::new()
                 }],
-                data: HashMap::new()
+
+                data: IndicatorData::default()
             }
         );
     }
@@ -173,13 +197,7 @@ mod test {
         child1.append_child(grand_child);
         child1.append_child(FlareTreeNode::file("child1_file_2.txt"));
         let mut child2 = FlareTreeNode::dir("child2");
-        child2.add_data("meta", json!("wibble"));
-        let mut child2_file = FlareTreeNode::file("child2_file.txt");
-        let widget_data = json!({
-            "sprockets": 7,
-            "flanges": ["Nigel, Sarah"]
-        });
-        child2_file.add_data("widgets", widget_data);
+        let child2_file = FlareTreeNode::file("child2_file.txt");
         child2.append_child(child2_file);
         root.append_child(child1);
         root.append_child(child2);
@@ -254,23 +272,6 @@ mod test {
     }
 
     #[test]
-    fn can_get_json_payloads_from_tree() {
-        let tree = build_test_tree();
-        let file = tree
-            .get_in(&mut Path::new("child2/child2_file.txt").components())
-            .unwrap();
-
-        assert_eq!(file.name(), "child2_file.txt");
-
-        let expected = json!({
-            "sprockets": 7,
-            "flanges": ["Nigel, Sarah"]
-        });
-
-        assert_eq!(&file.data["widgets"], &expected);
-    }
-
-    #[test]
     fn can_serialize_directory_to_json() {
         let root = FlareTreeNode::dir("root");
 
@@ -284,21 +285,6 @@ mod test {
     }
 
     #[test]
-    fn can_serialize_dir_with_data_to_json() {
-        let mut dir = FlareTreeNode::dir("foo");
-        dir.add_data("wibble", json!("fnord"));
-
-        assert_eq_json_str(
-            &dir,
-            r#"{
-                "name":"foo",
-                "data": {"wibble":"fnord"},
-                "children": []
-                }"#,
-        );
-    }
-
-    #[test]
     fn can_serialize_file_to_json() {
         let file = FlareTreeNode::file("foo.txt");
 
@@ -306,35 +292,6 @@ mod test {
             &file,
             r#"{
                     "name":"foo.txt"
-                }"#,
-        );
-    }
-
-    #[test]
-    fn can_serialize_file_with_data_to_json() {
-        let mut file = FlareTreeNode::file("foo.txt");
-        file.add_data("wibble", json!("fnord"));
-
-        assert_eq_json_str(
-            &file,
-            r#"{
-                    "name":"foo.txt",
-                    "data": {"wibble":"fnord"}
-                }"#,
-        );
-    }
-
-    #[test]
-    fn can_serialize_file_with_data_value_to_json() {
-        let mut file = FlareTreeNode::file("foo.txt");
-        let value = json!({"foo": ["bar", "baz", 123]});
-        file.add_data("bat", value);
-
-        assert_eq_json_str(
-            &file,
-            r#"{
-                    "name":"foo.txt",
-                    "data": {"bat": {"foo": ["bar", "baz", 123]}}
                 }"#,
         );
     }

@@ -15,22 +15,11 @@ fn apply_calculators_to_node(
     node: &mut FlareTreeNode,
     path: &Path,
     toxicity_indicator_calculators: &mut [Box<dyn ToxicityIndicatorCalculator>],
-) {
+) -> Result<(), Error> {
     for tic in toxicity_indicator_calculators.iter_mut() {
-        let indicators = tic.calculate(path);
-        match indicators {
-            Ok(Some(indicators)) => node.add_data(tic.name(), indicators),
-            Ok(None) => (),
-            Err(error) => {
-                warn!(
-                    "Can't find {} indicators for {:?} - cause: {}",
-                    tic.name(),
-                    node,
-                    error
-                );
-            }
-        }
+        tic.visit_node(node, path)?;
     }
+    Ok(())
 }
 
 const LOG_INTERVAL_SECS: u64 = 60 * 5;
@@ -44,7 +33,7 @@ fn walk_tree_walker(
 ) -> Result<PolyglotData, Error> {
     let mut tree = FlareTreeNode::new(flare::ROOT_NAME, false);
 
-    apply_calculators_to_node(&mut tree, prefix, toxicity_indicator_calculators);
+    apply_calculators_to_node(&mut tree, prefix, toxicity_indicator_calculators)?;
 
     let mut last_log = Instant::now();
     info!("Walking file tree");
@@ -60,7 +49,7 @@ fn walk_tree_walker(
 
         let new_child = if p.is_dir() || p.is_file() {
             let mut f = FlareTreeNode::new(p.file_name().unwrap(), p.is_file());
-            apply_calculators_to_node(&mut f, p, toxicity_indicator_calculators);
+            apply_calculators_to_node(&mut f, p, toxicity_indicator_calculators)?;
             Some(f)
         } else {
             warn!("Not a file or dir: {:?} - skipping", p);
@@ -107,8 +96,9 @@ pub fn walk_directory(
 
 #[cfg(test)]
 mod test {
+    use crate::polyglot_data::IndicatorMetadata;
+
     use super::*;
-    use serde_json::{json, Value};
     use test_shared::assert_eq_json_file;
 
     #[test]
@@ -128,41 +118,44 @@ mod test {
     }
 
     #[derive(Debug)]
-    struct SimpleTIC {}
+    struct FirstTIC {}
 
-    impl ToxicityIndicatorCalculator for SimpleTIC {
+    impl ToxicityIndicatorCalculator for FirstTIC {
         fn name(&self) -> String {
             "foo".to_string()
         }
-        fn calculate(&mut self, path: &Path) -> Result<Option<serde_json::Value>, Error> {
+        fn visit_node(&mut self, node: &mut FlareTreeNode, path: &Path) -> Result<(), Error> {
             if path.is_file() {
-                Ok(Some(json!("bar")))
-            } else {
-                Ok(None)
+                // only mutate files!  If we rename dirs, the parent relationship breaks
+                let mut name = node.name().clone();
+                name.push("!");
+                node.set_name(&name);
             }
+            Ok(())
         }
-
-        fn metadata(&self) -> Result<Option<Value>, Error> {
+        fn apply_metadata(&self, _metadata: &mut IndicatorMetadata) -> Result<(), Error> {
             unimplemented!()
         }
     }
 
     #[derive(Debug)]
-    struct SelfNamingTIC {}
+    struct SecondTIC {}
 
-    impl ToxicityIndicatorCalculator for SelfNamingTIC {
+    impl ToxicityIndicatorCalculator for SecondTIC {
         fn name(&self) -> String {
             "filename".to_string()
         }
-        fn calculate(&mut self, path: &Path) -> Result<Option<serde_json::Value>, Error> {
+        fn visit_node(&mut self, node: &mut FlareTreeNode, path: &Path) -> Result<(), Error> {
             if path.is_file() {
-                Ok(Some(json!(path.to_slash_lossy())))
-            } else {
-                Ok(None)
+                // only mutate files!  If we rename dirs, the parent relationship breaks
+                let mut name = node.name().clone();
+                name.push("?");
+                node.set_name(&name);
             }
+            Ok(())
         }
 
-        fn metadata(&self) -> Result<Option<Value>, Error> {
+        fn apply_metadata(&self, _metadata: &mut IndicatorMetadata) -> Result<(), Error> {
             unimplemented!()
         }
     }
@@ -170,44 +163,15 @@ mod test {
     #[test]
     fn scanning_merges_data_from_mutators() {
         let root = Path::new("./tests/data/simple/");
-        let simple_tic = SimpleTIC {};
-        let self_naming_tic = SelfNamingTIC {};
+        let first = FirstTIC {};
+        let second = SecondTIC {};
         let calculators: &mut Vec<Box<dyn ToxicityIndicatorCalculator>> =
-            &mut vec![Box::new(simple_tic), Box::new(self_naming_tic)];
+            &mut vec![Box::new(first), Box::new(second)];
 
         let tree = walk_directory(root, "test", Some("test-id"), false, calculators).unwrap();
 
-        assert_eq_json_file(&tree, "./tests/expected/simple_files_with_data.json");
+        assert_eq_json_file(&tree, "./tests/expected/simple_files_with_indicators.json");
     }
 
-    #[derive(Debug)]
-    struct MutableTIC {
-        count: i64,
-    }
-
-    impl ToxicityIndicatorCalculator for MutableTIC {
-        fn name(&self) -> String {
-            "count".to_string()
-        }
-        fn calculate(&mut self, _path: &Path) -> Result<Option<serde_json::Value>, Error> {
-            let result = json!(self.count);
-            self.count += 1;
-            Ok(Some(result))
-        }
-
-        fn metadata(&self) -> Result<Option<Value>, Error> {
-            unimplemented!()
-        }
-    }
-
-    #[test]
-    fn can_mutate_state_of_calculator() {
-        let root = Path::new("./tests/data/simple/");
-        let tic = MutableTIC { count: 0 };
-        let calculators: &mut Vec<Box<dyn ToxicityIndicatorCalculator>> = &mut vec![Box::new(tic)];
-
-        let tree = walk_directory(root, "test", Some("test-id"), false, calculators).unwrap();
-
-        assert_eq_json_file(&tree, "./tests/expected/simple_files_with_counts.json");
-    }
+    // TODO: we have no unit test for new metadata - should we?
 }

@@ -1,0 +1,22 @@
+{
+  "name": "test",
+  "id": "test-id",
+  "version": "1.0.1",
+  "metadata": {},
+  "tree": {
+    "name": "<root>",
+    "children": [
+      {
+        "name": "child",
+        "children": [
+          {
+            "name": "a.txt!?"
+          }
+        ]
+      },
+      {
+        "name": "parent.clj!?"
+      }
+    ]
+  }
+}

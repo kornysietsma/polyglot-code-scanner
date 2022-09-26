@@ -3,24 +3,34 @@
 //!
 //! Data format should now follow semantic versioning - a major version change is incompatible, a minor version change is backward compatible, a patch version is mostly around bug fixes.
 
-use std::collections::HashMap;
-
 use serde::Serialize;
-use serde_json::Value;
 use uuid::Uuid;
 
-use crate::flare::FlareTreeNode;
+use crate::{
+    coupling::CouplingMetadata, flare::FlareTreeNode, git_user_dictionary::GitUserDictionary,
+};
 
 pub static DATA_FILE_VERSION: &str = "1.0.1";
 
-#[derive(Debug, PartialEq, Serialize)]
+#[derive(Debug, Serialize)]
+pub struct GitMetadata {
+    pub users: GitUserDictionary,
+}
+#[derive(Debug, Serialize, Default)]
+pub struct IndicatorMetadata {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub git: Option<GitMetadata>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coupling: Option<CouplingMetadata>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct PolyglotData {
     version: String,
     name: String,
     id: String,
     tree: FlareTreeNode,
-    // TODO: more strongly typed data!  Value is just JSON - we should have an enum of valid data.
-    metadata: HashMap<String, Value>,
+    metadata: IndicatorMetadata,
 }
 
 impl PolyglotData {
@@ -34,7 +44,7 @@ impl PolyglotData {
             name: name.to_string(),
             id,
             tree,
-            metadata: HashMap::new(),
+            metadata: IndicatorMetadata::default(),
         }
     }
     pub fn tree(&self) -> &FlareTreeNode {
@@ -44,8 +54,8 @@ impl PolyglotData {
         &mut self.tree
     }
 
-    pub fn add_metadata<S: Into<String>>(&mut self, key: S, value: Value) {
-        self.metadata.insert(key.into(), value);
+    pub fn metadata(&mut self) -> &mut IndicatorMetadata {
+        &mut self.metadata
     }
 }
 
@@ -53,23 +63,21 @@ impl PolyglotData {
 mod test {
     use super::*;
     use pretty_assertions::assert_eq;
-    use serde_json::json;
-    use test_shared::assert_eq_json_str;
     #[test]
     fn can_build_data_tree() {
         let root = FlareTreeNode::dir("root");
         let tree: PolyglotData = PolyglotData::new("test", Some("test-id"), root.clone());
 
-        assert_eq!(
-            tree,
-            PolyglotData {
-                name: "test".to_string(),
-                id: "test-id".to_string(),
-                version: DATA_FILE_VERSION.to_string(),
-                tree: root,
-                metadata: HashMap::new()
-            }
-        );
+        let expected = PolyglotData {
+            name: "test".to_string(),
+            id: "test-id".to_string(),
+            version: DATA_FILE_VERSION.to_string(),
+            tree: root,
+            metadata: IndicatorMetadata::default(),
+        };
+
+        assert_eq!(tree.name, expected.name);
+        assert_eq!(tree.tree, expected.tree);
     }
 
     #[test]
@@ -81,24 +89,5 @@ mod test {
         assert_ne!(tree1.id, tree2.id);
     }
 
-    #[test]
-    fn can_serialize_file_with_metadata_value_to_json() {
-        let root = FlareTreeNode::file("foo.txt");
-        let mut tree: PolyglotData = PolyglotData::new("test", Some("test-id"), root);
-        let value = json!({"foo": ["bar", "baz", 123]});
-        tree.add_metadata("bat", value);
-
-        assert_eq_json_str(
-            &tree,
-            r#"{
-                    "name":"test",
-                    "id":"test-id",
-                    "version":"1.0.1",
-                    "tree": {
-                      "name":"foo.txt"
-                    },
-                    "metadata": {"bat": {"foo": ["bar", "baz", 123]}}
-                }"#,
-        );
-    }
+    // TODO: removed serializing metadata test as it no longer made sense. Do we depend on just e2e tests?
 }

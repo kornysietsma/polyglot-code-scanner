@@ -1,6 +1,8 @@
+use crate::flare::FlareTreeNode;
 use crate::git_file_history::{FileHistoryEntry, GitFileHistory};
 use crate::git_logger::{CommitChange, GitLog, GitLogConfig, User};
 use crate::git_user_dictionary::GitUserDictionary;
+use crate::polyglot_data::GitMetadata;
 use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use anyhow::Error;
 use chrono::{NaiveDateTime, NaiveTime};
@@ -15,19 +17,18 @@ use std::iter::once;
 use std::path::Path;
 
 use git2::Repository;
-use serde_json::{json, Value};
 
 /// a struct representing git data for a file
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct GitData {
-    last_update: u64,
-    age_in_days: u64,
+    pub last_update: u64,
+    pub age_in_days: u64,
     // we only have a creation date if there was an Add change in the dates scanned
-    creation_date: Option<u64>,
-    user_count: usize,
-    users: Vec<usize>, // dictionary IDs
-    details: Vec<GitDetails>,
-    activity: Vec<GitActivity>,
+    pub creation_date: Option<u64>,
+    pub user_count: usize,
+    pub users: Vec<usize>, // dictionary IDs
+    pub details: Vec<GitDetails>,
+    pub activity: Vec<GitActivity>,
 }
 
 /// Git information for a given day _and_ unique set of users, summarized
@@ -36,7 +37,7 @@ pub struct GitData {
 /// Also dates are summarized by "author date" - had to pick author or commit date, and
 /// author dates seem more reliable.  But it's named "`commit_day`" as that's more understandable
 /// WIP: for better coupling data, I want individual commits, rather than summarizing per day.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct GitDetails {
     /// Note this is based on "author date" - commit dates can be all over the place with PRs, rebasing and the like.
     pub commit_day: u64,
@@ -71,7 +72,7 @@ struct GitDetailsKey {
 
 /// Fine-grained git activity, for the fine-grained coupling calculations
 /// this is very verbose so probably shouldn't be kept in final JSON
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct GitActivity {
     pub author_time: u64,
     pub commit_time: u64,
@@ -107,10 +108,25 @@ pub struct GitCalculator {
     dictionary: GitUserDictionary,
 }
 
+// Git data for a directory - just remote git info
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct GitInfo {
     pub remote_url: Option<String>,
     pub head: Option<String>,
+}
+
+// Git data for a file _or_ a directory
+#[derive(Debug, PartialEq, Clone, Serialize)]
+#[serde(untagged)]
+pub enum GitNodeData {
+    File {
+        #[serde(flatten)]
+        data: GitData,
+    },
+    Dir {
+        #[serde(flatten)]
+        data: GitInfo,
+    },
 }
 
 fn repository_head(repository: &Repository) -> Result<String, Error> {
@@ -283,7 +299,7 @@ impl GitCalculator {
                 git_file_histories: Vec::new(),
                 git_log_config: config,
             },
-            dictionary: GitUserDictionary::new(),
+            dictionary: GitUserDictionary::default(),
         }
     }
 }
@@ -292,7 +308,7 @@ impl ToxicityIndicatorCalculator for GitCalculator {
     fn name(&self) -> String {
         "git".to_string()
     }
-    fn calculate(&mut self, path: &Path) -> Result<Option<serde_json::Value>, Error> {
+    fn visit_node(&mut self, node: &mut FlareTreeNode, path: &Path) -> Result<(), Error> {
         if path.is_file() {
             // TODO: refactor this into a method on histories (I tried this but got into a mess with mutable and immutable refs to self!)
             let history = match self.histories.git_history(path) {
@@ -313,13 +329,10 @@ impl ToxicityIndicatorCalculator for GitCalculator {
                     last_commit,
                     file_history,
                 );
-                Ok(Some(serde_json::value::to_value(stats).expect(
-                    "Serializable object couldn't be serialized to JSON",
-                ))) // TODO: maybe explicit error? Though this should be fatal
+                node.indicators_mut().git = stats.map(|stats| GitNodeData::File { data: stats });
             } else {
                 // probably outside date range
                 debug!("No git history found for file: {:?}", path);
-                Ok(None)
             }
         } else {
             let git_path = path.join(".git");
@@ -327,25 +340,41 @@ impl ToxicityIndicatorCalculator for GitCalculator {
                 match Repository::discover(path) {
                     Ok(repository) => {
                         let info = GitInfo::new(path, &repository);
-                        Ok(Some(serde_json::value::to_value(info).expect(
-                            "Serializable object couldn't be serialized to JSON",
-                        )))
+                        node.indicators_mut().git = Some(GitNodeData::Dir { data: info });
                     }
                     Err(e) => {
                         warn!("Can't find git repository at {:?}, {}", path, e);
-                        Ok(None)
                     }
                 }
-            } else {
-                Ok(None)
             }
         }
+        Ok(())
     }
 
-    fn metadata(&self) -> Result<Option<Value>, Error> {
-        let dictionary = serde_json::value::to_value(&self.dictionary)
-            .expect("Serializable object couldn't be serialized to JSON");
-        Ok(Some(json!({ "users": dictionary })))
+    fn apply_metadata(
+        &self,
+        metadata: &mut crate::polyglot_data::IndicatorMetadata,
+    ) -> Result<(), Error> {
+        metadata.git = Some(GitMetadata {
+            users: self.dictionary.clone(),
+        });
+        Ok(())
+    }
+}
+
+// Hacky - I need this constructor for coupling tests, until I build better integration tests
+#[cfg(test)]
+impl GitData {
+    pub fn fake_with_activity(activity: Vec<GitActivity>) -> Self {
+        Self {
+            last_update: 0,
+            age_in_days: 0,
+            creation_date: None,
+            user_count: 0,
+            users: Vec::new(),
+            details: Vec::new(),
+            activity,
+        }
     }
 }
 
@@ -383,7 +412,7 @@ mod test {
                 .build()
                 .map_err(Error::msg)?,
         ];
-        let mut dictionary = GitUserDictionary::new();
+        let mut dictionary = GitUserDictionary::default();
 
         let today = first_day + 5 * one_day_in_secs;
 
@@ -433,7 +462,7 @@ mod test {
                 .map_err(Error::msg)?,
         ];
 
-        let mut dictionary = GitUserDictionary::new();
+        let mut dictionary = GitUserDictionary::default();
 
         let today = first_day + 5 * one_day_in_secs;
 

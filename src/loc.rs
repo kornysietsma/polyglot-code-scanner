@@ -1,4 +1,6 @@
 #![warn(clippy::all)]
+use crate::polyglot_data::IndicatorMetadata;
+
 use super::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use anyhow::Error;
 use serde::Serialize;
@@ -9,12 +11,11 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use serde_json::Value;
 use tokei::{Config, LanguageType};
 
 /// a struct representing tokei language data - based on `tokei::Stats` and `tokei::Languages::name`
-#[derive(Debug, PartialEq, Serialize)]
-struct LanguageLocData {
+#[derive(Debug, PartialEq, Serialize, Clone)]
+pub struct LanguageLocData {
     /// Canonical language name
     pub language: String,
     /// binary files only have bytes not lines!
@@ -106,19 +107,20 @@ impl ToxicityIndicatorCalculator for LocCalculator {
         "loc".to_string()
     }
 
-    fn calculate(&mut self, path: &Path) -> Result<Option<serde_json::Value>, Error> {
+    fn visit_node(
+        &mut self,
+        node: &mut crate::flare::FlareTreeNode,
+        path: &Path,
+    ) -> Result<(), Error> {
         if path.is_file() {
             let stats = parse_file(path)?;
-            Ok(Some(serde_json::value::to_value(stats).expect(
-                "Serializable object couldn't be serialized to JSON",
-            ))) // TODO: maybe explicit error? Though this should be fatal
-        } else {
-            Ok(None)
+            node.indicators_mut().loc = Some(stats);
         }
+        Ok(())
     }
 
-    fn metadata(&self) -> Result<Option<Value>, Error> {
-        Ok(None)
+    fn apply_metadata(&self, _metadata: &mut IndicatorMetadata) -> Result<(), Error> {
+        Ok(())
     }
 }
 

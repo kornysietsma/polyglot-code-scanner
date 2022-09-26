@@ -1,3 +1,6 @@
+use crate::flare::FlareTreeNode;
+use crate::polyglot_data::IndicatorMetadata;
+
 use super::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use anyhow::Error;
 use serde::Serialize;
@@ -13,11 +16,10 @@ use tokei::{Config, LanguageType};
 use super::code_line_data::CodeLines;
 
 use hdrhistogram::Histogram;
-use serde_json::Value;
 
 /// a struct representing file indentation data
-#[derive(Debug, PartialEq, Serialize)]
-struct IndentationData {
+#[derive(Debug, PartialEq, Serialize, Clone)]
+pub struct IndentationData {
     pub lines: u64,
     pub minimum: u64,
     pub maximum: u64,
@@ -105,19 +107,16 @@ impl ToxicityIndicatorCalculator for IndentationCalculator {
         "indentation".to_string()
     }
 
-    fn calculate(&mut self, path: &Path) -> Result<Option<serde_json::Value>, Error> {
+    fn visit_node(&mut self, node: &mut FlareTreeNode, path: &Path) -> Result<(), Error> {
         if path.is_file() {
             let indentation = parse_file(path)?;
-            Ok(Some(serde_json::value::to_value(indentation).expect(
-                "Serializable object couldn't be serialized to JSON",
-            ))) // TODO: maybe explicit error? Though this should be fatal
-        } else {
-            Ok(None)
+            node.indicators_mut().indentation = indentation;
         }
+        Ok(())
     }
 
-    fn metadata(&self) -> Result<Option<Value>, Error> {
-        Ok(None)
+    fn apply_metadata(&self, _metadata: &mut IndicatorMetadata) -> Result<(), Error> {
+        Ok(())
     }
 }
 

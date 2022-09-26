@@ -4,7 +4,7 @@ use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct GitUserDictionary {
     next_id: usize,
     lower_users: HashMap<User, usize>,
@@ -12,13 +12,6 @@ pub struct GitUserDictionary {
 }
 
 impl GitUserDictionary {
-    pub fn new() -> Self {
-        GitUserDictionary {
-            next_id: 0,
-            lower_users: HashMap::new(),
-            users: Vec::new(),
-        }
-    }
     pub fn register(&mut self, user: &User) -> usize {
         let lower_user = user.as_lower_case();
         match self.lower_users.get(&lower_user) {
@@ -81,7 +74,7 @@ mod test {
 
     #[test]
     fn users_receive_sequential_ids() {
-        let mut dict = GitUserDictionary::new();
+        let mut dict = GitUserDictionary::default();
 
         let jane = User::new(Some("Jane"), Some("JaneDoe@gmail.com"));
         let user0 = dict.register(&jane);
@@ -96,7 +89,7 @@ mod test {
 
     #[test]
     fn user_checks_are_case_insensitive_and_return_first_seen_user() {
-        let mut dict = GitUserDictionary::new();
+        let mut dict = GitUserDictionary::default();
 
         let jane = User::new(Some("Jane"), Some("JaneDoe@gmail.com"));
         let lower_jane = User::new(Some("jane"), Some("janeDoe@gmail.com"));

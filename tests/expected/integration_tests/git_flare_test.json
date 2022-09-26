@@ -19,7 +19,9 @@
                     "creation_date": 1558521386,
                     "last_update": 1558533240,
                     "user_count": 2,
-                    "users": [0, 1]
+                    "users": [0, 1],
+                    "activity": [],
+                    "details": []
                   }
                 }
               }
@@ -33,7 +35,9 @@
                 "creation_date": 1558521386,
                 "last_update": 1558524371,
                 "user_count": 2,
-                "users": [0, 1]
+                "users": [0, 1],
+                "activity": [],
+                "details": []
               }
             }
           }

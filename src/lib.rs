@@ -122,9 +122,7 @@ where
 
     info!("adding metadata");
     for tic in tics {
-        if let Some(metadata) = tic.metadata()? {
-            polyglot_data.add_metadata(tic.name(), metadata);
-        }
+        tic.apply_metadata(polyglot_data.metadata())?;
     }
 
     if let Some(cc) = coupling_config {

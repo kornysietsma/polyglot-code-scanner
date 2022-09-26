@@ -1,10 +1,11 @@
+use crate::flare::FlareTreeNode;
+use crate::git::GitNodeData;
 use crate::polyglot_data::PolyglotData;
-use crate::{flare::FlareTreeNode, git::GitActivity};
 use anyhow::Error;
 use indicatif::{ProgressBar, ProgressStyle};
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
-use serde_json::{json, Value};
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, PathBuf};
 use std::rc::Rc;
@@ -16,7 +17,7 @@ use std::{
 /// a path-like owned structure, for efficient creation and tracking of relative paths
 /// (originally I just used Rc<Path> but needed to split them into Components over and over)
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Clone)]
-struct PathVec {
+pub struct PathVec {
     components: Vec<OsString>,
 }
 
@@ -108,26 +109,20 @@ impl FileChangeTimestamps {
         node: &FlareTreeNode,
         path: &Rc<PathVec>,
     ) -> Result<(), Error> {
-        let lines = node
-            .get_data("loc")
-            .and_then(|loc| loc.get("code"))
-            .and_then(serde_json::Value::as_u64)
-            .unwrap_or(0);
+        let lines = node.indicators().loc.as_ref().map_or(0, |loc| loc.code);
+
         if lines > 0 {
-            if let Some(Value::Object(value)) = node.get_data("git") {
-                if let Some(Value::Array(activity)) = value.get("activity") {
-                    for activity_value in activity {
-                        let activity: GitActivity = serde_json::from_value(activity_value.clone())?;
-                        if activity.lines_deleted > 0 || activity.lines_added > 0 {
-                            let timestamp_entry = timestamps
-                                .entry(activity.commit_time)
-                                .or_insert_with(HashSet::new);
-                            (*timestamp_entry).insert(path.clone());
-                            let file_entry = file_changes
-                                .entry(path.clone())
-                                .or_insert_with(BTreeSet::new);
-                            (*file_entry).insert(activity.commit_time);
-                        }
+            if let Some(GitNodeData::File { data }) = &node.indicators().git {
+                for activity in &data.activity {
+                    if activity.lines_deleted > 0 || activity.lines_added > 0 {
+                        let timestamp_entry = timestamps
+                            .entry(activity.commit_time)
+                            .or_insert_with(HashSet::new);
+                        (*timestamp_entry).insert(path.clone());
+                        let file_entry = file_changes
+                            .entry(path.clone())
+                            .or_insert_with(BTreeSet::new);
+                        (*file_entry).insert(activity.commit_time);
                     }
                 }
             }
@@ -230,7 +225,7 @@ impl Coupling {
         }
         self.activity_bursts += 1;
     }
-    
+
     fn filter_by_ratio(&self, min_coupling_ratio: f64) -> Coupling {
         let bursts = self.activity_bursts as f64;
         Coupling {
@@ -385,8 +380,8 @@ impl CouplingBuckets {
 }
 
 /// Individual bucket to save in the Json tree
-#[derive(Debug, PartialEq, Serialize)]
-struct SerializableCouplingBucketData {
+#[derive(Debug, PartialEq, Serialize, Clone)]
+pub struct SerializableCouplingBucketData {
     pub bucket_start: u64,
     pub bucket_end: u64,
     pub activity_bursts: u64,
@@ -394,8 +389,8 @@ struct SerializableCouplingBucketData {
 }
 
 /// Data to save in the Json tree for a file
-#[derive(Debug, PartialEq, Serialize)]
-struct SerializableCouplingData {
+#[derive(Debug, PartialEq, Serialize, Clone)]
+pub struct SerializableCouplingData {
     pub buckets: Vec<SerializableCouplingBucketData>,
 }
 
@@ -423,6 +418,12 @@ pub struct CouplingConfig {
     /// eg if 0, they must have different top-level folders.
     /// This is combined with min_distance (and maybe I'll ditch one?)
     max_common_roots: Option<usize>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct CouplingMetadata {
+    pub buckets: BucketingConfig,
+    pub config: CouplingConfig,
 }
 
 impl CouplingConfig {
@@ -625,29 +626,29 @@ pub fn gather_coupling(
             .get_in_mut(&mut file_buf.components())
         {
             let coupling_data = filtered_buckets.file_coupling_data(&file);
-            tree_node.add_data(
-                "coupling",
-                serde_json::value::to_value(coupling_data)
-                    .expect("Serializable object couldn't be serialized to JSON"),
-            );
+            tree_node.indicators_mut().coupling = Some(coupling_data);
         } else {
             // TODO: return an error
             error!("Can't find {:?} in tree!", &file);
         };
     }
 
-    polyglot_data.add_metadata(
-        "coupling",
-        json!({"buckets": bucketing_config,
-    "config": config}),
-    );
+    polyglot_data.metadata().coupling = Some(CouplingMetadata {
+        buckets: bucketing_config,
+        config,
+    });
+
     info!("Gathering coupling stats - done");
     Ok(())
 }
 
 #[cfg(test)]
 mod test {
-    use crate::git_logger::CommitChange;
+    use crate::{
+        git::{GitActivity, GitData, GitNodeData},
+        git_logger::CommitChange,
+        loc::LanguageLocData,
+    };
 
     use super::*;
     use pretty_assertions::assert_eq;
@@ -684,11 +685,6 @@ mod test {
         commit_day: u64,
     }
 
-    #[derive(Debug, PartialEq, Serialize)]
-    struct FakeGitData {
-        activity: Option<Vec<GitActivity>>,
-    }
-
     fn fake_git_activity(timestamp: u64) -> GitActivity {
         GitActivity {
             author_time: timestamp,
@@ -700,31 +696,37 @@ mod test {
         }
     }
 
-    impl FakeGitData {
-        fn new(timestamps: &[u64]) -> Self {
-            FakeGitData {
-                activity: Some(timestamps.iter().map(|t| fake_git_activity(*t)).collect()),
-            }
-        }
-        fn to_json(&self) -> Value {
-            serde_json::value::to_value(self).unwrap()
+    fn fake_git_node_data(timestamps: &[u64]) -> GitNodeData {
+        let activity: Vec<GitActivity> = timestamps.iter().map(|t| fake_git_activity(*t)).collect();
+        let git_data = GitData::fake_with_activity(activity);
+        GitNodeData::File { data: git_data }
+    }
+    fn fake_loc_data(codelines: usize) -> LanguageLocData {
+        LanguageLocData {
+            language: "Foo".to_owned(),
+            binary: false,
+            blanks: 0,
+            code: codelines,
+            comments: 0,
+            lines: codelines,
+            bytes: 1000,
         }
     }
 
     fn build_test_tree() -> FlareTreeNode {
         let mut root = FlareTreeNode::dir("root");
         let mut root_file_1 = FlareTreeNode::file("root_file_1.txt");
-        root_file_1.add_data("git", FakeGitData::new(&[DAY1, DAY21]).to_json());
-        root_file_1.add_data("loc", json!({"code": 12}));
+        root_file_1.indicators_mut().git = Some(fake_git_node_data(&[DAY1, DAY21]));
+        root_file_1.indicators_mut().loc = Some(fake_loc_data(12));
         root.append_child(root_file_1);
         root.append_child(FlareTreeNode::file("root_file_2.txt"));
         let mut child1 = FlareTreeNode::dir("child1");
         let mut child1_file1 = FlareTreeNode::file("child1_file_1.txt");
-        child1_file1.add_data("git", FakeGitData::new(&[DAY21, DAY22]).to_json());
-        child1_file1.add_data("loc", json!({"code": 122}));
+        child1_file1.indicators_mut().git = Some(fake_git_node_data(&[DAY21, DAY22]));
+        child1_file1.indicators_mut().loc = Some(fake_loc_data(122));
         child1.append_child(child1_file1);
         let mut child1_file2 = FlareTreeNode::file("binary_file.zip");
-        child1_file2.add_data("git", FakeGitData::new(&[DAY21, DAY22, DAY23]).to_json());
+        child1_file2.indicators_mut().git = Some(fake_git_node_data(&[DAY21, DAY22, DAY23]));
         child1.append_child(child1_file2);
         root.append_child(child1);
         root

@@ -97,7 +97,9 @@ ARGS:
     <root>    Root directory, current dir if not present
 ~~~
 
-## Development hints
+## Development notes
+
+See also the `DesignDecisions.md` file 
 
 ### Running tests
 
