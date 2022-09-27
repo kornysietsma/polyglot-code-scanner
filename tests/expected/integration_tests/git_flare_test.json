@@ -1,7 +1,8 @@
 {
   "name": "test",
   "id": "test-id",
-  "version": "1.0.1",
+  "version": "1.0.2",
+  "features": { "coupling": false, "git": true, "git_details": false },
   "tree": {
     "name": "<root>",
     "children": [

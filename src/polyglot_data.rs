@@ -8,9 +8,10 @@ use uuid::Uuid;
 
 use crate::{
     coupling::CouplingMetadata, flare::FlareTreeNode, git_user_dictionary::GitUserDictionary,
+    FeatureFlags,
 };
 
-pub static DATA_FILE_VERSION: &str = "1.0.1";
+pub static DATA_FILE_VERSION: &str = "1.0.2";
 
 #[derive(Debug, Serialize)]
 pub struct GitMetadata {
@@ -31,10 +32,11 @@ pub struct PolyglotData {
     id: String,
     tree: FlareTreeNode,
     metadata: IndicatorMetadata,
+    features: FeatureFlags,
 }
 
 impl PolyglotData {
-    pub fn new(name: &str, id: Option<&str>, tree: FlareTreeNode) -> Self {
+    pub fn new(name: &str, id: Option<&str>, tree: FlareTreeNode, features: FeatureFlags) -> Self {
         let id = id.map_or_else(
             || Uuid::new_v4().as_hyphenated().to_string(),
             std::string::ToString::to_string,
@@ -45,6 +47,7 @@ impl PolyglotData {
             id,
             tree,
             metadata: IndicatorMetadata::default(),
+            features,
         }
     }
     pub fn tree(&self) -> &FlareTreeNode {
@@ -66,7 +69,12 @@ mod test {
     #[test]
     fn can_build_data_tree() {
         let root = FlareTreeNode::dir("root");
-        let tree: PolyglotData = PolyglotData::new("test", Some("test-id"), root.clone());
+        let tree: PolyglotData = PolyglotData::new(
+            "test",
+            Some("test-id"),
+            root.clone(),
+            FeatureFlags::default(),
+        );
 
         let expected = PolyglotData {
             name: "test".to_string(),
@@ -74,6 +82,7 @@ mod test {
             version: DATA_FILE_VERSION.to_string(),
             tree: root,
             metadata: IndicatorMetadata::default(),
+            features: FeatureFlags::default(),
         };
 
         assert_eq!(tree.name, expected.name);
@@ -83,8 +92,9 @@ mod test {
     #[test]
     fn data_without_id_has_uuid() {
         let root = FlareTreeNode::dir("root");
-        let tree1: PolyglotData = PolyglotData::new("test", None, root.clone());
-        let tree2: PolyglotData = PolyglotData::new("test", None, root);
+        let tree1: PolyglotData =
+            PolyglotData::new("test", None, root.clone(), FeatureFlags::default());
+        let tree2: PolyglotData = PolyglotData::new("test", None, root, FeatureFlags::default());
         // really just asserting IDs are different!
         assert_ne!(tree1.id, tree2.id);
     }

@@ -3,7 +3,7 @@ use anyhow::Error;
 
 fn remove_details(node: &mut FlareTreeNode, config: &ScannerConfig) -> Result<(), Error> {
     if let Some(GitNodeData::File { data }) = &mut node.indicators_mut().git {
-        if !config.detailed {
+        if !config.features.git_details {
             data.details = Vec::new();
         }
         data.activity = Vec::new();

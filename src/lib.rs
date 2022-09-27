@@ -27,6 +27,7 @@ extern crate derive_getters;
 
 use anyhow::Error;
 use postprocessing::postprocess_tree;
+use serde::Serialize;
 use std::io;
 use std::path::Path;
 
@@ -55,13 +56,20 @@ use indentation::IndentationCalculator;
 use loc::LocCalculator;
 use toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 
+#[derive(Debug, Default, Clone, Serialize)]
+pub struct FeatureFlags {
+    pub git: bool,
+    pub coupling: bool,
+    pub git_details: bool,
+}
+
 // general config for the scanner and calculators - could be split if it grows too far
 pub struct ScannerConfig {
     pub git_years: Option<u64>,
-    pub detailed: bool,
     pub follow_symlinks: bool,
     pub name: String,
     pub data_id: Option<String>,
+    pub features: FeatureFlags,
 }
 
 impl ScannerConfig {
@@ -69,10 +77,10 @@ impl ScannerConfig {
     pub fn default(name: &str) -> Self {
         ScannerConfig {
             git_years: None,
-            detailed: false,
             follow_symlinks: false,
             name: name.to_owned(),
             data_id: None,
+            features: FeatureFlags::default(),
         }
     }
 }
@@ -104,6 +112,9 @@ pub fn run<W>(
 where
     W: io::Write,
 {
+    if toxicity_indicator_calculator_names.contains(&"git") && !config.features.git {
+        bail!("Logic error - using git calculator when git is disabled!");
+    }
     let maybe_tics: Option<Vec<_>> = toxicity_indicator_calculator_names
         .iter()
         .map(|name| named_toxicity_indicator_calculator(name, config))
@@ -118,6 +129,7 @@ where
         config.data_id.as_deref(),
         config.follow_symlinks,
         &mut tics,
+        &config.features,
     )?;
 
     info!("adding metadata");

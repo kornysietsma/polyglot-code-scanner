@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   * This will make output files a bit more verbose, but hopefully not too much, but new user and team info was being distorted by this - now the UI shows you Jane and Joe separately, we need to track them separately, unless they are co-authors on a commit.
 * Added a DesignDecisons.md document to discuss the next change:
 * Removed the way the code used to use generic `Value` types for indicator data - everything is concrete types now.  See `DesignDecisions.md` for discussion
+* Added feature flags, including new 'disable git' option, and flags in JSON output (data format v1.0.2)
 
 ## [0.3.2] - 2022-09-20
 

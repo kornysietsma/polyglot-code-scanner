@@ -1,6 +1,6 @@
 #![warn(clippy::all)]
 
-use crate::polyglot_data::PolyglotData;
+use crate::{polyglot_data::PolyglotData, FeatureFlags};
 
 use super::flare;
 use super::flare::FlareTreeNode;
@@ -30,6 +30,7 @@ fn walk_tree_walker(
     name: &str,
     id: Option<&str>,
     toxicity_indicator_calculators: &mut [Box<dyn ToxicityIndicatorCalculator>],
+    features: &FeatureFlags, // features just for JSON output
 ) -> Result<PolyglotData, Error> {
     let mut tree = FlareTreeNode::new(flare::ROOT_NAME, false);
 
@@ -71,8 +72,9 @@ fn walk_tree_walker(
         }
     }
     info!("finished walking file tree");
-    Ok(PolyglotData::new(name, id, tree))
+    Ok(PolyglotData::new(name, id, tree, features.clone()))
 }
+
 
 pub fn walk_directory(
     root: &Path,
@@ -80,6 +82,7 @@ pub fn walk_directory(
     id: Option<&str>,
     follow_symlinks: bool,
     toxicity_indicator_calculators: &mut [Box<dyn ToxicityIndicatorCalculator>],
+    features: &FeatureFlags, // features just for JSON output
 ) -> Result<PolyglotData, Error> {
     walk_tree_walker(
         WalkBuilder::new(root)
@@ -91,6 +94,7 @@ pub fn walk_directory(
         name,
         id,
         toxicity_indicator_calculators,
+        features,
     )
 }
 
@@ -104,7 +108,15 @@ mod test {
     #[test]
     fn scanning_a_filesystem_builds_a_tree() {
         let root = Path::new("./tests/data/simple/");
-        let tree = walk_directory(root, "test", Some("test-id"), false, &mut Vec::new()).unwrap();
+        let tree = walk_directory(
+            root,
+            "test",
+            Some("test-id"),
+            false,
+            &mut Vec::new(),
+            &FeatureFlags::default(),
+        )
+        .unwrap();
 
         assert_eq_json_file(&tree, "./tests/expected/simple_files.json");
     }
@@ -112,7 +124,15 @@ mod test {
     #[test]
     fn scanning_a_filesystem_can_follow_symlinks() {
         let root = Path::new("./tests/data/simple_linked/");
-        let tree = walk_directory(root, "test", Some("test-id"), true, &mut Vec::new()).unwrap();
+        let tree = walk_directory(
+            root,
+            "test",
+            Some("test-id"),
+            true,
+            &mut Vec::new(),
+            &FeatureFlags::default(),
+        )
+        .unwrap();
 
         assert_eq_json_file(&tree, "./tests/expected/simple_files.json");
     }
@@ -168,7 +188,15 @@ mod test {
         let calculators: &mut Vec<Box<dyn ToxicityIndicatorCalculator>> =
             &mut vec![Box::new(first), Box::new(second)];
 
-        let tree = walk_directory(root, "test", Some("test-id"), false, calculators).unwrap();
+        let tree = walk_directory(
+            root,
+            "test",
+            Some("test-id"),
+            false,
+            calculators,
+            &FeatureFlags::default(),
+        )
+        .unwrap();
 
         assert_eq_json_file(&tree, "./tests/expected/simple_files_with_indicators.json");
     }

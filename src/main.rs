@@ -4,13 +4,14 @@
 #![warn(rust_2018_idioms)]
 
 use anyhow::Error;
-use clap::Parser;
+use clap::{CommandFactory, ErrorKind, Parser};
 use polyglot_code_scanner::coupling::CouplingConfig;
-use polyglot_code_scanner::ScannerConfig;
+use polyglot_code_scanner::{FeatureFlags, ScannerConfig};
 use std::fs::File;
 use std::io;
 use std::path::PathBuf;
 
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Parser)]
 #[clap(author, version)]
 /// Polyglot Code Scanner
@@ -22,11 +23,10 @@ struct Cli {
     #[clap(
         short = 'v',
         long = "verbose",
-        parse(from_occurrences),
-        multiple = true
+        action = clap::ArgAction::Count
     )]
     /// Logging verbosity, v = error, vv = warn, vvv = info (default), vvvv = debug, vvvvv = trace
-    verbose: u64,
+    verbose: u8,
     /// Output file, stdout if not present, or not used if sending to web server
     #[clap(short = 'o', long = "output", parse(from_os_str))]
     output: Option<PathBuf>,
@@ -40,18 +40,24 @@ struct Cli {
     /// Root directory, current dir if not present
     #[clap(parse(from_os_str))]
     root: Option<PathBuf>,
-    #[clap(value_parser, long = "years", default_value = "3")]
-    /// how many years of git history to parse - default only scan the last 3 years (from now, not git head)
-    git_years: u64,
-    #[clap(value_parser, long = "no-detailed-git")]
-    /// Don't include detailed git information - output may be big!
-    no_detailed_git: bool,
-    #[clap(value_parser, long = "follow-symlinks")]
-    /// Follow symbolic links when traversing directories
-    follow_symlinks: bool,
+
+    // global indicator flags
+    #[clap(value_parser, long = "no-git")]
+    /// Do not scan for git repositories
+    no_git: bool,
     #[clap(value_parser, short = 'c', long = "coupling")]
     /// include temporal coupling data
     coupling: bool,
+    #[clap(value_parser, long = "no-detailed-git")]
+    /// Don't include detailed git information - output may be big!
+    no_detailed_git: bool,
+
+    #[clap(value_parser, long = "years", default_value = "3")]
+    /// how many years of git history to parse - default only scan the last 3 years (from now, not git head)
+    git_years: u64,
+    #[clap(value_parser, long = "follow-symlinks")]
+    /// Follow symbolic links when traversing directories
+    follow_symlinks: bool,
     #[clap(value_parser, long = "coupling-bucket-days", default_value = "91")]
     /// Number of days in a single "bucket" of coupling activity
     bucket_days: u64,
@@ -88,7 +94,7 @@ struct Cli {
 }
 
 // very basic logging - just so I can have a nice default, and hide verbose tokei logs
-fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
+fn setup_logging(verbosity: u8) -> Result<(), fern::InitError> {
     let mut base_config = fern::Dispatch::new();
 
     base_config = match verbosity {
@@ -119,19 +125,40 @@ fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
     Ok(())
 }
 
+fn custom_validation_conflict(message: &str) {
+    let mut cmd = Cli::command();
+    cmd.error(ErrorKind::ArgumentConflict, message).exit()
+}
+
 fn main() -> Result<(), Error> {
     let args = Cli::from_args();
+
+    // custom validation - easier than trying to wrangle clap to do this!
+    if args.no_git {
+        if args.coupling {
+            custom_validation_conflict("Can't enable coupling when git is disabled!");
+        }
+        if args.no_detailed_git {
+            custom_validation_conflict("Can't specify no_detailed_git when git is disabled!");
+        }
+    }
 
     setup_logging(args.verbose)?;
 
     let root = args.root.unwrap_or_else(|| PathBuf::from("."));
 
+    let features = FeatureFlags {
+        git: !args.no_git,
+        coupling: args.coupling,
+        git_details: !(args.no_detailed_git || args.no_git),
+    };
+
     let scanner_config = ScannerConfig {
         git_years: Some(args.git_years),
         data_id: args.id,
-        detailed: !args.no_detailed_git,
         name: args.name,
         follow_symlinks: args.follow_symlinks,
+        features,
     };
 
     let coupling_config = if args.coupling {
@@ -154,11 +181,17 @@ fn main() -> Result<(), Error> {
         Box::new(io::stdout())
     };
 
+    let toxicity_indicator_calculator_names: &[&str] = if args.no_git {
+        &["loc", "indentation"]
+    } else {
+        &["loc", "git", "indentation"]
+    };
+
     polyglot_code_scanner::run(
         &root,
         &scanner_config,
         coupling_config,
-        &["loc", "git", "indentation"],
+        toxicity_indicator_calculator_names,
         &mut out,
     )?;
 
