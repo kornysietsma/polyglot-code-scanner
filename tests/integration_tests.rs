@@ -38,7 +38,7 @@ fn it_calculates_lines_of_code() -> Result<(), Error> {
 #[test]
 fn it_calculates_git_stats() -> Result<(), Error> {
     let gitdir = tempdir()?;
-    let git_root = unzip_git_sample("git_sample", gitdir.path())?;
+    let git_root = unzip_test_sample("git_sample", gitdir.path())?;
 
     let mut buffer: Vec<u8> = Vec::new();
     let out = Cursor::new(&mut buffer);
@@ -61,7 +61,7 @@ fn it_calculates_git_stats() -> Result<(), Error> {
 #[test]
 fn it_calculates_detailed_git_stats() -> Result<(), Error> {
     let gitdir = tempdir()?;
-    let git_root = unzip_git_sample("git_sample", gitdir.path())?;
+    let git_root = unzip_test_sample("git_sample", gitdir.path())?;
 
     let mut buffer: Vec<u8> = Vec::new();
     let out = Cursor::new(&mut buffer);

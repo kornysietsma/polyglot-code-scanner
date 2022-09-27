@@ -11,7 +11,7 @@ use crate::{
     FeatureFlags,
 };
 
-pub static DATA_FILE_VERSION: &str = "1.0.2";
+pub static DATA_FILE_VERSION: &str = "1.0.4";
 
 #[derive(Debug, Serialize)]
 pub struct GitMetadata {

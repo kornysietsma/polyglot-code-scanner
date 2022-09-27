@@ -1,9 +1,14 @@
 {
   "name": "test",
   "id": "test-id",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "metadata": {},
-  "features": { "coupling": false, "git": false, "git_details": false },
+  "features": {
+    "coupling": false,
+    "git": false,
+    "git_details": false,
+    "file_stats": false
+  },
   "tree": {
     "name": "<root>",
     "children": [

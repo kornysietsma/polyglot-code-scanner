@@ -26,6 +26,7 @@ extern crate derive_builder;
 extern crate derive_getters;
 
 use anyhow::Error;
+use file_stats::FileStatsCalculator;
 use postprocessing::postprocess_tree;
 use serde::Serialize;
 use std::io;
@@ -36,6 +37,7 @@ mod code_line_data;
 mod file_walker;
 // public so main.rs can access structures TODO: can this be done better? expose here just what main needs?
 pub mod coupling;
+mod file_stats;
 mod flare;
 mod git;
 mod git_file_future;
@@ -56,11 +58,13 @@ use indentation::IndentationCalculator;
 use loc::LocCalculator;
 use toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Default, Clone, Serialize)]
 pub struct FeatureFlags {
     pub git: bool,
     pub coupling: bool,
     pub git_details: bool,
+    pub file_stats: bool,
 }
 
 // general config for the scanner and calculators - could be split if it grows too far
@@ -98,6 +102,7 @@ pub fn named_toxicity_indicator_calculator(
                 .since_years(config.git_years),
         ))),
         "indentation" => Some(Box::new(IndentationCalculator {})),
+        "file_stats" => Some(Box::new(FileStatsCalculator {})),
         _ => None,
     }
 }
@@ -114,6 +119,9 @@ where
 {
     if toxicity_indicator_calculator_names.contains(&"git") && !config.features.git {
         bail!("Logic error - using git calculator when git is disabled!");
+    }
+    if toxicity_indicator_calculator_names.contains(&"file_stats") && !config.features.file_stats {
+        bail!("Logic error - using file_stats calculator when file_stats is disabled!");
     }
     let maybe_tics: Option<Vec<_>> = toxicity_indicator_calculator_names
         .iter()

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Added a DesignDecisons.md document to discuss the next change:
 * Removed the way the code used to use generic `Value` types for indicator data - everything is concrete types now.  See `DesignDecisions.md` for discussion
 * Added feature flags, including new 'disable git' option, and flags in JSON output (data format v1.0.2)
+* Added file creation and modification times, so the explorer can use them when git is disabled
 
 ## [0.3.2] - 2022-09-20
 

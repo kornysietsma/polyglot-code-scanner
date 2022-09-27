@@ -75,7 +75,6 @@ fn walk_tree_walker(
     Ok(PolyglotData::new(name, id, tree, features.clone()))
 }
 
-
 pub fn walk_directory(
     root: &Path,
     name: &str,

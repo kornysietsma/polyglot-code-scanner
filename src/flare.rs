@@ -10,6 +10,7 @@ use serde::{Serialize, Serializer};
 use std::ffi::{OsStr, OsString};
 
 use crate::coupling::SerializableCouplingData;
+use crate::file_stats::FileStats;
 use crate::git::GitNodeData;
 use crate::indentation::IndentationData;
 use crate::loc::LanguageLocData;
@@ -26,6 +27,8 @@ pub struct IndicatorData {
     pub loc: Option<LanguageLocData>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub coupling: Option<SerializableCouplingData>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_stats: Option<FileStats>,
 }
 
 impl IndicatorData {
@@ -142,7 +145,7 @@ impl Serialize for FlareTreeNode {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("FlareTreeNode", 2)?;
+        let mut state = serializer.serialize_struct("FlareTreeNode", 3)?;
         let name = name_as_str::<S>(&self.name)?;
         state.serialize_field("name", &name)?;
         if !self.data.is_empty() {
@@ -178,10 +181,10 @@ mod test {
                     name: OsString::from("child"),
                     is_file: true,
                     data: IndicatorData::default(),
-                    children: Vec::new()
+                    children: Vec::new(),
                 }],
 
-                data: IndicatorData::default()
+                data: IndicatorData::default(),
             }
         );
     }

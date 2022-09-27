@@ -455,7 +455,7 @@ mod test {
     use pretty_assertions::assert_eq;
     use serde_json::json;
     use tempfile::tempdir;
-    use test_shared::{assert_eq_json_file, assert_eq_json_value, unzip_git_sample};
+    use test_shared::{assert_eq_json_file, assert_eq_json_value, unzip_test_sample};
 
     #[test]
     fn users_can_be_lowercased() {
@@ -509,7 +509,7 @@ mod test {
     #[test]
     fn can_extract_basic_git_log() -> Result<(), Error> {
         let gitdir = tempdir()?;
-        let git_root = unzip_git_sample("git_sample", gitdir.path())?;
+        let git_root = unzip_test_sample("git_sample", gitdir.path())?;
         let git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 
         assert_eq!(git_log.workdir.canonicalize()?, git_root.canonicalize()?);
@@ -527,7 +527,7 @@ mod test {
     #[test]
     fn git_log_can_include_merge_changes() -> Result<(), Error> {
         let gitdir = tempdir()?;
-        let git_root = unzip_git_sample("git_sample", gitdir.path())?;
+        let git_root = unzip_test_sample("git_sample", gitdir.path())?;
 
         let git_log = GitLog::new(&git_root, GitLogConfig::default().include_merges(true))?;
 
@@ -545,7 +545,7 @@ mod test {
     #[test]
     fn git_log_can_limit_to_recent_history() -> Result<(), Error> {
         let gitdir = tempdir()?;
-        let git_root = unzip_git_sample("git_sample", gitdir.path())?;
+        let git_root = unzip_test_sample("git_sample", gitdir.path())?;
 
         let git_log = GitLog::new(&git_root, GitLogConfig::default().since(Some(1558521694)))?;
 
@@ -572,7 +572,7 @@ mod test {
     #[test]
     fn git_log_tracks_renames() -> Result<(), Error> {
         let gitdir = tempdir()?;
-        let git_root = unzip_git_sample("rename_simple", gitdir.path())?;
+        let git_root = unzip_test_sample("rename_simple", gitdir.path())?;
 
         let git_log = GitLog::new(&git_root, GitLogConfig::default())?;
 

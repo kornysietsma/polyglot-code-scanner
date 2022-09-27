@@ -51,6 +51,9 @@ struct Cli {
     #[clap(value_parser, long = "no-detailed-git")]
     /// Don't include detailed git information - output may be big!
     no_detailed_git: bool,
+    #[clap(value_parser, long = "no-file-stats")]
+    /// Do not scan for file stats - mainly an option as this is very hard to unit test
+    no_file_stats: bool,
 
     #[clap(value_parser, long = "years", default_value = "3")]
     /// how many years of git history to parse - default only scan the last 3 years (from now, not git head)
@@ -151,6 +154,7 @@ fn main() -> Result<(), Error> {
         git: !args.no_git,
         coupling: args.coupling,
         git_details: !(args.no_detailed_git || args.no_git),
+        file_stats: !args.no_file_stats,
     };
 
     let scanner_config = ScannerConfig {
@@ -181,17 +185,19 @@ fn main() -> Result<(), Error> {
         Box::new(io::stdout())
     };
 
-    let toxicity_indicator_calculator_names: &[&str] = if args.no_git {
-        &["loc", "indentation"]
-    } else {
-        &["loc", "git", "indentation"]
-    };
+    let mut calculator_names: Vec<&str> = vec!["loc", "indentation"];
+    if !args.no_git {
+        calculator_names.push("git");
+    }
+    if !args.no_file_stats {
+        calculator_names.push("file_stats");
+    }
 
     polyglot_code_scanner::run(
         &root,
         &scanner_config,
         coupling_config,
-        toxicity_indicator_calculator_names,
+        &calculator_names,
         &mut out,
     )?;
 

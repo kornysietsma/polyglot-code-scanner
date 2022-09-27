@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use zip::ZipArchive;
 
 /// adapted from https://github.com/mvdnes/zip-rs/blob/master/examples/extract.rs
+/// Note zip files only store modification time, this sets ctime to the mtime for tests
 pub fn unzip_to_dir(dest: &Path, zipname: &str) -> Result<(), Error> {
     let fname = std::path::Path::new(zipname);
     let file = File::open(&fname)?;
@@ -37,10 +38,10 @@ pub fn unzip_to_dir(dest: &Path, zipname: &str) -> Result<(), Error> {
     Ok(())
 }
 
-/// unzip a git zip file - assumes the name shortname.zip and contains a shortname directory in the file
+/// unzip a zip file - assumes the name shortname.zip and contains a shortname directory in the file
 /// returns the working directory in the unzipped data
-pub fn unzip_git_sample(shortname: &str, workdir: &Path) -> Result<PathBuf, Error> {
-    let zip_name = "tests/data/git/".to_owned() + shortname + ".zip";
+pub fn unzip_test_sample(shortname: &str, workdir: &Path) -> Result<PathBuf, Error> {
+    let zip_name = "tests/data/zipped/".to_owned() + shortname + ".zip";
     unzip_to_dir(workdir, &zip_name)?;
     Ok(PathBuf::from(workdir).join(shortname))
 }
