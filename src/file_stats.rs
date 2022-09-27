@@ -46,7 +46,8 @@ impl ToxicityIndicatorCalculator for FileStatsCalculator {
     }
 
     fn visit_node(&mut self, node: &mut FlareTreeNode, path: &Path) -> Result<(), Error> {
-        node.indicators_mut().file_stats = Some(FileStats::new(path)?);
+        let file_stats = FileStats::new(path)?;
+        node.indicators_mut().file_stats = Some(file_stats);
 
         Ok(())
     }

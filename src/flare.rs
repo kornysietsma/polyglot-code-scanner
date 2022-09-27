@@ -37,6 +37,7 @@ impl IndicatorData {
             && self.indentation.is_none()
             && self.loc.is_none()
             && self.coupling.is_none()
+            && self.file_stats.is_none()
     }
 }
 
