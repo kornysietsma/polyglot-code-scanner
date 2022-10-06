@@ -1,0 +1,38 @@
+name: test
+on:
+  pull_request:
+    branches:
+      - "*"
+  push:
+    branches:
+      - main
+    tags-ignore:
+      - "*"
+
+jobs:
+  test:
+    if: "!contains(github.event.commits[0].message, '[ci skip]')"
+    env:
+      RUST_BACKTRACE: "full"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-20.04, ubuntu-22.04]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust stable
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v1
+        with:
+          key: ${{ matrix.os }}
+      - name: Test
+        run: |
+          cargo fmt -- --check
+          cargo clippy --release
+          cargo test

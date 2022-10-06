@@ -10,9 +10,9 @@ Especially note, I'm changed the data file formats created by the explorer and u
 
 ## A note about releases
 
-In the (long-ish) gap since I last made a release, Travis has stopped supporting open-source so my builds no longer work.
+I am hopefully repairing the release mechanism so releases will work again!
 
-More recent releases you will need to build yourself, until I get an alternative CI setup going.
+However, for M1 macs this won't work - github actions doesn't yet support M1 macs for free, so you'll have to build binaries yourself for now.
 
 ## Intro
 
@@ -20,7 +20,7 @@ This application scans source code directories, identifying a range of code metr
 
 ## Installation and running
 
-See also <https://polyglot.korny.info/tools/scanner/howto> for more detailed instructions for fetching binary releases, and running the scanner.
+See also <https://polyglot.korny.info/tools/scanner/howto> for more detailed instructions for building binary releases, and running the scanner.
 
 To compile and run from source, you'll need [to install rust and cargo](https://www.rust-lang.org/tools/install) and then from a copy of this project, you can build a binary package with:
 

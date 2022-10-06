@@ -1,0 +1,63 @@
+name: macos-release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Build on macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust stable
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Build
+        run: |
+          cargo build --release --locked
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: binary
+          path: target/release/polyglot_code_scanner
+  test:
+    name: Test on macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust stable
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Test
+        run: |
+          cargo fmt -- --check
+          cargo clippy --release
+          cargo test --release --locked
+  release:
+    runs-on: macos-latest
+    needs: [build, test]
+    steps:
+      - name: Set the release tag
+        id: set_tag
+        run: echo ::set-output name=RELEASE_TAG::${GITHUB_REF/refs\/tags\/v/}
+        shell: bash
+      - name: Restore artifact from previous job
+        uses: actions/download-artifact@v3
+        with:
+          name: binary
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: polyglot_code_scanner
+          asset_name: polyglot-code-scanner-x86_64-macos
+          tag: ${{ github.ref }}
+          overwrite: true
