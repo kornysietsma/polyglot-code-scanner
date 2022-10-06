@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.3.9] - 2022-10-06
 
 * Bug fix for some co-authored-by syntax
 * fix for linux binaries (I hope)
