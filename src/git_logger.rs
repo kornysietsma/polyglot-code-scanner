@@ -303,7 +303,7 @@ fn trim_string(s: &str) -> Option<&str> {
 fn find_coauthors(message: &str) -> Vec<User> {
     lazy_static! {
         static ref CO_AUTH_LINE: Regex = Regex::new(r"(?m)^\s*Co-authored-by:(.*)$").unwrap();
-        static ref CO_AUTH_ANGLE_BRACKETS: Regex = Regex::new(r"^(.*)<([^>]+)>$").unwrap();
+        static ref CO_AUTH_ANGLE_BRACKETS: Regex = Regex::new(r"^(.*)<([^>]+)>\s*$").unwrap();
     }
 
     CO_AUTH_LINE
@@ -481,19 +481,24 @@ mod test {
 
     #[test]
     fn can_get_coauthors_from_message() {
-        let message = r#"This is a commit message
+        let message = "This is a commit message
         not valid: Co-authored-by: fred jones
         Co-authored-by: valid user <valid@thing.com>
+        Co-authored-by: White Space <handles_trailing_whitespace@any-domain.com>\t\r
         Co-authored-by: <be.lenient@any-domain.com>
         Co-authored-by: bad@user <this isn't really trying to be clever>
         ignore random lines
         Co-authored-by: if there's no at it's a name
         Co-authored-by: if there's an @ it's email@thing.com
         ignore trailing lines
-        "#;
+        ";
 
         let expected = vec![
             User::new(Some("valid user"), Some("valid@thing.com")),
+            User::new(
+                Some("White Space"),
+                Some("handles_trailing_whitespace@any-domain.com"),
+            ),
             User::new(None, Some("be.lenient@any-domain.com")),
             User::new(
                 Some("bad@user"),

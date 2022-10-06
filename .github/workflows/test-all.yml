@@ -11,7 +11,9 @@ on:
 
 jobs:
   test:
-    if: "!contains(github.event.commits[0].message, '[ci skip]')"
+    if: |
+      !contains(github.event.commits[0].message, '[ci skip]') &&
+      !contains(github.event.commits[0].message, '(cargo-release)')
     env:
       RUST_BACKTRACE: "full"
     runs-on: ${{ matrix.os }}

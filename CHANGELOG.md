@@ -6,10 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
-## [0.3.8] - 2022-10-06
-## [0.3.7] - 2022-10-06
-## [0.3.6] - 2022-10-06
-## [0.3.5] - 2022-10-06
+
+* Bug fix for some co-authored-by syntax
+
 ## [0.3.4] - 2022-10-06
 
 * Minor release mostly to test fixes to the release process!
