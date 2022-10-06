@@ -14,6 +14,8 @@ Binary releases are working again - see <https://github.com/kornysietsma/polyglo
 
 However, for M1 macs this won't work - github actions doesn't yet support M1 macs for free, so you'll have to build binaries yourself for now.
 
+For Macs you also need to run `xattr -d com.apple.quarantine polyglot-code-scanner-x86_64-macos` to remove the quarantine that OSX adds to all downloaded binaries.
+
 ## Intro
 
 This application scans source code directories, identifying a range of code metrics and other data, and storing the results in a JSON file for later visualisation by the [Polyglot Code Explorer](https://polyglot.korny.info/tools/explorer/description/)
