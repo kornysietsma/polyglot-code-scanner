@@ -30,7 +30,7 @@ grep-searcher = "0.1.10"
 hdrhistogram = "7.5.2"
 indicatif = "0.17.1"
 chrono = "0.4.22"
-openssl = { version = "0.10.41", optional = true }
+openssl = { version = "0.10.42", features=["vendored"] }
 path-slash = "0.2.1"
 uuid = { version = "1.1.2", features = ["v4"] }
 anyhow = "1.0.65"
@@ -41,6 +41,3 @@ test_shared = { path = "test_shared" }
 tempfile = "3.3.0"
 zip = "0.6.2"
 pretty_assertions = "1.3.0"
-
-[features]
-vendored-openssl = ['openssl/vendored']
