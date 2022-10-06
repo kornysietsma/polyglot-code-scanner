@@ -8,7 +8,6 @@ on:
 jobs:
   build:
     name: Build on Linux
-    container: node:alpine
     runs-on: ubuntu-latest
     env:
       RUST_BACKTRACE: "full"
