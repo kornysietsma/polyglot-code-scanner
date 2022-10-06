@@ -14,6 +14,9 @@ jobs:
       RUST_BACKTRACE: "full"
     steps:
       - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          apk add --no-cache bash openssl-dev build-base
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@master
         with:
