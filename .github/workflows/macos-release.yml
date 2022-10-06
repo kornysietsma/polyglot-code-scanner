@@ -10,7 +10,7 @@ jobs:
     name: Build on macOS
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
@@ -29,7 +29,7 @@ jobs:
     name: Test on macOS
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:

@@ -13,7 +13,7 @@ jobs:
     env:
       RUST_BACKTRACE: "full"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
@@ -34,7 +34,7 @@ jobs:
     name: Test on Linux
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
@@ -65,4 +65,4 @@ jobs:
           asset_name: polyglot-code-scanner-x86_64-linux
           tag: ${{ github.ref }}
           overwrite: true
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
