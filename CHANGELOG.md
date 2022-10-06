@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+
+* Minor release mostly to test fixes to the release process!
+
 ## [0.3.3] - 2022-09-28
 
 * Somewhat breaking release - the output file schema won't change, but the logic is changing - so now data format is 1.0.1 as this is sort-of compatible:
