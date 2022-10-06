@@ -1,6 +1,6 @@
 [package]
 name = "polyglot_code_scanner"
-version = "0.3.15"
+version = "0.3.16-alpha.0"
 publish = false
 authors = ["Korny Sietsma <korny@sietsma.com>"]
 description = "Polyglot Code Scanner - scans source code and generates tree-structured JSON files for d3 visualisation"
