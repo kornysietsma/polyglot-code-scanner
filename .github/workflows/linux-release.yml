@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     name: Build on Linux
-    contaoner: node:apline
+    container: node:alpine
     runs-on: ubuntu-20.04
     env:
       RUST_BACKTRACE: "full"
