@@ -10,7 +10,7 @@ Especially note, I'm changed the data file formats created by the explorer and u
 
 ## A note about releases
 
-I am hopefully repairing the release mechanism so releases will work again!
+Binary releases are working again - see <https://github.com/kornysietsma/polyglot-code-scanner/releases> for binary releases.
 
 However, for M1 macs this won't work - github actions doesn't yet support M1 macs for free, so you'll have to build binaries yourself for now.
 

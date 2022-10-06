@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased] - ReleaseDate
 
 * Bug fix for some co-authored-by syntax
+* fix for linux binaries (I hope)
 
 ## [0.3.4] - 2022-10-06
 

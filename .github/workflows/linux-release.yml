@@ -22,7 +22,7 @@ jobs:
           key: ubuntu-latest
       - name: Build
         run: |
-          cargo build --release --locked
+          cargo build --release --locked --target x86_64-unknown-linux-musl
       - name: Upload build artifact
         uses: actions/upload-artifact@v3
         with:
