@@ -12,9 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust stable
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
       - name: Build
