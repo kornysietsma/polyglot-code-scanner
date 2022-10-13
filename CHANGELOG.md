@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.4.0] - 2022-10-13
 
 * New release - it feels that a lot has changed, really 0.3.2 should have been 0.4.0! Anyway better late than never.
 * Major changes since 0.3.1:
