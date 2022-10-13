@@ -2,12 +2,6 @@
 
 This is part of my Polyglot Code tools - for the main documentation, see <https://polyglot.korny.info>
 
-## WORK IN PROGRESS WARNING
-
-I'm doing a lot of changes right now - if you fetch the current code, things may break.
-
-Especially note, I'm changed the data file formats created by the explorer and used by the scanner - I've added version number checks, but data files from the Scanner must match expectations of the Explorer, so for now it's a bit of "make sure you pull changes often" or things will break.
-
 ## A note about releases
 
 Binary releases are working again - see <https://github.com/kornysietsma/polyglot-code-scanner/releases> for binary releases.
@@ -54,54 +48,47 @@ You can also manually add `.polyglot_code_scanner_ignore` files anywhere in the 
 
 ## Usage
 
+Run `polyglot_code_scanner -h` for full options, this is just the main options:
+
 ~~~text
-polyglot_code_scanner [FLAGS] [OPTIONS] [root]
-
 USAGE:
-    polyglot_code_scanner [FLAGS] [OPTIONS] [root]
-
-FLAGS:
-    -c, --coupling           include temporal coupling data
-    -h, --help               Prints help information
-        --no-detailed-git    Don't include detailed git information - output may be big!
-    -V, --version            Prints version information
-    -v, --verbose            Logging verbosity, v = error, vv = warn, vvv = info (default), vvvv = debug, vvvvv = trace
-
-OPTIONS:
-        --years <git_years>
-            how many years of git history to parse - default only scan the last 3 years (from now, not git head)
-            [default: 3]
-        --coupling-bucket-days <bucket-days>
-            Number of days in a single "bucket" of coupling activity [default: 91]
-        --coupling-min-bursts <min-activity-bursts>
-            If a file has fewer bursts of change than this in a bucket, don't measure coupling from it [default: 10]
-        --coupling-min-activity-gap-minutes <min-activity-gap-minutes>
-            what is the minimum gap between activities in a burst? a sequence of commits with no gaps this long is
-            treated as one burst [default: 120]
-        --coupling-min-ratio <min-coupling-ratio>
-            The minimum ratio of (other file changes)/(this file changes) to include a file in coupling stats [default:
-            0.75]
-        --coupling-time-overlap-minutes <min-overlap-minutes>
-            how far before/after an activity burst is included for coupling? e.g. if I commit Foo.c at 1am, and Bar.c at
-            2am, they are coupled if an overlap of 60 minutes or longer is specified [default: 60]
-        --coupling-max-common-roots <coupling-max-common-roots>
-            The maximum number of common ancestors to include in coupling e.g. "foo/src/controller/a.c" and
-            "foo/src/service/b.c" have two common ancestors, if you set this value to 3 they won't show as coupled
-        --coupling-min-distance <coupling-min-distance>
-            The minimum distance between nodes to include in coupling 0 is all, 1 is siblings, 2 is cousins and so on.
-            so if you set this to 3, cousins "foo/src/a.rs" and "foo/test/a_test.rs" won't be counted as their distance
-            is 2 [default: 3]
-    -o, --output <output>
-            Output file, stdout if not present, or not used if sending to web server
-
+    polyglot_code_scanner [OPTIONS] --name <NAME> [ROOT]
 
 ARGS:
-    <root>    Root directory, current dir if not present
+    <ROOT>    Root directory, current dir if not present
+
+OPTIONS:
+    -h, --help
+            Print help information
+
+    -n, --name <NAME>
+            project name - identifies the selected data for display and state storage
+
+        --id <ID>
+            data file ID - used to identify unique data files for browser storage, generates a UUID
+            if not specified
+
+    -o, --output <OUTPUT>
+            Output file, stdout if not present, or not used if sending to web server
+
+        --no-git
+            Do not scan for git repositories
+
+        --years <GIT_YEARS>
+            how many years of git history to parse - default only scan the last 3 years (from now,
+            not git head) [default: 3]
+
+    -c, --coupling
+            include temporal coupling data
+
+    -V, --version
+            Print version information
+
 ~~~
 
 ## Development notes
 
-See also the `DesignDecisions.md` file 
+See also the `DesignDecisions.md` file
 
 ### Running tests
 
@@ -165,10 +152,8 @@ or for a minor change 0.1.3 to 0.2.0 :
 cargo release minor --dry-run
 ~~~
 
-
-
 ## License
 
-Copyright © 2019 Kornelis Sietsma
+Copyright © 2019-2022 Kornelis Sietsma
 
 Licensed under the Apache License, Version 2.0 - see LICENSE.txt for details

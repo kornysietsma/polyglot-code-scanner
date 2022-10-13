@@ -6,20 +6,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
-## [0.3.15] - 2022-10-06
-## [0.3.14] - 2022-10-06
-## [0.3.13] - 2022-10-06
-## [0.3.12] - 2022-10-06
-## [0.3.11] - 2022-10-06
-## [0.3.10] - 2022-10-06
-## [0.3.9] - 2022-10-06
 
-* Bug fix for some co-authored-by syntax
-* fix for linux binaries (I hope)
+* New release - it feels that a lot has changed, really 0.3.2 should have been 0.4.0! Anyway better late than never.
+* Major changes since 0.3.1:
+  * Output file format reworked
+  * Project files have names and IDs
+  * Disabling git scanning
+  * Feature flags
+  * various bug fixes
+
+## [0.3.15] - 2022-10-06
+
+* Bug fix for some co-authored-by lines
+  * sometimes commit messages are terminated by `\r\n` characters, but rust assumed they were `\n` terminated - and my co-author regular expression didn't ignore the `\r` whitespace!
+* fix for linux binaries finally
+  * deleted releases 0.3.5 to 0.3.14 - debugging Github Actions took a lot of work, and a lot of release-fix-release cycles!
 
 ## [0.3.4] - 2022-10-06
 
-* Minor release mostly to test fixes to the release process!
+* Point release mostly to test fixes to the release process!
 
 ## [0.3.3] - 2022-09-28
 
