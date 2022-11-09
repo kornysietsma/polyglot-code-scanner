@@ -1827,7 +1827,7 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 [[package]]
 name = "tokei"
 version = "12.1.2"
-source = "git+https://github.com/kornysietsma/tokei?branch=accumulate-lines#a90b241d0166299d02584e45bbabd3ca65cd056c"
+source = "git+https://github.com/kornysietsma/tokei?tag=PolyglotV1.0.0#99cbc4a15c93309d67dc399366e8a6a8aeff22c9"
 dependencies = [
  "aho-corasick",
  "clap 2.34.0",
