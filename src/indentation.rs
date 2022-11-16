@@ -90,10 +90,9 @@ fn parse_file(filename: &Path) -> Result<Option<IndentationData>, Error> {
         }
         None => {
             if file_content_type(filename)? == ContentType::BINARY {
-                eprintln!("binary file");
                 return Ok(None);
             }
-            warn!("Unknown language in {:?}", filename);
+            debug!("Unknown language in {:?} - treating as text", filename);
             CodeLines::new(&PathBuf::from(filename))?
         }
     };
