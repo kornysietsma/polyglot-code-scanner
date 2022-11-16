@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.4.2] - 2022-11-16
 
 * Unknown languages now treated as pure code - previously they were 'Text' which was treated by tokei as all comments, so ignored in stats!
 * Added support for 'pf' fortran unit test files (via changes to my tokei fork)
