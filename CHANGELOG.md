@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+
+* Unknown languages now treated as pure code - previously they were 'Text' which was treated by tokei as all comments, so ignored in stats!
+* Added support for 'pf' fortran unit test files (via changes to my tokei fork)
+
 ## [0.4.1] - 2022-11-09
 
 * Fixed the [tokei fork](https://github.com/kornysietsma/tokei/tree/accumulate-lines) to properly get indentation for COBOL and other languages with simple per-line comment checks

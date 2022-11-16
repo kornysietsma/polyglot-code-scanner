@@ -1,6 +1,13 @@
+use std::{
+    fs::File,
+    io::{BufRead, BufReader},
+    path::PathBuf,
+};
+
+use anyhow::Error;
 use tokei::CodeStats;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CodeLineData {
     pub spaces: u32,
     pub tabs: u32,
@@ -37,13 +44,13 @@ impl CodeLineData {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CodeLines {
     pub lines: Vec<CodeLineData>,
 }
 
 impl CodeLines {
-    pub fn new(stats: &CodeStats) -> Self {
+    pub fn from_stats(stats: &CodeStats) -> Self {
         CodeLines {
             lines: stats
                 .code_lines
@@ -51,6 +58,22 @@ impl CodeLines {
                 .map(|line| CodeLineData::new(line))
                 .collect(),
         }
+    }
+    pub fn new(path: &PathBuf) -> Result<Self, Error> {
+        let text: Vec<Vec<u8>> = {
+            let f = match File::open(path) {
+                Ok(f) => f,
+                Err(e) => return Err(anyhow!("error opening file {:?} - {}", &path, e)),
+            };
+            let lines: Result<Vec<_>, _> = BufReader::new(f).lines().collect();
+            lines?
+                .iter()
+                .map(|line| Vec::from(line.as_bytes()))
+                .collect()
+        };
+        Ok(CodeLines {
+            lines: text.iter().map(|line| CodeLineData::new(line)).collect(),
+        })
     }
 }
 
@@ -109,7 +132,7 @@ foo();"#;
         //     .collect();
         // eprintln!("Code lines: {:?}", printable_lines);
 
-        let result: CodeLines = CodeLines::new(&stats);
+        let result: CodeLines = CodeLines::from_stats(&stats);
 
         let mut expected = vec![
             CodeLineData {

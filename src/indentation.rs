@@ -72,7 +72,7 @@ impl IndentationData {
 const MAX_PEEK_SIZE: usize = 1024;
 
 fn file_content_type(filename: &Path) -> Result<ContentType, Error> {
-    let file = File::open(&filename)?;
+    let file = File::open(filename)?;
     let mut buffer: Vec<u8> = vec![];
 
     file.take(MAX_PEEK_SIZE as u64).read_to_end(&mut buffer)?;
@@ -81,21 +81,22 @@ fn file_content_type(filename: &Path) -> Result<ContentType, Error> {
 
 fn parse_file(filename: &Path) -> Result<Option<IndentationData>, Error> {
     let config = Config::default();
-    let language = match LanguageType::from_path(filename, &config) {
-        Some(language) => language,
+    let code_lines = match LanguageType::from_path(filename, &config) {
+        Some(language) => {
+            let report = language
+                .parse(PathBuf::from(filename), &config)
+                .map_err(|(error, _pathbuf)| error);
+            CodeLines::from_stats(&report?.stats)
+        }
         None => {
             if file_content_type(filename)? == ContentType::BINARY {
+                eprintln!("binary file");
                 return Ok(None);
             }
-            LanguageType::Text
+            warn!("Unknown language in {:?}", filename);
+            CodeLines::new(&PathBuf::from(filename))?
         }
     };
-
-    let report = language
-        .parse(PathBuf::from(filename), &config)
-        .map_err(|(error, _pathbuf)| error);
-    let code_lines = CodeLines::new(&report?.stats);
-
     Ok(IndentationData::new(code_lines))
 }
 
@@ -132,5 +133,25 @@ mod test {
         assert_eq!(indentation.lines, 3);
         assert_eq!(indentation.p99, 2);
         assert_eq!(indentation.sum, 2);
+    }
+
+    #[test]
+    fn unknown_files_are_treated_as_code() {
+        let indentation = parse_file(Path::new("./tests/data/languages/foo.unknown"))
+            .unwrap()
+            .unwrap();
+        assert_eq!(indentation.lines, 2);
+        assert_eq!(indentation.p99, 2);
+        assert_eq!(indentation.sum, 2);
+    }
+
+    #[test]
+    fn pf_files_are_fortran_unit_tests() {
+        let indentation = parse_file(Path::new("./tests/data/languages/pfunit_test.pf"))
+            .unwrap()
+            .unwrap();
+        assert_eq!(indentation.lines, 13);
+        assert_eq!(indentation.p99, 6);
+        assert_eq!(indentation.sum, 39);
     }
 }

@@ -10,7 +10,7 @@ edition = "2021"
 debug = true
 
 [dependencies]
-tokei = { git = "https://github.com/kornysietsma/tokei", tag = "PolyglotV1.0.0" }
+tokei = { git = "https://github.com/kornysietsma/tokei", tag = "PolyglotV1.0.1" }
 ignore = "0.4.18"
 serde = { version = "1.0.144",features = ["derive","rc"] }
 erased-serde = "0.3.23"

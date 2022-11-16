@@ -1,0 +1,17 @@
+module test_simple
+   use funit
+
+contains
+
+   !!! Note: no test annotation !!!
+   subroutine not_a_test()
+      print*,'this procedure should not be called'
+   end subroutine not_a_test
+
+   @test
+   subroutine test_assert_true_and_false()
+      @assertTrue(1 == 1)
+      @assertFalse(1 == 2)
+   end subroutine test_assert_true_and_false
+
+end module test_simple
