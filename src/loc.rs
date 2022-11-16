@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use tokei::{Config, LanguageType};
 
 /// a struct representing tokei language data - based on `tokei::Stats` and `tokei::Languages::name`
-#[derive(Debug, PartialEq, Serialize, Clone)]
+#[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 pub struct LanguageLocData {
     /// Canonical language name
     pub language: String,
@@ -62,7 +62,7 @@ impl LanguageLocData {
 const MAX_PEEK_SIZE: usize = 1024;
 
 fn file_content_type(filename: &Path) -> Result<ContentType, Error> {
-    let file = File::open(&filename)?;
+    let file = File::open(filename)?;
     let mut buffer: Vec<u8> = vec![];
 
     file.take(MAX_PEEK_SIZE as u64).read_to_end(&mut buffer)?;

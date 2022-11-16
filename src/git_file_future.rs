@@ -45,13 +45,13 @@ impl GitFileFutureRegistry {
         file_changes: &[(PathBuf, FileNameChange)],
     ) {
         let entry = self.rev_changes.entry(*id).or_insert_with(RevChange::new);
-        (*entry).files.extend(file_changes.iter().cloned());
+        entry.files.extend(file_changes.iter().cloned());
         for parent_id in parent_ids {
             let pentry = self
                 .rev_changes
                 .entry(*parent_id)
                 .or_insert_with(RevChange::new);
-            (*pentry).children.push(*id);
+            pentry.children.push(*id);
         }
     }
 

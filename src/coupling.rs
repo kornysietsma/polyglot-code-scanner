@@ -380,7 +380,7 @@ impl CouplingBuckets {
 }
 
 /// Individual bucket to save in the Json tree
-#[derive(Debug, PartialEq, Serialize, Clone)]
+#[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 pub struct SerializableCouplingBucketData {
     pub bucket_start: u64,
     pub bucket_end: u64,
@@ -389,7 +389,7 @@ pub struct SerializableCouplingBucketData {
 }
 
 /// Data to save in the Json tree for a file
-#[derive(Debug, PartialEq, Serialize, Clone)]
+#[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 pub struct SerializableCouplingData {
     pub buckets: Vec<SerializableCouplingBucketData>,
 }

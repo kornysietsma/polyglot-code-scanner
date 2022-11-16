@@ -19,7 +19,7 @@ use std::path::Path;
 use git2::Repository;
 
 /// a struct representing git data for a file
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct GitData {
     pub last_update: u64,
     pub age_in_days: u64,
@@ -109,14 +109,14 @@ pub struct GitCalculator {
 }
 
 // Git data for a directory - just remote git info
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct GitInfo {
     pub remote_url: Option<String>,
     pub head: Option<String>,
 }
 
 // Git data for a file _or_ a directory
-#[derive(Debug, PartialEq, Clone, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
 #[serde(untagged)]
 pub enum GitNodeData {
     File {

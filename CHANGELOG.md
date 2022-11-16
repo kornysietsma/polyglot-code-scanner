@@ -1,4 +1,5 @@
 # Change Log
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
@@ -6,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+
+* tidying up
+
 ## [0.4.2] - 2022-11-16
 
 * Unknown languages now treated as pure code - previously they were 'Text' which was treated by tokei as all comments, so ignored in stats!
@@ -89,6 +93,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Git logging may be slower and use more memory, as interim git log data is stored in memory.
 
 ## [0.1.2] - 2020-08-25
+
 ## [0.1.1] - 2020-08-24
 
 ### Changed

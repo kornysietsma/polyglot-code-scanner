@@ -11,7 +11,7 @@ use crate::{
 
 /// File creation and modification times, in seconds since unix epoch
 /// using the filetime crate so Windows times are converted to unix times!
-#[derive(Debug, PartialEq, Clone, Serialize, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Default)]
 pub struct FileStats {
     created: i64,
     modified: i64,
