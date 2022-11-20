@@ -2,7 +2,7 @@ use crate::flare::FlareTreeNode;
 use crate::polyglot_data::IndicatorMetadata;
 
 use super::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
-use anyhow::Error;
+use anyhow::{Context, Error};
 use serde::Serialize;
 
 use content_inspector::{inspect, ContentType};
@@ -109,7 +109,8 @@ impl ToxicityIndicatorCalculator for IndentationCalculator {
 
     fn visit_node(&mut self, node: &mut FlareTreeNode, path: &Path) -> Result<(), Error> {
         if path.is_file() {
-            let indentation = parse_file(path)?;
+            let indentation =
+                parse_file(path).with_context(|| format!("parsing indentation for {:?}", path))?;
             node.indicators_mut().indentation = indentation;
         }
         Ok(())
@@ -152,5 +153,15 @@ mod test {
         assert_eq!(indentation.lines, 13);
         assert_eq!(indentation.p99, 6);
         assert_eq!(indentation.sum, 39);
+    }
+
+    #[test]
+    fn non_utf8_text_files_are_parsed() {
+        let indentation = parse_file(Path::new("./tests/data/languages/non-utf8.properties"))
+            .unwrap()
+            .unwrap();
+        assert_eq!(indentation.lines, 2);
+        assert_eq!(indentation.p99, 0);
+        assert_eq!(indentation.sum, 0);
     }
 }

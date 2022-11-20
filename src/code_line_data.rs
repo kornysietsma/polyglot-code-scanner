@@ -1,10 +1,7 @@
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    path::PathBuf,
-};
+use std::{fs::File, io::Read, path::PathBuf};
 
 use anyhow::Error;
+use encoding_rs_io::DecodeReaderBytesBuilder;
 use tokei::CodeStats;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -65,11 +62,11 @@ impl CodeLines {
                 Ok(f) => f,
                 Err(e) => return Err(anyhow!("error opening file {:?} - {}", &path, e)),
             };
-            let lines: Result<Vec<_>, _> = BufReader::new(f).lines().collect();
-            lines?
-                .iter()
-                .map(|line| Vec::from(line.as_bytes()))
-                .collect()
+            let mut s = Vec::new();
+            let mut reader = DecodeReaderBytesBuilder::new().build(f);
+            reader.read_to_end(&mut s)?;
+
+            s.split(|b| *b == b'\n').map(Vec::from).collect()
         };
         Ok(CodeLines {
             lines: text.iter().map(|line| CodeLineData::new(line)).collect(),
