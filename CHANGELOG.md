@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.4.4] - 2022-11-21
 
 * fixed error with non-UTF8 files in the recent unknown languages logic
 * added error context in a few places to make diagnosing errors easier
