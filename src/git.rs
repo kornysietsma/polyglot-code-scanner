@@ -4,7 +4,7 @@ use crate::git_logger::{CommitChange, GitLog, GitLogConfig, User};
 use crate::git_user_dictionary::GitUserDictionary;
 use crate::polyglot_data::GitMetadata;
 use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
-use anyhow::Error;
+use anyhow::{Context, Error};
 use chrono::{NaiveDateTime, NaiveTime};
 
 use serde::{Deserialize, Serialize};
@@ -315,13 +315,17 @@ impl ToxicityIndicatorCalculator for GitCalculator {
                 Some(history) => history,
                 None => {
                     info!("Loading git history for {}", path.display());
-                    self.histories.add_history_for(path)?;
+                    self.histories
+                        .add_history_for(path)
+                        .with_context(|| format!("Loading git history based on {:?}", path))?;
                     info!("history loaded.");
                     self.histories.git_history(path).unwrap()
                 }
             };
             let last_commit = history.last_commit();
-            let file_history = history.history_for(path)?;
+            let file_history = history
+                .history_for(path)
+                .with_context(|| format!("getting git file history for {:?}", path))?;
 
             if let Some(file_history) = file_history {
                 let stats = GitHistories::stats_from_history(
@@ -343,7 +347,10 @@ impl ToxicityIndicatorCalculator for GitCalculator {
                         node.indicators_mut().git = Some(GitNodeData::Dir { data: info });
                     }
                     Err(e) => {
-                        warn!("Can't find git repository at {:?}, {}", path, e);
+                        warn!(
+                            "Can't find git repository at {:?}, {} - ignoring .git directory",
+                            path, e
+                        );
                     }
                 }
             }

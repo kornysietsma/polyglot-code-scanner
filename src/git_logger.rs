@@ -168,7 +168,16 @@ impl<'a> Iterator for GitLogIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let mut next_item = self.revwalk.next();
         while next_item.is_some() {
-            let c = self.summarise_commit(next_item.unwrap());
+            let oid = next_item.unwrap();
+            // this is a bit ugly - revwalk iterates over Result<Oid, Error> types, so some entries aren't Oids at all
+            // but I want an error context, and it's easier to create it here than in all the spots later that might
+            // return errors.
+            let error_context = if let Ok(valid_oid) = oid {
+                format!("Processing oid {:?}", valid_oid)
+            } else {
+                "Processing unkown oid from revwalk".to_string()
+            };
+            let c = self.summarise_commit(oid);
             match c {
                 Ok(Some(c)) => {
                     let commit_in_range = self
@@ -185,7 +194,7 @@ impl<'a> Iterator for GitLogIterator<'a> {
                     }
                 }
                 Ok(None) => {}
-                Err(e) => return Some(Err(e)),
+                Err(e) => return Some(Err(e.context(error_context))),
             };
             next_item = self.revwalk.next();
         }

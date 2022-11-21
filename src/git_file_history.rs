@@ -139,7 +139,7 @@ impl GitFileHistory {
                             let new_entry = FileHistoryEntry::from(&entry, file_change);
                             hash_entry.push(new_entry);
                         } else {
-                            debug!(
+                            trace!(
                                 "Not storing history for deleted file {:?}",
                                 file_change.file()
                             );

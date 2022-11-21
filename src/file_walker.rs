@@ -5,7 +5,7 @@ use crate::{polyglot_data::PolyglotData, FeatureFlags};
 use super::flare;
 use super::flare::FlareTreeNode;
 use super::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
-use anyhow::Error;
+use anyhow::{Context, Error};
 use ignore::{Walk, WalkBuilder};
 #[allow(unused_imports)]
 use path_slash::PathExt;
@@ -17,7 +17,8 @@ fn apply_calculators_to_node(
     toxicity_indicator_calculators: &mut [Box<dyn ToxicityIndicatorCalculator>],
 ) -> Result<(), Error> {
     for tic in toxicity_indicator_calculators.iter_mut() {
-        tic.visit_node(node, path)?;
+        tic.visit_node(node, path)
+            .with_context(|| format!("applying calcluator {} to {:?}", tic.name(), path))?;
     }
     Ok(())
 }

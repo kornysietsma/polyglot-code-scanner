@@ -25,7 +25,7 @@ extern crate derive_builder;
 #[macro_use]
 extern crate derive_getters;
 
-use anyhow::Error;
+use anyhow::{Context, Error};
 use file_stats::FileStatsCalculator;
 use postprocessing::postprocess_tree;
 use serde::Serialize;
@@ -142,7 +142,8 @@ where
 
     info!("adding metadata");
     for tic in tics {
-        tic.apply_metadata(polyglot_data.metadata())?;
+        tic.apply_metadata(polyglot_data.metadata())
+            .with_context(|| format!("applying metadata for {}", tic.name()))?;
     }
 
     if let Some(cc) = coupling_config {
