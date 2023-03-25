@@ -30,7 +30,7 @@ grep-searcher = "0.1.10"
 hdrhistogram = "7.5.2"
 indicatif = "0.17.1"
 chrono = "0.4.22"
-openssl = { version = "0.10.42", features=["vendored"] }
+openssl = { version = "0.10.48", features=["vendored"] }
 path-slash = "0.2.1"
 uuid = { version = "1.1.2", features = ["v4"] }
 anyhow = "1.0.65"
