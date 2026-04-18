@@ -61,6 +61,9 @@ struct Cli {
     #[clap(value_parser, long = "follow-symlinks")]
     /// Follow symbolic links when traversing directories
     follow_symlinks: bool,
+    #[clap(value_parser, long = "prune-inactive-years")]
+    /// Years of inactivity to trigger pruning. If specified, remove directories with no git commits in the last N years. Requires git enabled.
+    prune_inactive_years: Option<u64>,
     #[clap(value_parser, long = "coupling-bucket-days", default_value = "91")]
     /// Number of days in a single "bucket" of coupling activity
     bucket_days: u64,
@@ -144,6 +147,9 @@ fn main() -> Result<(), Error> {
         if args.no_detailed_git {
             custom_validation_conflict("Can't specify no_detailed_git when git is disabled!");
         }
+        if args.prune_inactive_years.is_some() {
+            custom_validation_conflict("Can't enable prune_inactive_years when git is disabled!");
+        }
     }
 
     setup_logging(args.verbose)?;
@@ -162,6 +168,7 @@ fn main() -> Result<(), Error> {
         data_id: args.id,
         name: args.name,
         follow_symlinks: args.follow_symlinks,
+        prune_inactive_years: args.prune_inactive_years,
         features,
     };
 

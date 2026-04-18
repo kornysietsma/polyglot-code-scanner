@@ -1,7 +1,7 @@
 {
   "name": "test",
   "id": "test-id",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "features": {
     "coupling": false,
     "git": true,
@@ -82,7 +82,9 @@
     ],
     "data": {
       "git": {
+        "earliest_commit_date": 1558521386,
         "head": "93ae0c7c7cd93b3c4ea1bf103bde4deafef798ad",
+        "latest_commit_date": 1558533240,
         "remote_url": null
       }
     }

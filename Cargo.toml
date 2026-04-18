@@ -21,7 +21,10 @@ log = "0.4.17"
 fern = "0.6.1"
 clap-verbosity-flag = "1.0.1"
 lazy_static = "1.4.0"
-git2 = "0.15.0"
+# TODO: libgit2 does not yet support SHA-256 repositories.
+# Vendored libgit2 was attempted but doesn't help as the underlying libgit2 library lacks this support.
+# Remove this note once libgit2 v1.8+ or v2.0+ adds SHA-256 support.
+git2 = { version = "0.20.3" }
 derive_builder = "0.11.2"
 derive-getters = "0.2.0"
 content_inspector = "0.2.4"

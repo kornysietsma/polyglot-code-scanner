@@ -113,6 +113,14 @@ pub struct GitCalculator {
 pub struct GitInfo {
     pub remote_url: Option<String>,
     pub head: Option<String>,
+    /// Earliest (oldest) commit date in this repository across all files (Unix timestamp)
+    /// Set during git scanning, used for pruning and output
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub earliest_commit_date: Option<u64>,
+    /// Latest (most recent) commit date in this repository across all files (Unix timestamp)
+    /// Set during git scanning, used for pruning and output
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_commit_date: Option<u64>,
 }
 
 // Git data for a file _or_ a directory
@@ -152,7 +160,12 @@ impl GitInfo {
             }
             Ok(head) => Some(head),
         };
-        GitInfo { remote_url, head }
+        GitInfo {
+            remote_url,
+            head,
+            earliest_commit_date: None,
+            latest_commit_date: None,
+        }
     }
 }
 
@@ -315,11 +328,39 @@ impl ToxicityIndicatorCalculator for GitCalculator {
                 Some(history) => history,
                 None => {
                     info!("Loading git history for {}", path.display());
-                    self.histories
-                        .add_history_for(path)
-                        .with_context(|| format!("Loading git history based on {:?}", path))?;
-                    info!("history loaded.");
-                    self.histories.git_history(path).unwrap()
+                    match self.histories.add_history_for(path) {
+                        Ok(()) => {
+                            info!("history loaded.");
+                            self.histories.git_history(path).unwrap()
+                        }
+                        Err(e) => {
+                            // Check if this is a SHA-256 format error (unsupported extension)
+                            let error_msg = e.to_string();
+                            if error_msg.contains("objectformat")
+                                || error_msg.contains("unknown object format")
+                            {
+                                warn!(
+                                    "Skipping git history for {} - unsupported git format (SHA-256?): {}",
+                                    path.display(),
+                                    error_msg
+                                );
+                                return Ok(());
+                            }
+                            // Check if file is not in a git repository
+                            if error_msg.contains("could not find repository")
+                                || error_msg.contains("NotFound")
+                            {
+                                info!(
+                                    "Skipping git history for {} - not in a git repository",
+                                    path.display()
+                                );
+                                return Ok(());
+                            }
+                            return Err(e).with_context(|| {
+                                format!("Loading git history based on {:?}", path)
+                            });
+                        }
+                    }
                 }
             };
             let last_commit = history.last_commit();

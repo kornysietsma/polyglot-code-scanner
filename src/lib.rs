@@ -71,6 +71,7 @@ pub struct FeatureFlags {
 pub struct ScannerConfig {
     pub git_years: Option<u64>,
     pub follow_symlinks: bool,
+    pub prune_inactive_years: Option<u64>,
     pub name: String,
     pub data_id: Option<String>,
     pub features: FeatureFlags,
@@ -82,6 +83,7 @@ impl ScannerConfig {
         ScannerConfig {
             git_years: None,
             follow_symlinks: false,
+            prune_inactive_years: None,
             name: name.to_owned(),
             data_id: None,
             features: FeatureFlags::default(),

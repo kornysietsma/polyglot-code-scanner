@@ -40,6 +40,12 @@ You can get up-to-date command-line help by running
 polyglot_code_scanner -h
 ~~~
 
+## Known Limitations
+
+### SHA-256 Git Repositories
+
+The scanner does not currently support scanning git repositories that use SHA-256 object hashes (created with `git init --object-format=sha256`). This is due to libgit2 not yet supporting SHA-256 repositories. When libgit2 adds this support, the scanner can be updated to use it.
+
 ## Ignoring files
 
 Git ignored files in `.gitignore` are not scanned.
@@ -78,6 +84,11 @@ OPTIONS:
             how many years of git history to parse - default only scan the last 3 years (from now,
             not git head) [default: 3]
 
+        --prune-inactive-years <PRUNE_YEARS>
+            Prune (remove) git repositories that haven't been active in the specified number of
+            years. For example, `--prune-inactive-years 1` will remove all git repositories with
+            no commits in the last year. Non-git content is always preserved.
+
     -c, --coupling
             include temporal coupling data
 
@@ -86,9 +97,37 @@ OPTIONS:
 
 ~~~
 
-## Development notes
+## Pruning Inactive Repositories
 
-See also the `DesignDecisions.md` file
+The `--prune-inactive-years` flag lets you filter out dormant repositories from your analysis. This is useful for understanding active vs stale code in large workspaces.
+
+### Usage Example
+
+```sh
+# Fetch 5 years of history, but only show repos active in the last year
+polyglot_code_scanner --name myproject --years 5 --prune-inactive-years 1 /path/to/workspace
+```
+
+### How It Works
+
+- **Git roots are atomic**: If a repository has any commits within the window, the entire repository is kept, including old files
+- **Non-git content preserved**: Directories without git history are always kept (even if `--prune-inactive-years` is specified)
+- **Date calculation**: The cutoff is based on the latest commit date in each repository, compared against the current date
+
+### Separate Windows
+
+The `--years` and `--prune-inactive-years` parameters are independent:
+
+- `--years N`: Controls how far back to fetch commit history for metrics and analysis
+- `--prune-inactive-years N`: Controls what to keep in the final output
+
+This separation lets you do things like:
+```sh
+# Analyze 10 years of history in inactive repos, but don't show them
+polyglot_code_scanner --years 10 --prune-inactive-years 1 /path/to/workspace
+```
+
+
 
 ### Running tests
 

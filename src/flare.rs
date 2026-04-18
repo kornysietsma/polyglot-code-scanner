@@ -59,6 +59,10 @@ impl FlareTreeNode {
         self.name = name.to_owned();
     }
 
+    pub fn is_file(&self) -> bool {
+        self.is_file
+    }
+
     pub fn new(name: impl Into<OsString>, is_file: bool) -> Self {
         FlareTreeNode {
             name: name.into(),
