@@ -1,2 +1,0 @@
-This file and directory have no git history.
-The directory should be kept with --prune-inactive-years since non-git content is preserved.
