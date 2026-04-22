@@ -1,11 +1,21 @@
-#!/bin/bash -e
+#!/bin/bash
 
-if [[ -d "rename_complex" ]]; then
-    rm -r rename_complex
-fi
+set -euo pipefail
 
-mkdir rename_complex
-cd rename_complex
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+
+source "$SCRIPT_DIR/../fixture_lib.sh"
+
+cd "$REPO_ROOT/tests/data/zipped"
+
+FIXTURE_NAME="rename_complex"
+
+fixture_reset_dir "$FIXTURE_NAME"
+fixture_git_init_repo "$FIXTURE_NAME"
+cd "$FIXTURE_NAME"
+
+BASE_BRANCH="$(git symbolic-ref --short HEAD)"
 
 author_kate() {
     export GIT_AUTHOR_NAME="Kate Smith"
@@ -33,11 +43,8 @@ git_dates() {
         echo "needs a param"
         exit 1
     fi
-    export GIT_AUTHOR_DATE="2020-09-13T$1:00:00"
-    export GIT_COMMITTER_DATE="2020-09-13T$1:00:00"
+    fixture_git_set_dates "2020-09-13T$1:00:00"
 }
-
-git init
 
 author_kate
 committer_jay
@@ -94,7 +101,7 @@ git mv a2.txt a.txt
 
 git commit -am "rename bb to b, a2 back to a"
 
-git checkout master
+git checkout "$BASE_BRANCH"
 
 git_dates "04"
 author_jay
@@ -121,7 +128,7 @@ git mv aa.txt a.txt
 git add .
 git commit -m "rename bee to b, aa back to a"
 
-git checkout master
+git checkout "$BASE_BRANCH"
 
 git_dates "07"
 author_kate
@@ -173,9 +180,4 @@ git add z.txt
 git commit -m "restoring deleted z"
 
 cd ..
-
-if [[ -f "rename_complex.zip" ]]; then
-    rm rename_complex.zip
-fi
-
-zip -r rename_complex.zip rename_complex
+fixture_zip_dir "$FIXTURE_NAME" "$FIXTURE_NAME.zip"

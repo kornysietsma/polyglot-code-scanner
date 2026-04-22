@@ -90,6 +90,34 @@ impl User {
             email: self.email.as_ref().map(|s| s.to_lowercase()),
         }
     }
+
+    pub fn normalized_email_if_valid(&self) -> Option<String> {
+        let trimmed = self.email.as_deref().map(str::trim).unwrap_or_default();
+        if trimmed.is_empty() || !trimmed.contains('@') {
+            None
+        } else {
+            Some(trimmed.to_lowercase())
+        }
+    }
+
+    pub fn has_non_blank_name(&self) -> bool {
+        self.name
+            .as_deref()
+            .map(str::trim)
+            .map(|name| !name.is_empty())
+            .unwrap_or(false)
+    }
+
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+
+    pub fn with_name_from(&self, other: &User) -> User {
+        User {
+            name: other.name.clone(),
+            email: self.email.clone(),
+        }
+    }
 }
 
 /// simplified commit log entry

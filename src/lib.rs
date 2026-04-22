@@ -72,6 +72,7 @@ pub struct ScannerConfig {
     pub git_years: Option<u64>,
     pub follow_symlinks: bool,
     pub prune_inactive_years: Option<u64>,
+    pub git_dedup_by_email: bool,
     pub name: String,
     pub data_id: Option<String>,
     pub features: FeatureFlags,
@@ -84,6 +85,7 @@ impl ScannerConfig {
             git_years: None,
             follow_symlinks: false,
             prune_inactive_years: None,
+            git_dedup_by_email: false,
             name: name.to_owned(),
             data_id: None,
             features: FeatureFlags::default(),
@@ -102,6 +104,7 @@ pub fn named_toxicity_indicator_calculator(
             GitLogConfig::default()
                 .include_merges(true)
                 .since_years(config.git_years),
+            config.git_dedup_by_email,
         ))),
         "indentation" => Some(Box::new(IndentationCalculator {})),
         "file_stats" => Some(Box::new(FileStatsCalculator {})),

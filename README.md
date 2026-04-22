@@ -84,6 +84,10 @@ OPTIONS:
             how many years of git history to parse - default only scan the last 3 years (from now,
             not git head) [default: 3]
 
+        --git-dedup-by-email
+            De-duplicate git users by case-insensitive email when email is valid (contains '@').
+            Falls back to legacy name+email matching when email is blank or invalid.
+
         --prune-inactive-years <PRUNE_YEARS>
             Prune (remove) git repositories that haven't been active in the specified number of
             years. For example, `--prune-inactive-years 1` will remove all git repositories with
@@ -126,6 +130,15 @@ This separation lets you do things like:
 # Analyze 10 years of history in inactive repos, but don't show them
 polyglot_code_scanner --years 10 --prune-inactive-years 1 /path/to/workspace
 ```
+
+## Git User De-duplication
+
+By default, user IDs are generated using legacy case-insensitive name+email matching.
+
+If you enable `--git-dedup-by-email`, then users are matched by case-insensitive email whenever the email is valid (non-blank and contains `@`).
+
+- If multiple names are seen for the same email, the most recent non-blank name is retained.
+- If email is blank or invalid, matching falls back to legacy behavior.
 
 
 
