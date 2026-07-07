@@ -59,6 +59,54 @@ fn it_calculates_git_stats() -> Result<(), Error> {
 }
 
 #[test]
+fn it_calculates_git_stats_with_email_dedup_flag() -> Result<(), Error> {
+    let gitdir = tempdir()?;
+    let git_root = unzip_test_sample("git_dedup_sample", gitdir.path())?;
+
+    let mut legacy_buffer: Vec<u8> = Vec::new();
+    let legacy_out = Cursor::new(&mut legacy_buffer);
+
+    let legacy_result = polyglot_code_scanner::run(
+        &git_root,
+        &test_scanner_config(true),
+        None,
+        &["git"],
+        legacy_out,
+    );
+
+    assert!(legacy_result.is_ok());
+
+    let legacy_json: Value = serde_json::from_reader(legacy_buffer.as_slice())?;
+
+    let mut dedup_buffer: Vec<u8> = Vec::new();
+    let dedup_out = Cursor::new(&mut dedup_buffer);
+
+    let mut config = test_scanner_config(true);
+    config.git_dedup_by_email = true;
+
+    let dedup_result = polyglot_code_scanner::run(&git_root, &config, None, &["git"], dedup_out);
+
+    assert!(dedup_result.is_ok());
+
+    let dedup_json: Value = serde_json::from_reader(dedup_buffer.as_slice())?;
+
+    let legacy_users = legacy_json["metadata"]["git"]["users"]
+        .as_array()
+        .expect("legacy users should be an array");
+    let dedup_users = dedup_json["metadata"]["git"]["users"]
+        .as_array()
+        .expect("dedup users should be an array");
+
+    assert_eq!(legacy_users.len(), 2);
+    assert_eq!(dedup_users.len(), 1);
+
+    assert_eq!(dedup_users[0]["user"]["email"], "alice@example.com");
+    assert_eq!(dedup_users[0]["user"]["name"], "Alice Two");
+
+    Ok(())
+}
+
+#[test]
 fn it_calculates_detailed_git_stats() -> Result<(), Error> {
     let gitdir = tempdir()?;
     let git_root = unzip_test_sample("git_sample", gitdir.path())?;

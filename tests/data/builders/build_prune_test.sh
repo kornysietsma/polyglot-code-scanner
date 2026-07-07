@@ -1,4 +1,13 @@
-#!/bin/bash -set
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+source "$SCRIPT_DIR/fixture_lib.sh"
+
+cd "$REPO_ROOT/tests/data/zipped"
 
 # This script creates test data for the --prune-inactive-years flag.
 # It creates a parent directory with 3 separate git repositories:
@@ -12,29 +21,23 @@
 #    - All commits are from Dec 2024 (14 months ago)
 #
 # 3. repo_no_git/: A directory with no git repo
-#    - Should be PRUNED (no git data anywhere)
+#    - Should be KEPT (non-git content is preserved)
 
-if [[ -d "prune_test" ]]; then
-    rm -rf prune_test
-fi
+FIXTURE_NAME="prune_test"
 
-mkdir prune_test
-cd prune_test
+fixture_reset_dir "$FIXTURE_NAME"
+cd "$FIXTURE_NAME"
 
 git_dates() {
-    # Sets both author and committer dates
+    # Sets both author and committer dates.
     if [ -z "$1" ]; then
         echo "needs a param (ISO 8601 datetime)"
         exit 1
     fi
-    export GIT_AUTHOR_DATE="$1"
-    export GIT_COMMITTER_DATE="$1"
+    fixture_git_set_dates "$1"
 }
 
-export GIT_AUTHOR_NAME="Test Author"
-export GIT_AUTHOR_EMAIL="test@example.com"
-export GIT_COMMITTER_NAME="Test Committer"
-export GIT_COMMITTER_EMAIL="test@example.com"
+fixture_git_set_identity "Test Author" "test@example.com"
 
 # Repository 1: Has recent activity (should be KEPT)
 mkdir repo_with_recent_activity
@@ -87,11 +90,12 @@ git commit -m "Another old commit from Dec 2024"
 
 cd ..
 
-# Directory 3: No git repo (should be PRUNED)
+# Directory 3: No git repo (should be KEPT)
 mkdir repo_no_git
 cat <<EOF > repo_no_git/file_without_git.txt
 This file and directory have no git history.
-The directory should be pruned with --prune-inactive-years since it has no git data.
+The directory should be kept with --prune-inactive-years since non-git content is preserved.
 EOF
 
 cd ..
+fixture_zip_dir "$FIXTURE_NAME" "$FIXTURE_NAME.zip"

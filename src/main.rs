@@ -51,6 +51,9 @@ struct Cli {
     #[clap(value_parser, long = "no-detailed-git")]
     /// Don't include detailed git information - output may be big!
     no_detailed_git: bool,
+    #[clap(value_parser, long = "git-dedup-by-email")]
+    /// De-duplicate git users by case-insensitive email when email is valid (contains '@')
+    git_dedup_by_email: bool,
     #[clap(value_parser, long = "no-file-stats")]
     /// Do not scan for file stats - mainly an option as this is very hard to unit test
     no_file_stats: bool,
@@ -169,6 +172,7 @@ fn main() -> Result<(), Error> {
         name: args.name,
         follow_symlinks: args.follow_symlinks,
         prune_inactive_years: args.prune_inactive_years,
+        git_dedup_by_email: args.git_dedup_by_email,
         features,
     };
 

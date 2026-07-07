@@ -1,7 +1,7 @@
 use crate::flare::FlareTreeNode;
 use crate::git_file_history::{FileHistoryEntry, GitFileHistory};
 use crate::git_logger::{CommitChange, GitLog, GitLogConfig, User};
-use crate::git_user_dictionary::GitUserDictionary;
+use crate::git_user_dictionary::{GitUserDedupMode, GitUserDictionary};
 use crate::polyglot_data::GitMetadata;
 use crate::toxicity_indicator_calculator::ToxicityIndicatorCalculator;
 use anyhow::{Context, Error};
@@ -206,7 +206,10 @@ impl GitHistories {
         users.sort();
         users.dedup();
         // this used to use a HashSet but I want deterministic ordering and so I want it in a vec anyway
-        users.into_iter().map(|u| dictionary.register(u)).collect()
+        users
+            .into_iter()
+            .map(|u| dictionary.register_with_name_updates(u, history.commit_time))
+            .collect()
     }
 
     fn stats_from_history(
@@ -306,13 +309,17 @@ impl GitHistories {
 }
 
 impl GitCalculator {
-    pub fn new(config: GitLogConfig) -> Self {
+    pub fn new(config: GitLogConfig, dedup_by_email: bool) -> Self {
         GitCalculator {
             histories: GitHistories {
                 git_file_histories: Vec::new(),
                 git_log_config: config,
             },
-            dictionary: GitUserDictionary::default(),
+            dictionary: GitUserDictionary::new(if dedup_by_email {
+                GitUserDedupMode::Email
+            } else {
+                GitUserDedupMode::Legacy
+            }),
         }
     }
 }

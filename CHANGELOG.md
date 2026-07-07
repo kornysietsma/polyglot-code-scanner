@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+
+### Added
+
+* Added `--git-dedup-by-email` option to de-duplicate git users by case-insensitive email when email is valid.
+
+### Changed
+
+* In email dedup mode, user display names now retain the most recent non-blank name seen for that email identity.
+* Invalid or missing emails in email dedup mode fall back to legacy case-insensitive name+email identity behavior.
+
 ## [0.4.4] - 2022-11-21
 
 * fixed error with non-UTF8 files in the recent unknown languages logic
