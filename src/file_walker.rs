@@ -40,8 +40,15 @@ fn walk_tree_walker(
     let mut last_log = Instant::now();
     info!("Walking file tree");
 
-    for result in walker.map(|r| r.expect("File error!")).skip(1) {
-        let p = result.path();
+    for result in walker.skip(1) {
+        let entry = match result {
+            Ok(entry) => entry,
+            Err(e) => {
+                warn!("Skipping file/directory with error: {e}");
+                continue;
+            }
+        };
+        let p = entry.path();
         let relative = p.strip_prefix(prefix)?;
         let elapsed_since_log = last_log.elapsed();
         if elapsed_since_log.as_secs() > LOG_INTERVAL_SECS {
